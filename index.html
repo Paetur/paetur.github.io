@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="fo">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Pætur & Maria Hentze — Brúdleyp</title>
+  <link rel="stylesheet" href="css/style.css">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script>
+  <script src="js/config.js" defer></script>
+  <script src="js/supabase.js" defer></script>
+  <script src="js/languages.js" defer></script>
+  <script src="js/invitation.js" defer></script>
+</head>
+<body>
+  <main class="wrap">
+    <nav class="topnav">
+      <span class="eyebrow">M & P · 2027</span>
+      <div class="lang" aria-label="Language">
+        <button type="button" data-lang="fo" class="on">FO</button>
+        <button type="button" data-lang="en">EN</button>
+        <button type="button" data-lang="de">DE</button>
+      </div>
+    </nav>
+
+    <section class="card hero">
+      <div class="eyebrow" data-t="invite">Vit skulu giftast</div>
+      <h1>Pætur <span class="amp">&</span><br>Maria Hentze</h1>
+      <p class="date">20 · 02 · 2027</p>
+      <p id="invitee" class="invitee hidden"></p>
+      <p class="muted" data-t="welcome">Vit gleða okkum at hátíðarhalda dagin saman við tykkum í Týsklandi.</p>
+      <button class="btn hidden" type="button" id="scrollToRsvp" data-t="answer">Svar upp á innbjóðing</button>
+    </section>
+
+    <section id="statusCard" class="card status-card hidden" aria-live="polite"></section>
+
+    <section id="rsvp" class="card hidden">
+    <div class="eyebrow">RSVP</div>
+
+    <h2 id="household-name" data-t="dear">
+        Góðu gestir
+    </h2>
+
+    <p class="muted" data-t="who">
+        Vinarliga sigið okkum, hvør kemur.
+    </p>
+
+    <div id="guest-list"></div>
+
+    <div class="row">
+        <button
+            id="rsvp-attending"
+            class="btn rsvp-button"
+            data-t="coming">
+            Vit koma
+        </button>
+
+        <button
+            id="rsvp-declined"
+            class="btn secondary rsvp-button"
+            data-t="notcoming">
+            Vit kunnu tíverri ikki koma
+        </button>
+    </div>
+
+    <p id="rsvp-message" class="muted hidden"></p>
+</section>
+
+    <section id="foodSection" class="card hidden">
+      <div class="eyebrow" data-t="bring">Taka við</div>
+      <h2 data-t="help">Kanst tú taka okkurt við?</h2>
+      <p class="muted" data-t="helptext">Vel bara, um tað passar tær. Tað, sum longu er valt, verður ikki tøkt hjá øðrum.</p>
+      <div id="myFoodSection" class="hidden">
+        <h3 data-t="yourFood">Tað, tit taka við</h3>
+        <div id="myFood"></div>
+        <hr>
+      </div>
+      <h3 data-t="availableFood">Tøkt at taka við</h3>
+      <div class="foodgrid" id="foodgrid"></div>
+      <p class="muted small" data-t="foodSoon">Food-listin verður lisin úr Supabase í næsta stigi.</p>
+    </section>
+  </main>
+</body>
+</html>

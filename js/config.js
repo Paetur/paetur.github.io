@@ -1,0 +1,4 @@
+window.WEDDING_CONFIG = {
+  supabaseUrl: 'https://swsahmzrxohttgplroli.supabase.co',
+  supabaseAnonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InN3c2FobXpyeG9odHRncGxyb2xpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTA1MTUwMDQsImV4cCI6MjEwNjA5MTAwNH0.aLFscWOsHlgZqYEn-1gdYTQxFKez81BuUWy5YM6yJn0'
+};

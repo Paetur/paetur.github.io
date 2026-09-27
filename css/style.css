@@ -1,0 +1,184 @@
+:root {
+  --paper: #f7f2ea;
+  --ink: #282720;
+  --sage: #75806b;
+  --line: #d8d0c4;
+  --white: #fffdf8;
+  --muted: #716d65;
+}
+
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body {
+  margin: 0;
+  font-family: Georgia, "Times New Roman", serif;
+  background: var(--paper);
+  color: var(--ink);
+}
+button, input, select { font: inherit; }
+button { -webkit-tap-highlight-color: transparent; }
+
+.wrap {
+  max-width: 720px;
+  min-height: 100vh;
+  margin: auto;
+  padding: 20px;
+}
+.card {
+  margin-top: 18px;
+  padding: 32px 24px;
+  background: var(--white);
+  border: 1px solid var(--line);
+  border-radius: 28px;
+  box-shadow: 0 12px 40px #5d544015;
+}
+.hero { text-align: center; padding: 64px 18px 40px; }
+.topnav { display: flex; justify-content: space-between; align-items: center; }
+.eyebrow {
+  font-family: Arial, sans-serif;
+  font-size: 12px;
+  letter-spacing: .18em;
+  text-transform: uppercase;
+  color: var(--sage);
+}
+h1 { margin: 18px 0; font-size: 48px; line-height: .95; font-weight: 400; }
+h2 { margin: 8px 0 18px; font-size: 30px; font-weight: 400; }
+.amp { font-style: italic; color: var(--sage); }
+.date { font-size: 20px; }
+.invitee { margin: 22px 0 6px; font-size: 21px; }
+.muted { color: var(--muted); line-height: 1.6; }
+.small { font-size: 13px; }
+.row { display: flex; gap: 12px; flex-wrap: wrap; }
+.hidden { display: none !important; }
+
+.btn {
+  border: 0;
+  border-radius: 999px;
+  background: var(--ink);
+  color: white;
+  padding: 14px 22px;
+  cursor: pointer;
+}
+.btn.secondary { background: transparent; color: var(--ink); border: 1px solid var(--line); }
+.lang { display: flex; gap: 6px; justify-content: flex-end; }
+.lang button { border: 0; background: transparent; padding: 7px; color: #777; cursor: pointer; }
+.lang .on { border-bottom: 1px solid var(--ink); color: var(--ink); }
+
+.choice {
+  display: block;
+  margin: 9px 0;
+  padding: 14px;
+  background: white;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+}
+.choice input { margin-right: 10px; }
+.foodgrid { display: grid; grid-template-columns: 1fr; gap: 10px; }
+.food { padding: 15px; border: 1px solid var(--line); border-radius: 16px; }
+.food small { display: block; margin-top: 5px; color: #777; }
+.status-card { text-align: center; }
+.status-card.error { border-color: #c89b91; }
+
+@media (min-width: 650px) {
+  .foodgrid { grid-template-columns: 1fr 1fr; }
+  h1 { font-size: 62px; }
+}
+
+/* Admin */
+.admin-wrap { max-width: 980px; }
+.adminbar { display:flex; justify-content:space-between; align-items:center; gap:16px; margin:18px 0; }
+.admin-tabs { display:flex; flex-wrap:wrap; gap:8px; }
+.admin-tab.on { background:var(--ink); color:white; }
+.admin-form { display:grid; gap:14px; }
+.admin-form label { display:grid; gap:6px; font-family:Arial,sans-serif; font-size:13px; color:var(--muted); }
+.admin-form input, .admin-form select { width:100%; padding:12px 13px; border:1px solid var(--line); border-radius:12px; background:white; color:var(--ink); }
+.admin-form-grid { grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); align-items:end; }
+.admin-full { grid-column:1/-1; }
+.admin-household, .admin-item { margin-top:14px; padding:18px; border:1px solid var(--line); border-radius:18px; background:#fff; }
+.admin-household h3, .admin-item h3 { margin:0 0 6px; font-weight:400; }
+.admin-add-guest, .admin-edit-guest, .admin-edit-food { display:grid; grid-template-columns:repeat(auto-fit,minmax(130px,1fr)); gap:8px; align-items:center; margin:14px 0; padding:12px; border-radius:14px; background:var(--paper); }
+.admin-add-guest input, .admin-add-guest select, .admin-edit-guest input, .admin-edit-guest select, .admin-edit-food input, .admin-edit-food select { width:100%; padding:9px; border:1px solid var(--line); border-radius:10px; background:white; }
+.admin-guest { display:flex; justify-content:space-between; align-items:center; gap:12px; padding:12px 0; border-top:1px solid var(--line); }
+.admin-guest-actions, .admin-actions { display:flex; gap:6px; flex-wrap:wrap; }
+.admin-guest-actions .btn, .admin-actions .btn { padding:8px 12px; font-size:13px; }
+.admin-list { margin-top:18px; }
+.admin-list-row { display:flex; justify-content:space-between; align-items:center; gap:12px; padding:13px 0; border-top:1px solid var(--line); }
+.admin-list-row select { padding:8px; border:1px solid var(--line); border-radius:10px; background:white; }
+@media (max-width:650px) { .adminbar, .admin-guest, .admin-list-row { align-items:flex-start; flex-direction:column; } }
+
+/* Guest tree */
+.guest-filters { display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:10px; align-items:end; margin:18px 0; }
+.guest-filters label { display:grid; gap:6px; font-family:Arial,sans-serif; font-size:13px; color:var(--muted); }
+.guest-filters input,.guest-filters select { width:100%; padding:10px 12px; border:1px solid var(--line); border-radius:12px; background:white; }
+.tree-node { margin:8px 0; }
+.tree-node > summary { cursor:pointer; list-style:none; display:flex; align-items:center; gap:8px; padding:10px 12px; border-radius:12px; font-family:Arial,sans-serif; }
+.tree-node > summary::-webkit-details-marker { display:none; }
+.tree-node > summary::before { content:'›'; font-size:20px; transition:transform .15s ease; }
+.tree-node[open] > summary::before { transform:rotate(90deg); }
+.tree-side > summary { background:var(--ink); color:white; font-weight:700; }
+.tree-relation > summary { background:#eee8de; font-weight:700; }
+.tree-family > summary { border:1px solid var(--line); font-weight:700; }
+.tree-children { margin-left:20px; padding-left:12px; border-left:1px solid var(--line); }
+.tree-household { margin:10px 0; padding:14px; border:1px solid var(--line); border-radius:16px; background:#fff; }
+.tree-household-head { display:flex; justify-content:space-between; gap:12px; align-items:flex-start; }
+.tree-count { opacity:.7; font-weight:400; font-size:12px; }
+@media(max-width:650px){ .tree-children{margin-left:8px;padding-left:8px}.tree-household-head{flex-direction:column} }
+
+/* Dynamic relation groups + family tree setup */
+.tree-setup-grid { display:grid; grid-template-columns:minmax(220px,.8fr) minmax(300px,1.4fr); gap:20px; align-items:start; }
+.tree-setup-list { margin-top:22px; display:grid; gap:14px; }
+.tree-setup-group { padding:14px; border:1px solid var(--line); border-radius:16px; background:#fff; }
+.tree-setup-head,.setup-node-row { display:flex; justify-content:space-between; align-items:center; gap:10px; }
+.tree-setup-side { margin-top:12px; padding-top:10px; border-top:1px solid var(--line); }
+.setup-node { margin:7px 0; }
+.setup-node-row { padding:7px 0; }
+.setup-node-children { margin-left:18px; padding-left:12px; border-left:1px solid var(--line); }
+.setup-node-edit { display:grid; grid-template-columns:1fr 1fr auto auto; gap:7px; margin:6px 0 10px; }
+.setup-node-edit input,.setup-node-edit select { width:100%; padding:8px; border:1px solid var(--line); border-radius:10px; background:white; }
+@media(max-width:650px){.tree-setup-grid{grid-template-columns:1fr}.setup-node-edit{grid-template-columns:1fr}.setup-node-children{margin-left:8px;padding-left:8px}}
+
+
+/* Compact unified Guests & RSVP tree */
+.compact-admin-heading{display:flex;justify-content:space-between;align-items:flex-start;gap:1rem;flex-wrap:wrap}
+.relation-manager{min-width:220px}.relation-manager>summary{list-style:none;cursor:pointer}.relation-manager>summary::-webkit-details-marker{display:none}
+.compact-group-form{display:flex;gap:.5rem;margin-top:.75rem}.compact-group-form input{min-width:0}
+.relation-group-list{display:grid;gap:.4rem;margin-top:.5rem}.relation-group-row{display:flex;align-items:center;justify-content:space-between;gap:.5rem;padding:.4rem 0;border-bottom:1px solid rgba(0,0,0,.08)}
+.compact-tree .tree-children{margin-left:.7rem;padding-left:.7rem;border-left:1px solid rgba(0,0,0,.12)}
+.compact-household-node{margin:.25rem 0}.compact-household-node>summary{display:flex;align-items:center;gap:.5rem;cursor:pointer;padding:.4rem .5rem;border-radius:.5rem}.compact-household-node>summary:hover{background:rgba(0,0,0,.035)}
+.compact-household-label{font-weight:650;flex:1}.compact-household-body{margin-left:.75rem;padding-left:.65rem;border-left:1px solid rgba(0,0,0,.1)}
+.compact-household-card{padding:.45rem .55rem .65rem;margin:.15rem 0 .4rem;border:1px solid rgba(0,0,0,.08);border-radius:.65rem;background:rgba(255,255,255,.35)}
+.compact-household-toolbar,.compact-guest-row{display:flex;align-items:center;justify-content:space-between;gap:.6rem}.compact-household-toolbar{margin-bottom:.4rem}.compact-guest-row{padding:.35rem .15rem;border-top:1px solid rgba(0,0,0,.07)}
+.compact-household-toolbar .btn,.compact-guest-row .btn,.relation-group-row .btn{padding:.35rem .55rem;font-size:.82rem}
+.compact-add-guest{display:flex;align-items:center;gap:.4rem;flex-wrap:wrap;margin:.35rem 0}.compact-add-guest input{min-width:110px;flex:1}
+.compact-inline-form{margin:.4rem 0;padding:.5rem;gap:.4rem}
+@media(max-width:700px){.compact-household-toolbar,.compact-guest-row{align-items:flex-start;flex-direction:column}.compact-tree .tree-children{margin-left:.3rem;padding-left:.4rem}.compact-household-body{margin-left:.35rem;padding-left:.4rem}.compact-add-guest{display:grid}.compact-group-form{display:grid}}
+
+/* Food category trees — guest + admin */
+.food-category > summary,
+.food-admin-category > summary {
+  cursor: pointer;
+  list-style: none;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  margin-top: 10px;
+  border-radius: 12px;
+  background: #eee8de;
+  font-family: Arial, sans-serif;
+}
+.food-category > summary::-webkit-details-marker,
+.food-admin-category > summary::-webkit-details-marker { display: none; }
+.food-category > summary::before,
+.food-admin-category > summary::before { content: '›'; font-size: 20px; transition: transform .15s ease; }
+.food-category[open] > summary::before,
+.food-admin-category[open] > summary::before { transform: rotate(90deg); }
+.food-category > summary .tree-count,
+.food-admin-category > summary .tree-count { margin-left: auto; }
+.food-category-children { margin-top: 6px; }
+.food-choice { display: flex; align-items: flex-start; gap: 8px; }
+.food-choice input { margin: 4px 0 0; flex: 0 0 auto; }
+.food-choice-content { display: grid; gap: 4px; min-width: 0; }
+.food-choice-content small { color: var(--muted); line-height: 1.45; }
+.food-admin-item > summary { border: 1px solid var(--line); }
+.food-admin-item > summary .tree-count { margin-left: auto; }

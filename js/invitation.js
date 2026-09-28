@@ -30,20 +30,19 @@ function text(key, replacements = {}) {
 ------------------------------------------------------- */
 
 async function loadInvitation() {
-    // Supports both:
-    // ?ABC123XY
-    // ?invite=ABC123XY
-    const rawQuery = window.location.search.slice(1).trim();
-    const params = new URLSearchParams(window.location.search);
+    const query = window.location.search.substring(1).trim();
 
-    currentInviteCode = params.get('invite');
-
-    if (!currentInviteCode && rawQuery && !rawQuery.includes('=')) {
-        currentInviteCode = decodeURIComponent(rawQuery);
+    if (query.toLowerCase().startsWith('invite=')) {
+        currentInviteCode = query.substring(7);
+    } else {
+        currentInviteCode = query;
     }
 
-    // Invite codes must be exactly 8 characters
-    if (!/^[A-Za-z0-9]{8}$/.test(currentInviteCode || '')) {
+    currentInviteCode = decodeURIComponent(currentInviteCode)
+        .trim()
+        .toUpperCase();
+
+    if (!currentInviteCode || currentInviteCode.length !== 8) {
         currentInviteCode = null;
         console.log('No valid invite code in URL');
         return;
@@ -65,14 +64,12 @@ async function loadInvitation() {
 
     currentInvitation = data;
 
-    // Set household language
     if (data.language && typeof setLanguage === 'function') {
         setLanguage(data.language);
     }
 
     renderInvitation(data);
 }
-
 
 function renderInvitation(invitation) {
     // Invitation-only controls are hidden on the generic landing page

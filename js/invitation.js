@@ -30,11 +30,22 @@ function text(key, replacements = {}) {
 ------------------------------------------------------- */
 
 async function loadInvitation() {
+    // Supports both:
+    // ?ABC123XY
+    // ?invite=ABC123XY
+    const rawQuery = window.location.search.slice(1).trim();
     const params = new URLSearchParams(window.location.search);
+
     currentInviteCode = params.get('invite');
 
-    if (!currentInviteCode) {
-        console.log('No invite code in URL');
+    if (!currentInviteCode && rawQuery && !rawQuery.includes('=')) {
+        currentInviteCode = decodeURIComponent(rawQuery);
+    }
+
+    // Invite codes must be exactly 8 characters
+    if (!/^[A-Za-z0-9]{8}$/.test(currentInviteCode || '')) {
+        currentInviteCode = null;
+        console.log('No valid invite code in URL');
         return;
     }
 

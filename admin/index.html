@@ -4,11 +4,11 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Pætur & Maria Hentze — Admin</title>
-  <link rel="stylesheet" href="../css/style.css?v=20260929d">
+  <link rel="stylesheet" href="../css/style.css?v=20260929e">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script>
   <script src="../js/config.js" defer></script>
   <script src="../js/supabase.js" defer></script>
-  <script src="admin.js?v=20260929d" defer></script>
+  <script src="admin.js?v=20260929e" defer></script>
 </head>
 <body>
   <main class="wrap admin-wrap">
@@ -51,7 +51,7 @@
             <label>Side<select id="householdSide" required><option value="paetur_hentze">Pætur Hentze</option><option value="maria_haass">Maria Haaß</option></select></label>
             <label>Relation group<select id="householdRelationGroup" required></select></label>
             <label>Parent household / tree node<select id="householdParent"><option value="">— Root / eingin parent —</option></select></label>
-            <label>Language<select id="householdLanguage" required><option value="fo">Føroyskt</option><option value="en">English</option><option value="de">Deutsch</option></select></label><label><input id="householdFood" type="checkbox"> Food</label><label><input id="householdStuff" type="checkbox"> Stuff</label><label><input id="householdThings" type="checkbox"> Things</label>
+            <label>Language<select id="householdLanguage" required><option value="fo">Føroyskt</option><option value="en">English</option><option value="de">Deutsch</option></select></label><label><input id="householdFood" type="checkbox"> Food</label>
             <div><button id="addHouseholdButton" class="btn" type="submit">Add household</button></div>
             <p id="householdMessage" class="muted hidden admin-full" aria-live="polite"></p>
           </form>

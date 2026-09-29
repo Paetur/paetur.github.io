@@ -1,5 +1,12 @@
 window.WEDDING_TRANSLATIONS = {
     fo: {
+        addPerson: 'Legg persón afturat…',
+        firstName: 'Fornavn',
+        lastName: 'Eftirnavn',
+        addPersonButton: 'Legg afturat',
+        personAdded: 'Persónurin er lagdur afturat.',
+        stuffTitle: 'At taka við', stuffHeading: 'Ymiskt at taka við',
+        thingsTitle: 'At gera', thingsHeading: 'Ymiskt at gera',
         invite: 'Vit skulu giftast',
         welcome: 'Vit gleða okkum at hátíðarhalda dagin saman við tykkum í Týsklandi.',
         answer: 'Svar upp á innbjóðing',
@@ -39,6 +46,13 @@ window.WEDDING_TRANSLATIONS = {
     },
 
     en: {
+        addPerson: 'Add a person…',
+        firstName: 'First name',
+        lastName: 'Last name',
+        addPersonButton: 'Add person',
+        personAdded: 'The person has been added.',
+        stuffTitle: 'Stuff to bring', stuffHeading: 'Stuff to bring',
+        thingsTitle: 'Things to do', thingsHeading: 'Things to do',
         invite: 'We are getting married',
         welcome: 'We look forward to celebrating our day with you in Germany.',
         answer: 'Reply to the invitation',
@@ -78,6 +92,13 @@ window.WEDDING_TRANSLATIONS = {
     },
 
     de: {
+        addPerson: 'Person hinzufügen…',
+        firstName: 'Vorname',
+        lastName: 'Nachname',
+        addPersonButton: 'Person hinzufügen',
+        personAdded: 'Die Person wurde hinzugefügt.',
+        stuffTitle: 'Mitbringen', stuffHeading: 'Dinge zum Mitbringen',
+        thingsTitle: 'Zu erledigen', thingsHeading: 'Dinge zu erledigen',
         invite: 'Wir heiraten',
         welcome: 'Wir freuen uns darauf, diesen besonderen Tag mit euch in Deutschland zu feiern.',
         answer: 'Auf die Einladung antworten',
@@ -143,6 +164,11 @@ window.setLanguage = function (language) {
 
     document.documentElement.lang = language;
 
+    document.querySelectorAll('[data-t-placeholder]').forEach(element => {
+        const value = window.WEDDING_TRANSLATIONS[language]?.[element.dataset.tPlaceholder];
+        if (value) element.placeholder = value;
+    });
+
     // Language buttons
     document.querySelectorAll('[data-lang]').forEach(button => {
         button.classList.toggle(
@@ -176,14 +202,18 @@ document.addEventListener('DOMContentLoaded', () => {
             window.setLanguage(language);
 
             /*
-             * Re-render dynamic food content too.
+             * Re-render invitation-only food content only after a valid
+             * invitation has loaded. The generic page must not call food RPCs.
              */
-            if (typeof loadMyFood === 'function') {
-                await loadMyFood();
-            }
+            if (typeof currentInvitation !== 'undefined' && currentInvitation &&
+                typeof currentInviteCode !== 'undefined' && currentInviteCode) {
+                if (typeof loadMyFood === 'function') {
+                    await loadMyFood();
+                }
 
-            if (typeof loadFood === 'function') {
-                await loadFood();
+                if (typeof loadFood === 'function') {
+                    await loadFood();
+                }
             }
         });
     });

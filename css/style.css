@@ -182,3 +182,11 @@ h2 { margin: 8px 0 18px; font-size: 30px; font-weight: 400; }
 .food-choice-content small { color: var(--muted); line-height: 1.45; }
 .food-admin-item > summary { border: 1px solid var(--line); }
 .food-admin-item > summary .tree-count { margin-left: auto; }
+
+/* Invitation extras */
+.add-person-box { margin: 14px 0; }
+.add-person-box > summary { cursor:pointer; font-family:Arial,sans-serif; font-weight:650; }
+.add-person-form { display:flex; gap:8px; flex-wrap:wrap; margin-top:10px; }
+.add-person-form input { flex:1; min-width:130px; padding:10px 12px; border:1px solid var(--line); border-radius:12px; }
+.guest-private-list { display:grid; gap:0; }
+.guest-private-list-row { padding:11px 0; border-top:1px solid var(--line); }

@@ -30,20 +30,15 @@ function text(key, replacements = {}) {
 ------------------------------------------------------- */
 
 async function loadInvitation() {
-    const query = window.location.search.substring(1).trim();
+    const rawQuery = window.location.search.replace(/^\?/, '').trim();
 
-    if (query.toLowerCase().startsWith('invite=')) {
-        currentInviteCode = query.substring(7);
-    } else {
-        currentInviteCode = query;
-    }
+    // The public invitation format is exactly: ?ABCDEFGH
+    // Named query parameters such as ?invite=ABCDEFGH are intentionally unsupported.
+    currentInviteCode = /^[A-HJ-NP-Z2-9]{8}$/i.test(rawQuery)
+        ? rawQuery.toUpperCase()
+        : null;
 
-    currentInviteCode = decodeURIComponent(currentInviteCode)
-        .trim()
-        .toUpperCase();
-
-    if (!currentInviteCode || currentInviteCode.length !== 8) {
-        currentInviteCode = null;
+    if (!currentInviteCode) {
         console.log('No valid invite code in URL');
         return;
     }
@@ -52,22 +47,28 @@ async function loadInvitation() {
         p_invite_code: currentInviteCode
     });
 
-    if (error) {
-        console.error('Supabase error:', error);
-        return;
-    }
-
-    if (!data) {
-        console.log('Invitation not found');
+    if (error || !data) {
+        if (error) console.error('Supabase error:', error);
+        else console.log('Invitation not found');
+        currentInviteCode = null;
         return;
     }
 
     currentInvitation = data;
 
-    if (data.language && typeof setLanguage === 'function') {
-        setLanguage(data.language);
-    }
+    // Load household feature access and record the first/most recent open.
+    const { data: access, error: accessError } = await db.rpc('get_invitation_access', {
+        p_invite_code: currentInviteCode
+    });
+    if (accessError) console.error('Invitation access error:', accessError);
+    currentInvitation.access = access || { food: false, stuff: false, things: false };
 
+    const { error: visitError } = await db.rpc('mark_invitation_visited', {
+        p_invite_code: currentInviteCode
+    });
+    if (visitError) console.error('Visit tracking error:', visitError);
+
+    if (data.language && typeof setLanguage === 'function') setLanguage(data.language);
     renderInvitation(data);
 }
 
@@ -247,7 +248,7 @@ async function claimFood(foodItemId) {
 
 async function loadFood() {
     // Food is invitation-only. Never expose or activate it on the generic landing page.
-    if (!currentInvitation || !currentInviteCode) {
+    if (!currentInvitation || !currentInviteCode || !currentInvitation.access?.food) {
         document.getElementById('foodSection')?.classList.add('hidden');
         return;
     }
@@ -340,7 +341,12 @@ async function loadFood() {
 ------------------------------------------------------- */
 
 async function loadMyFood() {
-    if (!currentInviteCode) return;
+    // Claimed food is invitation-only too. Do not call the RPC until the
+    // invitation itself has been successfully validated.
+    if (!currentInvitation || !currentInviteCode) {
+        document.getElementById('myFoodSection')?.classList.add('hidden');
+        return;
+    }
 
     const { data, error } = await db.rpc(
         'get_my_food_claims',
@@ -469,6 +475,57 @@ async function releaseFood(foodItemId) {
 
 
 /* -------------------------------------------------------
+   EXTRA GUEST + HOUSEHOLD LISTS
+------------------------------------------------------- */
+
+async function addExtraGuest(event) {
+    event.preventDefault();
+    if (!currentInvitation || !currentInviteCode) return;
+    const form = event.currentTarget;
+    const firstName = form.querySelector('[name="first_name"]').value.trim();
+    const lastName = form.querySelector('[name="last_name"]').value.trim();
+    const message = document.getElementById('add-person-message');
+    if (!firstName) return;
+    const button = form.querySelector('button');
+    button.disabled = true;
+    const { error } = await db.rpc('add_invited_guest', {
+        p_invite_code: currentInviteCode,
+        p_first_name: firstName,
+        p_last_name: lastName || null
+    });
+    button.disabled = false;
+    if (error) {
+        console.error('Add guest error:', error);
+        alert(text('genericError'));
+        return;
+    }
+    form.reset();
+    if (message) { message.textContent = text('personAdded'); message.classList.remove('hidden'); }
+    await loadInvitation();
+}
+
+async function loadGuestList(kind) {
+    if (!currentInvitation || !currentInviteCode) return;
+    const config = kind === 'stuff'
+        ? { rpc: 'get_invited_stuff', section: 'stuffSection', list: 'guestStuffList' }
+        : { rpc: 'get_invited_things', section: 'thingsSection', list: 'guestThingsList' };
+    const { data, error } = await db.rpc(config.rpc, { p_invite_code: currentInviteCode });
+    if (error) { console.error(`${kind} list error:`, error); return; }
+    const section = document.getElementById(config.section);
+    const list = document.getElementById(config.list);
+    if (!section || !list) return;
+    list.innerHTML = '';
+    (data || []).forEach(item => {
+        const row = document.createElement('div');
+        row.className = 'guest-private-list-row';
+        if (kind === 'stuff') row.textContent = `${item.item}${item.quantity ? ` × ${item.quantity}` : ''}`;
+        else row.textContent = item.task;
+        list.appendChild(row);
+    });
+    section.classList.remove('hidden');
+}
+
+/* -------------------------------------------------------
    START
 ------------------------------------------------------- */
 
@@ -480,9 +537,15 @@ document.addEventListener(
         // RSVP and food are invitation-only. Only load food after the
         // invite code has been successfully validated by get_invitation().
         if (currentInvitation && currentInviteCode) {
-            await loadMyFood();
-            await loadFood();
+            if (currentInvitation.access?.food) {
+                await loadMyFood();
+                await loadFood();
+            }
+            if (currentInvitation.access?.stuff) await loadGuestList('stuff');
+            if (currentInvitation.access?.things) await loadGuestList('things');
         }
+
+        document.getElementById('add-person-form')?.addEventListener('submit', addExtraGuest);
 
         const attendingButton =
             document.getElementById(

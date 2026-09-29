@@ -146,7 +146,7 @@ function renderStats(){
     tree.innerHTML='';
     const renderRow=(h,depth)=>{
         const row=document.createElement('div');row.className='stats-row';row.style.setProperty('--depth',depth);
-        const name=document.createElement('span');name.textContent=h.household_name;
+        const name=document.createElement('span');name.textContent=householdDisplayName(h);
         const code=document.createElement('a');code.href=inviteUrl(h);code.target='_blank';code.rel='noopener';code.textContent=h.invite_code||'—';
         const count=document.createElement('span');count.textContent=String(h.guests?.length||0);count.title='Direct guests';
         const visited=document.createElement('span');visited.textContent=h.visited?'✓':'—';visited.title=h.visited?(h.visited_at?`Seen ${new Date(h.visited_at).toLocaleString()}`:'Seen'):'Not seen';

@@ -106,15 +106,9 @@ function renderHousehold(household,insideBranch=false){
     const toolbar=document.createElement('div');toolbar.className='compact-household-toolbar';
     const meta=document.createElement('span');meta.className='muted small';meta.innerHTML=`${household.language.toUpperCase()} · <a href="${escapeHtml(inviteUrl(household))}" target="_blank" rel="noopener">${escapeHtml(household.invite_code)}</a> · ${household.guests.length} guest(s) · ${household.visited ? '✓ Opened' : 'Not opened'}`;
     const actions=document.createElement('div');actions.className='admin-actions';
-    const addChild=document.createElement('button');addChild.type='button';addChild.className='btn secondary';addChild.textContent='+ Child';
     const editHouse=document.createElement('button');editHouse.type='button';editHouse.className='btn secondary';editHouse.textContent='Edit';
     const delHouse=document.createElement('button');delHouse.type='button';delHouse.className='btn secondary';delHouse.textContent='Delete';
-    actions.append(addChild,editHouse,delHouse);toolbar.append(meta,actions);card.appendChild(toolbar);
-
-    const childForm=document.createElement('form');childForm.className='admin-edit-guest hidden compact-inline-form';
-    childForm.innerHTML=`<input name="household_name" placeholder="Child household name" required><input name="last_name" placeholder="Last name"><select name="language"><option value="fo" ${household.language==='fo'?'selected':''}>FO</option><option value="en" ${household.language==='en'?'selected':''}>EN</option><option value="de" ${household.language==='de'?'selected':''}>DE</option></select><button class="btn" type="submit">Add child</button><button class="btn secondary cancel" type="button">Cancel</button><span class="muted small msg"></span>`;
-    card.appendChild(childForm);addChild.addEventListener('click',()=>childForm.classList.toggle('hidden'));childForm.querySelector('.cancel').addEventListener('click',()=>childForm.classList.add('hidden'));
-    childForm.addEventListener('submit',async e=>{e.preventDefault();const f=new FormData(childForm),msg=childForm.querySelector('.msg'),name=String(f.get('household_name')||'').trim();if(!name)return;const {error}=await db.from('households').insert({household_name:name,last_name:String(f.get('last_name')||'').trim()||null,family_name:name,side:household.side,relation_group_id:household.relation_group_id,parent_id:household.id,language:f.get('language')||household.language,food:household.food,stuff:household.stuff,things:household.things});if(error){console.error('Add child household error:',error);msg.textContent='Could not create child household.';return;}await reloadGuestAdmin();});
+    actions.append(editHouse,delHouse);toolbar.append(meta,actions);card.appendChild(toolbar);
 
     const opts=householdEditOptions(household);const houseForm=document.createElement('form');houseForm.className='admin-edit-guest hidden compact-inline-form';
     houseForm.innerHTML=`<input name="household_name" value="${escapeHtml(household.household_name)}" required><input name="last_name" value="${escapeHtml(household.last_name||'')}" placeholder="Last name"><select name="relation_group_id">${opts.groupOptions}</select><select name="parent_id">${opts.parentOptions}</select><select name="language"><option value="fo" ${household.language==='fo'?'selected':''}>FO</option><option value="en" ${household.language==='en'?'selected':''}>EN</option><option value="de" ${household.language==='de'?'selected':''}>DE</option></select><label><input type="checkbox" name="food" ${household.food?'checked':''}> Food</label><label><input type="checkbox" name="stuff" ${household.stuff?'checked':''}> Stuff</label><label><input type="checkbox" name="things" ${household.things?'checked':''}> Things</label><button class="btn" type="submit">Save</button><button class="btn secondary cancel" type="button">Cancel</button><span class="muted small msg"></span>`;
@@ -123,7 +117,7 @@ function renderHousehold(household,insideBranch=false){
     delHouse.addEventListener('click',async()=>{const children=adminHouseholds.filter(x=>x.parent_id===household.id);if(children.length){alert(`This household has ${children.length} child household(s). Move or delete them first.`);return;}if(!confirm(`Delete household "${household.household_name}" and all guests in it?`))return;const {error}=await db.from('households').delete().eq('id',household.id);if(error){console.error('Delete household error:',error);alert('Could not delete household: '+error.message);return;}await reloadGuestAdmin();});
 
     const addGuestBox=document.createElement('details');addGuestBox.className='add-person-box admin-add-person-box';
-    const addGuestSummary=document.createElement('summary');addGuestSummary.textContent='Add person…';addGuestBox.appendChild(addGuestSummary);
+    const addGuestSummary=document.createElement('summary');addGuestSummary.textContent='Add';addGuestBox.appendChild(addGuestSummary);
     const guestForm=document.createElement('form');guestForm.className='admin-add-guest compact-add-guest add-person-form';guestForm.innerHTML=`<input name="first_name" placeholder="First name" required><input name="last_name" placeholder="${escapeHtml(household.last_name||'Last name')}"><input name="relation" placeholder="Relation"><label><input type="checkbox" name="is_child"> Child</label><button class="btn" type="submit" aria-label="Add person">✓</button><span class="muted small guest-form-message"></span>`;
     guestForm.addEventListener('submit',async e=>{e.preventDefault();const f=new FormData(guestForm),button=guestForm.querySelector('button'),message=guestForm.querySelector('.guest-form-message'),first=String(f.get('first_name')||'').trim();if(!first)return;button.disabled=true;const {error}=await db.from('guests').insert({household_id:household.id,first_name:first,last_name:String(f.get('last_name')||'').trim()||null,relation:String(f.get('relation')||'').trim()||null,is_child:f.get('is_child')==='on',rsvp_status:'pending'});button.disabled=false;if(error){message.textContent='Could not create guest.';return;}await loadAdminGuests();});addGuestBox.appendChild(guestForm);
 
@@ -142,9 +136,9 @@ function renderStats(){
     const complete=adminHouseholds.filter(h=>(h.guests?.length||0)>0&&h.guests.every(g=>g.rsvp_status!=='pending')).length;
     summary.innerHTML='';
     [
+        [`${households} Households`,`${seen} / ${unseen} seen`],
         [`${guests} Guests`,`${pending} Pending`],
-        [`${complete} RSVP Complete`,`${attending} Attending / ${declined} Declined`],
-        [`${households} Households`,`${seen} / ${unseen} seen`]
+        [`${complete} RSVP Complete`,`${attending} Attending / ${declined} Declined`]
     ].forEach(([primary,secondary])=>{
         const box=document.createElement('div');
         const strong=document.createElement('strong');strong.textContent=primary;
@@ -170,7 +164,7 @@ function renderStats(){
         const language=document.createElement('span');language.className='stats-language';language.textContent=String(h.language||'').toUpperCase()||'—';language.title='Invitation language';
         const access=document.createElement('span');access.className='stats-access';const flag=document.createElement('span');flag.className=h.food?'stats-access-on':'stats-access-off';flag.textContent=h.food?'✓':'—';flag.title=`Food: ${h.food?'Yes':'No'}`;flag.setAttribute('aria-label',flag.title);flag.dataset.label='F';access.appendChild(flag);
         const visited=document.createElement('span');visited.textContent=h.visited?'✓':'—';visited.title=h.visited?(h.visited_at?`Seen ${new Date(h.visited_at).toLocaleString()}`:'Seen'):'Not seen';
-        const rsvpComplete=(h.guests?.length||0)>0&&h.guests.every(g=>g.rsvp_status!=='pending');const attendingCount=(h.guests||[]).filter(g=>g.rsvp_status==='attending').length;const rsvp=document.createElement('span');rsvp.textContent=`${rsvpComplete?'✓':'—'} (${attendingCount})`;rsvp.title=`${rsvpComplete?'RSVP complete':'RSVP incomplete'} · ${attendingCount} attending`;
+        const rsvpComplete=(h.guests?.length||0)>0&&h.guests.every(g=>g.rsvp_status!=='pending');const attendingCount=(h.guests||[]).filter(g=>g.rsvp_status==='attending').length;const rsvp=document.createElement('span');rsvp.textContent=rsvpComplete?`✓ (${attendingCount})`:'—';rsvp.title=rsvpComplete?`RSVP complete · ${attendingCount} attending`:'RSVP incomplete';
         row.append(nameCell,code,count,language,access,visited,rsvp);wrap.appendChild(row);
         const guestBox=document.createElement('div');guestBox.className='stats-guests hidden';guestBox.style.setProperty('--depth',depth);
         if((h.guests||[]).length){[...h.guests].sort((a,b)=>a.first_name.localeCompare(b.first_name,'fo')).forEach(g=>{const line=document.createElement('div');line.className='stats-guest-row';const guestName=document.createElement('span');guestName.textContent=[g.first_name,g.last_name].filter(Boolean).join(' ');guestName.title=g.rsvp_status==='attending'?'Attending':g.rsvp_status==='declined'?'Declined':'Pending';line.appendChild(guestName);guestBox.appendChild(line);});}else{const empty=document.createElement('div');empty.className='muted small';empty.textContent='No guests';guestBox.appendChild(empty);}

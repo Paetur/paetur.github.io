@@ -4,11 +4,11 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Pætur & Maria Hentze — Admin</title>
-  <link rel="stylesheet" href="../css/style.css?v=20260929-statlayout">
+  <link rel="stylesheet" href="../css/style.css?v=20260930-statrefine">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script>
   <script src="../js/config.js" defer></script>
   <script src="../js/supabase.js" defer></script>
-  <script src="admin.js?v=20260929-statlayout" defer></script>
+  <script src="admin.js?v=20260930-statrefine" defer></script>
 </head>
 <body>
   <main class="wrap admin-wrap">
@@ -32,43 +32,47 @@
 
       <section class="card admin-dashboard-head">
         <div class="eyebrow">Admin</div>
-        <h1>Wedding dashboard</h1>
+        <h1>Dashboard</h1>
         <nav class="admin-tabs" aria-label="Admin sections">
-          <button class="btn admin-tab on" type="button" data-admin-tab="guests">Guests & RSVP</button>
+          <button class="btn admin-tab stats-tab on" type="button" data-admin-tab="stats">Statistics</button>
+          <button class="btn secondary admin-tab" type="button" data-admin-tab="guests">Guests & RSVP</button>
           <button class="btn secondary admin-tab" type="button" data-admin-tab="food">Food</button>
           <button class="btn secondary admin-tab" type="button" data-admin-tab="stuff">Stuff to bring</button>
           <button class="btn secondary admin-tab" type="button" data-admin-tab="tasks">Things to do</button>
-          <button class="btn secondary admin-tab stats-tab" type="button" data-admin-tab="stats">Statistics</button>
         </nav>
       </section>
 
-      <div id="panel-guests" class="admin-panel">
-        <section class="card">
-          <div class="eyebrow">Guests</div><h2>Add household</h2>
-          <form id="householdForm" class="admin-form admin-form-grid">
-            <label>Household / family name<input id="householdName" type="text" required placeholder="e.g. Family Hansen"></label>
-            <label>Last name<input id="householdLastName" type="text" placeholder="t.d. Hansen"></label>
-            <label>Side<select id="householdSide" required><option value="paetur_hentze">Pætur Hentze</option><option value="maria_haass">Maria Haaß</option></select></label>
-            <label>Relation group<select id="householdRelationGroup" required></select></label>
-            <label>Parent household / tree node<select id="householdParent"><option value="">— Root / no parent —</option></select></label>
-            <label>Language<select id="householdLanguage" required><option value="fo">Faroese</option><option value="en">English</option><option value="de">Deutsch</option></select></label><label><input id="householdFood" type="checkbox"> Food</label>
-            <div><button id="addHouseholdButton" class="btn" type="submit">Add household</button></div>
-            <p id="householdMessage" class="muted hidden admin-full" aria-live="polite"></p>
-          </form>
-        </section>
+      <div id="panel-guests" class="admin-panel hidden">
         <section class="card compact-guest-admin">
           <div class="eyebrow">Guests & RSVP</div>
-          <div class="compact-admin-heading">
-            <div><h2>Household tree</h2><p id="guestSummary" class="muted">Loading guests…</p></div>
-            <details class="relation-manager">
-              <summary class="btn secondary">Manage relation groups</summary>
-              <form id="relationGroupForm" class="admin-form compact-group-form">
-                <input id="relationGroupName" required placeholder="e.g. Work">
-                <button class="btn" type="submit">Add group</button>
+          <h2>Household tree</h2>
+          <div class="stats-tools-card">
+            <details class="stats-tool">
+              <summary><strong>Add household</strong></summary>
+              <form id="householdForm" class="admin-form admin-form-grid stats-tool-body">
+                <label>Household / family name<input id="householdName" type="text" required placeholder="e.g. Family Hansen"></label>
+                <label>Last name<input id="householdLastName" type="text" placeholder="e.g. Hansen"></label>
+                <label>Side<select id="householdSide" required><option value="paetur_hentze">Pætur Hentze</option><option value="maria_haass">Maria Haaß</option></select></label>
+                <label>Relation group<select id="householdRelationGroup" required></select></label>
+                <label>Parent household / tree node<select id="householdParent"><option value="">— Root / no parent —</option></select></label>
+                <label>Language<select id="householdLanguage" required><option value="fo">Faroese</option><option value="en">English</option><option value="de">German</option></select></label>
+                <label><input id="householdFood" type="checkbox"> Food</label>
+                <div><button id="addHouseholdButton" class="btn" type="submit">Add household</button></div>
+                <p id="householdMessage" class="muted hidden admin-full" aria-live="polite"></p>
               </form>
-              <div id="relationGroupList" class="relation-group-list"></div>
+            </details>
+            <details class="stats-tool">
+              <summary><strong>Relation Groups</strong></summary>
+              <div class="stats-tool-body">
+                <form id="relationGroupForm" class="admin-form compact-group-form">
+                  <input id="relationGroupName" required placeholder="e.g. Work">
+                  <button class="btn" type="submit">Add group</button>
+                </form>
+                <div id="relationGroupList" class="relation-group-list"></div>
+              </div>
             </details>
           </div>
+          <p id="guestSummary" class="muted">Loading guests…</p>
           <div class="guest-filters">
             <label>Side<select id="guestSideFilter"><option value="all">All</option><option value="paetur_hentze">Pætur</option><option value="maria_haass">Maria</option></select></label>
             <label>Relation group<select id="guestRelationFilter"><option value="all">All</option></select></label>
@@ -80,8 +84,7 @@
         </section>
       </div>
 
-
-      <div id="panel-stats" class="admin-panel hidden">
+      <div id="panel-stats" class="admin-panel">
         <section class="card">
           <div class="eyebrow">Invitations</div><h2>Statistics</h2>
           <div id="statsSummary" class="stats-summary"></div>

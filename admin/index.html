@@ -1,14 +1,14 @@
 <!doctype html>
-<html lang="fo">
+<html lang="en">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Pætur & Maria Hentze — Admin</title>
-  <link rel="stylesheet" href="../css/style.css?v=20260929e">
+  <link rel="stylesheet" href="../css/style.css?v=20260929f">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script>
   <script src="../js/config.js" defer></script>
   <script src="../js/supabase.js" defer></script>
-  <script src="admin.js?v=20260929e" defer></script>
+  <script src="admin.js?v=20260929f" defer></script>
 </head>
 <body>
   <main class="wrap admin-wrap">
@@ -46,12 +46,12 @@
         <section class="card">
           <div class="eyebrow">Guests</div><h2>Add household</h2>
           <form id="householdForm" class="admin-form admin-form-grid">
-            <label>Household / family name<input id="householdName" type="text" required placeholder="t.d. Familjan Hansen"></label>
+            <label>Household / family name<input id="householdName" type="text" required placeholder="e.g. Family Hansen"></label>
             <label>Last name<input id="householdLastName" type="text" placeholder="t.d. Hansen"></label>
             <label>Side<select id="householdSide" required><option value="paetur_hentze">Pætur Hentze</option><option value="maria_haass">Maria Haaß</option></select></label>
             <label>Relation group<select id="householdRelationGroup" required></select></label>
-            <label>Parent household / tree node<select id="householdParent"><option value="">— Root / eingin parent —</option></select></label>
-            <label>Language<select id="householdLanguage" required><option value="fo">Føroyskt</option><option value="en">English</option><option value="de">Deutsch</option></select></label><label><input id="householdFood" type="checkbox"> Food</label>
+            <label>Parent household / tree node<select id="householdParent"><option value="">— Root / no parent —</option></select></label>
+            <label>Language<select id="householdLanguage" required><option value="fo">Faroese</option><option value="en">English</option><option value="de">Deutsch</option></select></label><label><input id="householdFood" type="checkbox"> Food</label>
             <div><button id="addHouseholdButton" class="btn" type="submit">Add household</button></div>
             <p id="householdMessage" class="muted hidden admin-full" aria-live="polite"></p>
           </form>
@@ -59,20 +59,20 @@
         <section class="card compact-guest-admin">
           <div class="eyebrow">Guests & RSVP</div>
           <div class="compact-admin-heading">
-            <div><h2>Household tree</h2><p id="guestSummary" class="muted">Lesi gestir…</p></div>
+            <div><h2>Household tree</h2><p id="guestSummary" class="muted">Loading guests…</p></div>
             <details class="relation-manager">
               <summary class="btn secondary">Manage relation groups</summary>
               <form id="relationGroupForm" class="admin-form compact-group-form">
-                <input id="relationGroupName" required placeholder="t.d. Arbeiði">
+                <input id="relationGroupName" required placeholder="e.g. Work">
                 <button class="btn" type="submit">Add group</button>
               </form>
               <div id="relationGroupList" class="relation-group-list"></div>
             </details>
           </div>
           <div class="guest-filters">
-            <label>Side<select id="guestSideFilter"><option value="all">Allar</option><option value="paetur_hentze">Pætur</option><option value="maria_haass">Maria</option></select></label>
-            <label>Bólkur<select id="guestRelationFilter"><option value="all">Allir</option></select></label>
-            <label>Leita<input id="guestSearch" type="search" placeholder="Gestur, household…"></label>
+            <label>Side<select id="guestSideFilter"><option value="all">All</option><option value="paetur_hentze">Pætur</option><option value="maria_haass">Maria</option></select></label>
+            <label>Relation group<select id="guestRelationFilter"><option value="all">All</option></select></label>
+            <label>Search<input id="guestSearch" type="search" placeholder="Guest, household…"></label>
             <button id="expandGuestTree" class="btn secondary" type="button">Expand all</button>
             <button id="collapseGuestTree" class="btn secondary" type="button">Collapse all</button>
           </div>
@@ -96,12 +96,12 @@
         <section class="card">
           <div class="eyebrow">Food</div><h2>Add food item</h2>
           <form id="foodForm" class="admin-form admin-form-grid">
-            <label>Føroyskt<input id="foodNameFo" required></label><label>English<input id="foodNameEn"></label><label>Deutsch<input id="foodNameDe"></label>
+            <label>Faroese<input id="foodNameFo" required></label><label>English<input id="foodNameEn"></label><label>German<input id="foodNameDe"></label>
             <label>Category<input id="foodCategory"></label><label>Quantity<input id="foodQuantity" type="number" min="1" value="1" required></label><label>Sort order<input id="foodSortOrder" type="number" value="0"></label>
             <div><button id="addFoodButton" class="btn" type="submit">Add food</button></div><p id="foodFormMessage" class="muted hidden admin-full"></p>
           </form>
         </section>
-        <section class="card"><div class="eyebrow">Food</div><h2>Food list</h2><p id="foodAdminSummary" class="muted">Lesi food…</p><div id="adminFoodList"></div></section>
+        <section class="card"><div class="eyebrow">Food</div><h2>Food list</h2><p id="foodAdminSummary" class="muted">Loading food…</p><div id="adminFoodList"></div></section>
       </div>
 
       <div id="panel-stuff" class="admin-panel hidden">

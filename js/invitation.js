@@ -72,15 +72,29 @@ async function loadInvitation() {
     renderInvitation(data);
 }
 
+function householdDisplayName(household) {
+    const name = String(household?.household_name || '').trim();
+    const lastName = String(household?.last_name || '').trim();
+
+    if (!lastName) return name;
+    if (name.toLocaleLowerCase('fo').endsWith(lastName.toLocaleLowerCase('fo'))) {
+        return name;
+    }
+
+    return `${name} ${lastName}`.trim();
+}
+
 function renderInvitation(invitation) {
     // Invitation-only controls are hidden on the generic landing page
     // and shown only after a valid invite code has loaded successfully.
     document.getElementById('rsvp')?.classList.remove('hidden');
     document.getElementById('scrollToRsvp')?.classList.remove('hidden');
 
+    const displayName = householdDisplayName(invitation);
+
     const invitee = document.getElementById('invitee');
-    if (invitee && invitation.household_name) {
-        invitee.textContent = invitation.household_name;
+    if (invitee && displayName) {
+        invitee.textContent = displayName;
         invitee.classList.remove('hidden');
     }
 
@@ -88,8 +102,7 @@ function renderInvitation(invitation) {
         document.getElementById('household-name');
 
     if (householdName) {
-        householdName.textContent =
-            invitation.household_name;
+        householdName.textContent = displayName;
     }
 
     const guestList =

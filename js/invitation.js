@@ -491,7 +491,8 @@ async function addExtraGuest(event) {
     const { error } = await db.rpc('add_invited_guest', {
         p_invite_code: currentInviteCode,
         p_first_name: firstName,
-        p_last_name: lastName || null
+        p_last_name: lastName || null,
+        p_is_child: form.querySelector('[name="is_child"]')?.checked || false
     });
     button.disabled = false;
     if (error) {

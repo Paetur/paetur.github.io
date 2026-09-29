@@ -4,11 +4,11 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Pætur & Maria Hentze — Admin</title>
-  <link rel="stylesheet" href="../css/style.css?v=20260929g">
+  <link rel="stylesheet" href="../css/style.css?v=20260929-statlayout">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script>
   <script src="../js/config.js" defer></script>
   <script src="../js/supabase.js" defer></script>
-  <script src="admin.js?v=20260929g" defer></script>
+  <script src="admin.js?v=20260929-statlayout" defer></script>
 </head>
 <body>
   <main class="wrap admin-wrap">
@@ -86,34 +86,39 @@
           <div class="eyebrow">Invitations</div><h2>Statistics</h2>
           <div id="statsSummary" class="stats-summary"></div>
         </section>
-        <section class="card stats-tools-card">
-          <details class="stats-tool">
-            <summary><span class="eyebrow">Households</span><strong>Add household</strong></summary>
-            <form id="statsHouseholdForm" class="admin-form admin-form-grid stats-tool-body">
-              <label>Household / family name<input id="statsHouseholdName" type="text" required placeholder="e.g. Family Hansen"></label>
-              <label>Last name<input id="statsHouseholdLastName" type="text" placeholder="e.g. Hansen"></label>
-              <label>Side<select id="statsHouseholdSide" required><option value="paetur_hentze">Pætur Hentze</option><option value="maria_haass">Maria Haaß</option></select></label>
-              <label>Relation group<select id="statsHouseholdRelationGroup" required></select></label>
-              <label>Parent household / tree node<select id="statsHouseholdParent"><option value="">— Root / no parent —</option></select></label>
-              <label>Language<select id="statsHouseholdLanguage" required><option value="fo">Faroese</option><option value="en">English</option><option value="de">German</option></select></label>
-              <label><input id="statsHouseholdFood" type="checkbox"> Food</label>
-              <div><button id="statsAddHouseholdButton" class="btn" type="submit">Add household</button></div>
-              <p id="statsHouseholdMessage" class="muted hidden admin-full" aria-live="polite"></p>
-            </form>
-          </details>
-          <details class="stats-tool">
-            <summary><span class="eyebrow">Households</span><strong>Relation Groups</strong></summary>
-            <div class="stats-tool-body">
-              <form id="statsRelationGroupForm" class="admin-form compact-group-form">
-                <input id="statsRelationGroupName" required placeholder="e.g. Work">
-                <button class="btn" type="submit">Add group</button>
-              </form>
-              <div id="statsRelationGroupList" class="relation-group-list"></div>
-            </div>
-          </details>
-        </section>
         <section class="card">
           <div class="eyebrow">Invitations</div><h2>Households</h2>
+          <div class="stats-tools-card">
+            <details class="stats-tool">
+              <summary><strong>Add household</strong></summary>
+              <form id="statsHouseholdForm" class="admin-form admin-form-grid stats-tool-body">
+                <label>Household / family name<input id="statsHouseholdName" type="text" required placeholder="e.g. Family Hansen"></label>
+                <label>Last name<input id="statsHouseholdLastName" type="text" placeholder="e.g. Hansen"></label>
+                <label>Side<select id="statsHouseholdSide" required><option value="paetur_hentze">Pætur Hentze</option><option value="maria_haass">Maria Haaß</option></select></label>
+                <label>Relation group<select id="statsHouseholdRelationGroup" required></select></label>
+                <label>Parent household / tree node<select id="statsHouseholdParent"><option value="">— Root / no parent —</option></select></label>
+                <label>Language<select id="statsHouseholdLanguage" required><option value="fo">Faroese</option><option value="en">English</option><option value="de">German</option></select></label>
+                <label><input id="statsHouseholdFood" type="checkbox"> Food</label>
+                <div><button id="statsAddHouseholdButton" class="btn" type="submit">Add household</button></div>
+                <p id="statsHouseholdMessage" class="muted hidden admin-full" aria-live="polite"></p>
+              </form>
+            </details>
+            <details class="stats-tool">
+              <summary><strong>Relation Groups</strong></summary>
+              <div class="stats-tool-body">
+                <form id="statsRelationGroupForm" class="admin-form compact-group-form">
+                  <input id="statsRelationGroupName" required placeholder="e.g. Work">
+                  <button class="btn" type="submit">Add group</button>
+                </form>
+                <div id="statsRelationGroupList" class="relation-group-list"></div>
+              </div>
+            </details>
+          </div>
+          <div class="guest-filters stats-filters">
+            <label>Side<select id="statsSideFilter"><option value="all">All</option><option value="paetur_hentze">Pætur</option><option value="maria_haass">Maria</option></select></label>
+            <label>Relation group<select id="statsRelationFilter"><option value="all">All</option></select></label>
+            <label>Search<input id="statsSearch" type="search" placeholder="Guest, household…"></label>
+          </div>
           <div id="statsTree" class="stats-tree"></div>
         </section>
       </div>

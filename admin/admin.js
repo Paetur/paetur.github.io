@@ -149,8 +149,10 @@ function renderStats(){
         const name=document.createElement('span');name.textContent=householdDisplayName(h);
         const code=document.createElement('a');code.href=inviteUrl(h);code.target='_blank';code.rel='noopener';code.textContent=h.invite_code||'—';
         const count=document.createElement('span');count.textContent=String(h.guests?.length||0);count.title='Direct guests';
+        const access=document.createElement('span');access.className='stats-access';
+        [['F',h.food,'Food'],['S',h.stuff,'Stuff'],['T',h.things,'Things']].forEach(([label,enabled,title])=>{const flag=document.createElement('span');flag.className=enabled?'stats-access-on':'stats-access-off';flag.textContent=enabled?'✓':'—';flag.title=`${title}: ${enabled?'Yes':'No'}`;flag.setAttribute('aria-label',`${title}: ${enabled?'Yes':'No'}`);flag.dataset.label=label;access.appendChild(flag);});
         const visited=document.createElement('span');visited.textContent=h.visited?'✓':'—';visited.title=h.visited?(h.visited_at?`Seen ${new Date(h.visited_at).toLocaleString()}`:'Seen'):'Not seen';
-        row.append(name,code,count,visited);tree.appendChild(row);
+        row.append(name,code,count,access,visited);tree.appendChild(row);
         adminHouseholds.filter(x=>x.parent_id===h.id).sort((a,b)=>(a.sort_order||0)-(b.sort_order||0)||a.household_name.localeCompare(b.household_name,'fo')).forEach(c=>renderRow(c,depth+1));
     };
     ['paetur_hentze','maria_haass'].forEach(side=>{

@@ -55,20 +55,18 @@ function householdsFor(side,groupId){return adminHouseholds.filter(h=>(!side||h.
 function isDescendant(candidateId,ancestorId){if(!ancestorId)return false;let h=householdById(candidateId);const seen=new Set();while(h?.parent_id&&!seen.has(h.id)){seen.add(h.id);if(h.parent_id===ancestorId)return true;h=householdById(h.parent_id);}return false;}
 function fillGroupSelect(select,includeAll=false){if(!select)return;const current=select.value;select.innerHTML='';if(includeAll)select.add(new Option('All','all'));relationGroups.forEach(g=>select.add(new Option(g.name,g.id)));if([...select.options].some(o=>o.value===current))select.value=current;}
 function fillParentSelect(select,side,groupId,includeRoot=true,excludeId=null){if(!select)return;const current=select.value;select.innerHTML='';if(includeRoot)select.add(new Option('— Root / no parent —',''));householdsFor(side,groupId).filter(h=>h.id!==excludeId&&!isDescendant(h.id,excludeId)).forEach(h=>select.add(new Option(optionLabel(h),h.id)));if([...select.options].some(o=>o.value===current))select.value=current;}
-function refreshTreeSelectors(){fillGroupSelect($('householdRelationGroup'));fillGroupSelect($('guestRelationFilter'),true);fillParentSelect($('householdParent'),$('householdSide')?.value,$('householdRelationGroup')?.value,true);}
+function refreshTreeSelectors(){fillGroupSelect($('householdRelationGroup'));fillGroupSelect($('statsHouseholdRelationGroup'));fillGroupSelect($('guestRelationFilter'),true);fillParentSelect($('householdParent'),$('householdSide')?.value,$('householdRelationGroup')?.value,true);fillParentSelect($('statsHouseholdParent'),$('statsHouseholdSide')?.value,$('statsHouseholdRelationGroup')?.value,true);}
 
 async function loadTreeSetup(){
     const {data:groups,error}=await db.from('relation_groups').select('id,name,sort_order').order('sort_order').order('name');
     if(error){console.error('Tree setup error:',error);const box=$('relationGroupList');if(box)box.textContent='Koyr fyrst supabase_household_tree_migration.sql.';return false;}
     relationGroups=groups||[];refreshTreeSelectors();renderTreeSetup();return true;
 }
-function renderTreeSetup(){
-    const box=$('relationGroupList');
+function renderRelationGroupList(box){
     if(!box)return;
     box.innerHTML='';
     relationGroups.forEach(group=>{
-        const row=document.createElement('div');
-        row.className='relation-group-row';
+        const row=document.createElement('div');row.className='relation-group-row';
         const name=document.createElement('strong');name.textContent=group.name;
         const actions=document.createElement('div');actions.className='admin-actions';
         const rename=document.createElement('button');rename.className='btn secondary';rename.type='button';rename.textContent='Rename';
@@ -78,6 +76,8 @@ function renderTreeSetup(){
         del.addEventListener('click',async()=>{if(!confirm(`Delete relation group "${group.name}"?`))return;const {error}=await db.from('relation_groups').delete().eq('id',group.id);if(error){alert('Could not delete: '+error.message);return;}await reloadGuestAdmin();});
     });
 }
+function renderTreeSetup(){renderRelationGroupList($('relationGroupList'));renderRelationGroupList($('statsRelationGroupList'));}
+
 function renderSetupHousehold(h){const wrap=document.createElement('div');wrap.className='setup-node';const row=document.createElement('div');row.className='setup-node-row';const label=document.createElement('span');label.textContent=householdDisplayName(h);const meta=document.createElement('span');meta.className='muted small';meta.textContent=h.guests.length?` · ${h.guests.length} guest(s)`:'';label.appendChild(meta);row.appendChild(label);wrap.appendChild(row);const kids=adminHouseholds.filter(x=>x.parent_id===h.id).sort((a,b)=>a.household_name.localeCompare(b.household_name,'fo'));if(kids.length){const child=document.createElement('div');child.className='setup-node-children';kids.forEach(k=>child.appendChild(renderSetupHousehold(k)));wrap.appendChild(child);}return wrap;}
 
 function householdMatches(h,side,relation,search){if(side!=='all'&&h.side!==side)return false;if(relation!=='all'&&h.relation_group_id!==relation)return false;if(!search)return true;const group=groupById(h.relation_group_id)?.name||'';const haystack=[h.household_name,h.family_name,h.invite_code,householdPath(h.id),group,...h.guests.flatMap(g=>[g.first_name,g.last_name,g.relation])].join(' ');return normalizeSearch(haystack).includes(search);}
@@ -135,57 +135,47 @@ function renderStats(){
     const summary=$('statsSummary'), tree=$('statsTree');
     if(!summary||!tree)return;
     const households=adminHouseholds.length;
-    const guests=adminHouseholds.reduce((n,h)=>n+(h.guests?.length||0),0);
+    let guests=0,attending=0,declined=0,pending=0;
+    adminHouseholds.forEach(h=>(h.guests||[]).forEach(g=>{guests++;if(g.rsvp_status==='attending')attending++;else if(g.rsvp_status==='declined')declined++;else pending++;}));
     const seen=adminHouseholds.filter(h=>h.visited).length;
     const unseen=households-seen;
     const complete=adminHouseholds.filter(h=>(h.guests?.length||0)>0&&h.guests.every(g=>g.rsvp_status!=='pending')).length;
     summary.innerHTML='';
-    [['Households',households],['Guests',guests],['Seen',seen],['Not seen',unseen],['RSVP complete',complete]].forEach(([label,value])=>{
-        const box=document.createElement('div');
-        const strong=document.createElement('strong');strong.textContent=value;
-        const span=document.createElement('span');span.textContent=label;
-        box.append(strong,span);summary.appendChild(box);
+    [['Households',households],['Guests',guests],['Attending',attending],['Declined',declined],['Pending',pending],['Seen',seen],['Not seen',unseen],['RSVP complete',complete]].forEach(([label,value])=>{
+        const box=document.createElement('div');const strong=document.createElement('strong');strong.textContent=value;const span=document.createElement('span');span.textContent=label;box.append(strong,span);summary.appendChild(box);
     });
     tree.innerHTML='';
     const renderRow=(h,depth)=>{
+        const wrap=document.createElement('div');wrap.className='stats-household';
         const row=document.createElement('div');row.className='stats-row';row.style.setProperty('--depth',depth);
         const nameCell=document.createElement('span');nameCell.className='stats-name-cell';
-        const name=document.createElement('span');name.textContent=householdDisplayName(h);nameCell.appendChild(name);
+        const toggle=document.createElement('button');toggle.type='button';toggle.className='stats-household-toggle';toggle.textContent=householdDisplayName(h);toggle.setAttribute('aria-expanded','false');nameCell.appendChild(toggle);
         const claims=(h.food_claims||[]).filter(c=>c.food_items);
-        if(claims.length){
-            const foods=document.createElement('span');foods.className='stats-food-claims';
-            foods.textContent=claims.map(c=>{const item=c.food_items||{};const label=item.name_en||item.name_fo||item.name_de||'Food';return `${label}${Number(c.quantity||1)>1?` × ${c.quantity}`:''}`;}).join(', ');
-            nameCell.appendChild(foods);
-        }
+        if(claims.length){const foods=document.createElement('span');foods.className='stats-food-claims';foods.textContent=claims.map(c=>{const item=c.food_items||{};const label=item.name_en||item.name_fo||item.name_de||'Food';return `${label}${Number(c.quantity||1)>1?` × ${c.quantity}`:''}`;}).join(', ');nameCell.appendChild(foods);}
         const code=document.createElement('a');code.href=inviteUrl(h);code.target='_blank';code.rel='noopener';code.textContent=h.invite_code||'—';
         const count=document.createElement('span');count.textContent=String(h.guests?.length||0);count.title='Direct guests';
-        const access=document.createElement('span');access.className='stats-access';
-        [['F',h.food,'Food']].forEach(([label,enabled,title])=>{const flag=document.createElement('span');flag.className=enabled?'stats-access-on':'stats-access-off';flag.textContent=enabled?'✓':'—';flag.title=`${title}: ${enabled?'Yes':'No'}`;flag.setAttribute('aria-label',`${title}: ${enabled?'Yes':'No'}`);flag.dataset.label=label;access.appendChild(flag);});
+        const language=document.createElement('span');language.className='stats-language';language.textContent=String(h.language||'').toUpperCase()||'—';language.title='Invitation language';
+        const access=document.createElement('span');access.className='stats-access';const flag=document.createElement('span');flag.className=h.food?'stats-access-on':'stats-access-off';flag.textContent=h.food?'✓':'—';flag.title=`Food: ${h.food?'Yes':'No'}`;flag.setAttribute('aria-label',flag.title);flag.dataset.label='F';access.appendChild(flag);
         const visited=document.createElement('span');visited.textContent=h.visited?'✓':'—';visited.title=h.visited?(h.visited_at?`Seen ${new Date(h.visited_at).toLocaleString()}`:'Seen'):'Not seen';
-        const rsvpComplete=(h.guests?.length||0)>0&&h.guests.every(g=>g.rsvp_status!=='pending');
-        const rsvp=document.createElement('span');rsvp.textContent=rsvpComplete?'✓':'—';rsvp.title=rsvpComplete?'RSVP complete':'RSVP incomplete';
-        row.append(nameCell,code,count,access,visited,rsvp);tree.appendChild(row);
+        const rsvpComplete=(h.guests?.length||0)>0&&h.guests.every(g=>g.rsvp_status!=='pending');const rsvp=document.createElement('span');rsvp.textContent=rsvpComplete?'✓':'—';rsvp.title=rsvpComplete?'RSVP complete':'RSVP incomplete';
+        row.append(nameCell,code,count,language,access,visited,rsvp);wrap.appendChild(row);
+        const guestBox=document.createElement('div');guestBox.className='stats-guests hidden';guestBox.style.setProperty('--depth',depth);
+        if((h.guests||[]).length){[...h.guests].sort((a,b)=>a.first_name.localeCompare(b.first_name,'fo')).forEach(g=>{const line=document.createElement('div');line.className='stats-guest-row';const status=document.createElement('span');status.className=g.rsvp_status==='attending'?'stats-guest-attending':'stats-guest-not-attending';status.textContent=g.rsvp_status==='attending'?'✓':'—';status.title=g.rsvp_status==='attending'?'Attending':g.rsvp_status==='declined'?'Declined':'Pending';const guestName=document.createElement('span');guestName.textContent=[g.first_name,g.last_name].filter(Boolean).join(' ');line.append(status,guestName);guestBox.appendChild(line);});}else{const empty=document.createElement('div');empty.className='muted small';empty.textContent='No guests';guestBox.appendChild(empty);}
+        wrap.appendChild(guestBox);toggle.addEventListener('click',()=>{const opening=guestBox.classList.contains('hidden');guestBox.classList.toggle('hidden',!opening);toggle.setAttribute('aria-expanded',String(opening));wrap.classList.toggle('stats-household-open',opening);});tree.appendChild(wrap);
         adminHouseholds.filter(x=>x.parent_id===h.id).sort((a,b)=>(a.sort_order||0)-(b.sort_order||0)||a.household_name.localeCompare(b.household_name,'fo')).forEach(c=>renderRow(c,depth+1));
     };
-    ['paetur_hentze','maria_haass'].forEach(side=>{
-        const sideHouseholds=adminHouseholds.filter(h=>h.side===side);
-        if(!sideHouseholds.length)return;
-        const heading=document.createElement('h3');heading.className='stats-side';heading.textContent=sideLabel(side);tree.appendChild(heading);
-        relationGroups.forEach(group=>{
-            const grouped=sideHouseholds.filter(h=>h.relation_group_id===group.id);
-            if(!grouped.length)return;
-            const gh=document.createElement('div');gh.className='stats-group';gh.textContent=group.name;tree.appendChild(gh);
-            grouped.filter(h=>!h.parent_id||!grouped.some(x=>x.id===h.parent_id)).sort((a,b)=>(a.sort_order||0)-(b.sort_order||0)||a.household_name.localeCompare(b.household_name,'fo')).forEach(h=>renderRow(h,0));
-        });
-    });
+    ['paetur_hentze','maria_haass'].forEach(side=>{const sideHouseholds=adminHouseholds.filter(h=>h.side===side);if(!sideHouseholds.length)return;const heading=document.createElement('h3');heading.className='stats-side';heading.textContent=sideLabel(side);tree.appendChild(heading);relationGroups.forEach(group=>{const grouped=sideHouseholds.filter(h=>h.relation_group_id===group.id);if(!grouped.length)return;const gh=document.createElement('div');gh.className='stats-group';gh.textContent=group.name;tree.appendChild(gh);grouped.filter(h=>!h.parent_id||!grouped.some(x=>x.id===h.parent_id)).sort((a,b)=>(a.sort_order||0)-(b.sort_order||0)||a.household_name.localeCompare(b.household_name,'fo')).forEach(h=>renderRow(h,0));});});
 }
 
 async function loadAdminGuests(){const container=$('adminGuestList'),summary=$('guestSummary');if(!container||!summary)return;container.innerHTML='';summary.textContent='Loading guests…';const {data,error}=await db.from('households').select(`id,household_name,side,language,invite_code,family_name,last_name,relation_group_id,parent_id,sort_order,food,stuff,things,visited,visited_at,guests(id,first_name,last_name,relation,is_child,rsvp_status),food_claims(quantity,food_items(name_fo,name_en,name_de))`).order('sort_order').order('household_name');if(error){console.error('Admin guests error:',error);summary.textContent='Could not load guests.';return;}adminHouseholds=data||[];refreshTreeSelectors();let total=0,attending=0,declined=0,pending=0;adminHouseholds.forEach(h=>h.guests.forEach(g=>{total++;if(g.rsvp_status==='attending')attending++;else if(g.rsvp_status==='declined')declined++;else pending++;}));summary.textContent=`${total} guests · ${attending} attending · ${declined} declined · ${pending} pending`;renderGuestTree();renderStats();}
 async function reloadGuestAdmin(){await loadTreeSetup();await loadAdminGuests();renderTreeSetup();}
 ['guestSideFilter','guestRelationFilter'].forEach(id=>$(id)?.addEventListener('change',renderGuestTree));$('guestSearch')?.addEventListener('input',renderGuestTree);$('expandGuestTree')?.addEventListener('click',()=>document.querySelectorAll('#adminGuestList details').forEach(d=>d.open=true));$('collapseGuestTree')?.addEventListener('click',()=>document.querySelectorAll('#adminGuestList details').forEach(d=>d.open=false));
 $('householdSide')?.addEventListener('change',()=>fillParentSelect($('householdParent'),$('householdSide').value,$('householdRelationGroup').value,true));$('householdRelationGroup')?.addEventListener('change',()=>fillParentSelect($('householdParent'),$('householdSide').value,$('householdRelationGroup').value,true));
+$('statsHouseholdSide')?.addEventListener('change',()=>fillParentSelect($('statsHouseholdParent'),$('statsHouseholdSide').value,$('statsHouseholdRelationGroup').value,true));$('statsHouseholdRelationGroup')?.addEventListener('change',()=>fillParentSelect($('statsHouseholdParent'),$('statsHouseholdSide').value,$('statsHouseholdRelationGroup').value,true));
 $('relationGroupForm')?.addEventListener('submit',async e=>{e.preventDefault();const name=$('relationGroupName').value.trim();if(!name)return;const {error}=await db.from('relation_groups').insert({name,sort_order:relationGroups.length*10+10});if(error){alert(error.message);return;}$('relationGroupForm').reset();await reloadGuestAdmin();});
+$('statsRelationGroupForm')?.addEventListener('submit',async e=>{e.preventDefault();const name=$('statsRelationGroupName').value.trim();if(!name)return;const {error}=await db.from('relation_groups').insert({name,sort_order:relationGroups.length*10+10});if(error){alert(error.message);return;}$('statsRelationGroupForm').reset();await reloadGuestAdmin();});
 $('householdForm').addEventListener('submit',async event=>{event.preventDefault();const button=$('addHouseholdButton'),message=$('householdMessage'),name=$('householdName').value.trim();if(!name)return;button.disabled=true;message.classList.add('hidden');const {data,error}=await db.from('households').insert({household_name:name,side:$('householdSide').value,relation_group_id:$('householdRelationGroup').value||null,parent_id:$('householdParent').value||null,family_name:name,last_name:$('householdLastName').value.trim()||null,language:$('householdLanguage').value,food:$('householdFood').checked}).select().single();button.disabled=false;if(error){console.error('Add household error:',error);message.textContent='Could not create household.';message.classList.remove('hidden');return;}message.textContent=`✓ ${data.household_name} created · Invite code: ${data.invite_code}`;message.classList.remove('hidden');$('householdName').value='';$('householdLastName').value='';await reloadGuestAdmin();});
+$('statsHouseholdForm')?.addEventListener('submit',async event=>{event.preventDefault();const button=$('statsAddHouseholdButton'),message=$('statsHouseholdMessage'),name=$('statsHouseholdName').value.trim();if(!name)return;button.disabled=true;message.classList.add('hidden');const {data,error}=await db.from('households').insert({household_name:name,side:$('statsHouseholdSide').value,relation_group_id:$('statsHouseholdRelationGroup').value||null,parent_id:$('statsHouseholdParent').value||null,family_name:name,last_name:$('statsHouseholdLastName').value.trim()||null,language:$('statsHouseholdLanguage').value,food:$('statsHouseholdFood').checked}).select().single();button.disabled=false;if(error){console.error('Add household error:',error);message.textContent='Could not create household.';message.classList.remove('hidden');return;}message.textContent=`✓ ${data.household_name} created · Invite code: ${data.invite_code}`;message.classList.remove('hidden');$('statsHouseholdName').value='';$('statsHouseholdLastName').value='';await reloadGuestAdmin();});
 
 async function loadAdminFood(){
     const container=$('adminFoodList'),summary=$('foodAdminSummary');

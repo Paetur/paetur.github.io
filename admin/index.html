@@ -4,11 +4,11 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Pætur & Maria Hentze — Admin</title>
-  <link rel="stylesheet" href="../css/style.css?v=20260930-0205">
+  <link rel="stylesheet" href="../css/style.css?v=20260930-foodcat2">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script>
   <script src="../js/config.js" defer></script>
   <script src="../js/supabase.js" defer></script>
-  <script src="admin.js?v=20260930-0205" defer></script>
+  <script src="admin.js?v=20260930-foodcat2" defer></script>
 </head>
 <body>
   <main class="wrap admin-wrap">
@@ -141,17 +141,17 @@
               <summary><strong>Add food</strong></summary>
               <form id="foodForm" class="admin-form admin-form-grid stats-tool-body">
                 <label>Faroese<input id="foodNameFo" required></label><label>English<input id="foodNameEn"></label><label>German<input id="foodNameDe"></label>
-                <label>Category<input id="foodCategory" list="foodCategoryOptions"></label><datalist id="foodCategoryOptions"></datalist><label>Quantity<input id="foodQuantity" type="number" min="1" value="1" required></label><label>Sort order<input id="foodSortOrder" type="number" value="0"></label>
+                <label>Category<select id="foodCategory" required></select></label><label>Quantity<input id="foodQuantity" type="number" min="1" value="1" required></label><label>Sort order<input id="foodSortOrder" type="number" value="0"></label>
                 <div><button id="addFoodButton" class="btn" type="submit">Add food</button></div><p id="foodFormMessage" class="muted hidden admin-full"></p>
               </form>
             </details>
             <details class="stats-tool">
               <summary><strong>Categories</strong></summary>
-              <div id="foodCategoryList" class="relation-group-list stats-tool-body"></div>
+              <div class="stats-tool-body"><form id="foodCategoryForm" class="relation-group-add"><input id="foodCategoryName" placeholder="Category name" required><button class="btn secondary" type="submit">Add category</button></form><div id="foodCategoryList" class="relation-group-list"></div></div>
             </details>
           </div>
           <div class="guest-filters stats-filters food-filters">
-            <label>Sort<select id="foodSort"><option value="category">Category</option><option value="name">Name</option><option value="claimed">Claimed</option></select></label>
+            <label>Category<select id="foodCategoryFilter"><option value="">All categories</option></select></label>
             <label class="stats-mode-filter">Mode<select id="foodEditMode" aria-label="View or edit mode"><option value="view">View</option><option value="edit">Edit</option></select></label>
           </div>
           <p id="foodAdminSummary" class="muted">Loading food…</p><div id="adminFoodList"></div>

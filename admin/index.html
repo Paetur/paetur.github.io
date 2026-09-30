@@ -4,11 +4,11 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Pætur & Maria Hentze — Admin</title>
-  <link rel="stylesheet" href="../css/style.css?v=20260930-noemptyexpand">
+  <link rel="stylesheet" href="../css/style.css?v=20260930-viewmode">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script>
   <script src="../js/config.js" defer></script>
   <script src="../js/supabase.js" defer></script>
-  <script src="admin.js?v=20260930-005" defer></script>
+  <script src="admin.js?v=20260930-006" defer></script>
 </head>
 <body>
   <main class="wrap admin-wrap">
@@ -34,8 +34,7 @@
         <div class="eyebrow">Admin</div>
         <h1>Dashboard</h1>
         <nav class="admin-tabs" aria-label="Admin sections">
-          <button class="btn admin-tab stats-tab on" type="button" data-admin-tab="stats">Statistics</button>
-          <button class="btn secondary admin-tab" type="button" data-admin-tab="guests">Guests & RSVP</button>
+          <button class="btn admin-tab stats-tab on" type="button" data-admin-tab="stats">Guests</button>
           <button class="btn secondary admin-tab" type="button" data-admin-tab="food">Food</button>
           <button class="btn secondary admin-tab" type="button" data-admin-tab="stuff">Stuff to bring</button>
           <button class="btn secondary admin-tab" type="button" data-admin-tab="tasks">Things to do</button>
@@ -90,8 +89,14 @@
           <div id="statsSummary" class="stats-summary"></div>
         </section>
         <section class="card">
-          <div class="eyebrow">Invitations</div><h2>Households</h2>
-          <div class="stats-tools-card">
+          <div class="stats-households-heading">
+            <div><div class="eyebrow">Invitations</div><h2>Households</h2></div>
+            <div class="stats-heading-controls">
+              <input id="statsSearch" type="search" placeholder="Search…" aria-label="Search households and guests">
+              <label class="stats-edit-toggle" title="Enable or disable management controls"><input id="statsEditMode" type="checkbox"> <span>View</span></label>
+            </div>
+          </div>
+          <div class="stats-tools-card stats-management-control hidden">
             <details class="stats-tool">
               <summary><strong>Add household</strong></summary>
               <form id="statsHouseholdForm" class="admin-form admin-form-grid stats-tool-body">
@@ -120,7 +125,6 @@
           <div class="guest-filters stats-filters">
             <label>Side<select id="statsSideFilter"><option value="all">All</option><option value="paetur_hentze">Pætur</option><option value="maria_haass">Maria</option></select></label>
             <label>Relation group<select id="statsRelationFilter"><option value="all">All</option></select></label>
-            <label>Search<input id="statsSearch" type="search" placeholder="Guest, household…"></label>
           </div>
           <div id="statsTree" class="stats-tree"></div>
         </section>

@@ -8,7 +8,7 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script>
   <script src="../js/config.js" defer></script>
   <script src="../js/supabase.js" defer></script>
-  <script src="admin.js?v=20260930-006" defer></script>
+  <script src="admin.js?v=20260930-007" defer></script>
 </head>
 <body>
   <main class="wrap admin-wrap">
@@ -90,10 +90,9 @@
         </section>
         <section class="card">
           <div class="stats-households-heading">
-            <div><div class="eyebrow">Invitations</div><h2>Households</h2></div>
+            <div class="stats-heading-title"><div class="eyebrow">Invitations</div><div class="stats-title-row"><h2>Households</h2><label class="stats-edit-toggle" title="Enable or disable management controls"><input id="statsEditMode" type="checkbox" aria-label="Enable edit mode"></label></div></div>
             <div class="stats-heading-controls">
-              <input id="statsSearch" type="search" placeholder="Search…" aria-label="Search households and guests">
-              <label class="stats-edit-toggle" title="Enable or disable management controls"><input id="statsEditMode" type="checkbox"> <span>View</span></label>
+              <input id="statsSearch" type="search" placeholder="Guest, household…" aria-label="Search households and guests">
             </div>
           </div>
           <div class="stats-tools-card stats-management-control hidden">

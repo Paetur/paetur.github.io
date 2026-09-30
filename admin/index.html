@@ -4,11 +4,11 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Pætur & Maria Hentze — Admin</title>
-  <link rel="stylesheet" href="../css/style.css?v=20260930-viewmode">
+  <link rel="stylesheet" href="../css/style.css?v=20260930-0133">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script>
   <script src="../js/config.js" defer></script>
   <script src="../js/supabase.js" defer></script>
-  <script src="admin.js?v=20260930-007" defer></script>
+  <script src="admin.js?v=20260930-0133" defer></script>
 </head>
 <body>
   <main class="wrap admin-wrap">
@@ -90,7 +90,7 @@
         </section>
         <section class="card">
           <div class="stats-households-heading">
-            <div class="stats-heading-title"><div class="eyebrow">Invitations</div><div class="stats-title-row"><h2>Households</h2><label class="stats-edit-toggle" title="Enable or disable management controls"><input id="statsEditMode" type="checkbox" aria-label="Enable edit mode"></label></div></div>
+            <div class="stats-heading-title"><div class="eyebrow">Invitations</div><div class="stats-title-row"><h2>Households</h2></div></div>
             <div class="stats-heading-controls">
               <input id="statsSearch" type="search" placeholder="Guest, household…" aria-label="Search households and guests">
             </div>
@@ -124,6 +124,7 @@
           <div class="guest-filters stats-filters">
             <label>Side<select id="statsSideFilter"><option value="all">All</option><option value="paetur_hentze">Pætur</option><option value="maria_haass">Maria</option></select></label>
             <label>Relation group<select id="statsRelationFilter"><option value="all">All</option></select></label>
+            <label class="stats-mode-filter">Mode<select id="statsEditMode" aria-label="View or edit mode"><option value="view">View</option><option value="edit">Edit</option></select></label>
           </div>
           <div id="statsTree" class="stats-tree"></div>
         </section>

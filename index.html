@@ -4,12 +4,12 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Pætur & Maria Hentze — Brúdleyp</title>
-  <link rel="stylesheet" href="css/style.css?v=20260929e">
+  <link rel="stylesheet" href="css/style.css?v=20261004a">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script>
   <script src="js/config.js?v=20260929-2" defer></script>
   <script src="js/supabase.js?v=20260929-2" defer></script>
-  <script src="js/languages.js?v=20260929b" defer></script>
-  <script src="js/invitation.js?v=20260929c" defer></script>
+  <script src="js/languages.js?v=20261004a" defer></script>
+  <script src="js/invitation.js?v=20261004a" defer></script>
 </head>
 <body>
   <main class="wrap">
@@ -28,7 +28,10 @@
       <p class="date">20 · 02 · 2027</p>
       <p id="invitee" class="invitee hidden"></p>
       <p class="muted" data-t="welcome">Vit gleða okkum at hátíðarhalda dagin saman við tykkum í Týsklandi.</p>
-      <button class="btn hidden" type="button" id="scrollToRsvp" data-t="answer">Svar upp á innbjóðing</button>
+      <div class="hero-invite-actions">
+        <button class="btn hidden" type="button" id="scrollToRsvp" data-t="answer">Svar upp á innbjóðing</button>
+        <button class="btn secondary hidden" type="button" id="scrollToDetails" data-t="moreDetails">Meira kunning…</button>
+      </div>
     </section>
 
     <section id="statusCard" class="card status-card hidden" aria-live="polite"></section>
@@ -49,8 +52,16 @@
     <details class="add-person-box">
       <summary data-t="addPerson">Add a person…</summary>
       <form id="add-person-form" class="add-person-form">
+        <select name="courtesy_title" aria-label="Courtesy title">
+          <option value="" data-t="courtesyTitle">Title</option>
+          <option value="Mr.">Mr.</option>
+          <option value="Ms.">Ms.</option>
+          <option value="Son">Son</option>
+          <option value="Daughter">Daughter</option>
+        </select>
         <input name="first_name" data-t-placeholder="firstName" placeholder="First name" required>
         <input name="last_name" data-t-placeholder="lastName" placeholder="Last name">
+        <label class="add-person-child"><input type="checkbox" name="is_child"> <span data-t="child">Child</span></label>
         <button class="btn secondary add-person-submit" type="submit" aria-label="Add person">✓</button>
       </form>
       <p id="add-person-message" class="muted small hidden"></p>

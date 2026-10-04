@@ -223,3 +223,18 @@ h2 { margin: 8px 0 18px; font-size: 30px; font-weight: 400; }
 /* Compact Food admin, aligned with Guests layout */
 .food-filters{align-items:end}.food-filters .stats-mode-filter{margin-left:auto}.food-flat-category{margin:.55rem 0}.food-category-title{border-bottom:1px solid var(--line);padding-bottom:.25rem}.food-flat-row{display:grid;grid-template-columns:minmax(260px,1fr) 120px auto;gap:.65rem;align-items:center;padding:.35rem .4rem;border-bottom:1px solid var(--line);font-size:.82rem}.food-flat-names{min-width:0}.food-flat-claim{white-space:nowrap;color:var(--muted)}.food-flat-actions{display:flex;gap:.35rem}.food-claim-list{margin-left:1rem;padding-left:.65rem;border-left:1px solid var(--line)}#foodCategoryList .relation-group-row{font-size:.82rem}#foodCategoryList .btn{padding:.25rem .45rem;font-size:.78rem}
 @media(max-width:700px){.food-flat-row{grid-template-columns:1fr auto}.food-flat-names{grid-column:1/-1}.food-flat-actions{justify-self:end}}
+
+/* Public RSVP guest editing and locked state */
+.hero-invite-actions{display:flex;gap:8px;justify-content:center;flex-wrap:wrap}
+.invite-guest-row{display:flex;align-items:center;gap:10px;padding:7px 0;border-top:1px solid var(--line)}
+.invite-guest-row:first-child{border-top:0}
+.invite-guest-choice{flex:1;margin:0}
+.invite-name-edit{border:0;background:none;padding:4px 0;color:inherit;font:inherit;font-size:.82rem;text-decoration:underline;cursor:pointer;opacity:.7}
+.invite-rsvp-status{width:1.2rem;flex:0 0 1.2rem;text-align:center;font-weight:700}
+.invite-rsvp-status.no{opacity:.55}
+.add-person-form select,.invite-guest-edit-form select,.invite-guest-edit-form input{min-width:120px;padding:10px 12px;border:1px solid var(--line);border-radius:12px;background:#fff;font:inherit}
+.add-person-form select{flex:0 1 130px}
+.invite-guest-edit-form{display:flex;align-items:center;gap:8px;flex-wrap:wrap;width:100%}
+.invite-guest-edit-form input[name="first_name"],.invite-guest-edit-form input[name="last_name"]{flex:1;min-width:130px}
+.invite-guest-edit-form .btn{padding:9px 12px}
+@media(max-width:620px){.invite-guest-edit-form{align-items:stretch}.invite-guest-edit-form select,.invite-guest-edit-form input[name="first_name"],.invite-guest-edit-form input[name="last_name"]{width:100%;flex-basis:100%}}

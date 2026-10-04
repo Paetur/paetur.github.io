@@ -84,64 +84,126 @@ function householdDisplayName(household) {
     return `${name} ${lastName}`.trim();
 }
 
+function invitationIsLocked(invitation = currentInvitation) {
+    return Boolean(invitation?.guests?.some(guest => guest.rsvp_status !== 'pending'));
+}
+
+function guestDisplayName(guest) {
+    return [guest.courtesy_title, guest.first_name, guest.last_name]
+        .filter(Boolean)
+        .join(' ');
+}
+
+function titleOptions(selected = '') {
+    return ['', 'Mr.', 'Ms.', 'Son', 'Daughter'].map(value => {
+        const option = document.createElement('option');
+        option.value = value;
+        option.textContent = value || text('courtesyTitle');
+        option.selected = value === (selected || '');
+        return option;
+    });
+}
+
 function renderInvitation(invitation) {
-    // Invitation-only controls are hidden on the generic landing page
-    // and shown only after a valid invite code has loaded successfully.
     document.getElementById('rsvp')?.classList.remove('hidden');
     document.getElementById('scrollToRsvp')?.classList.remove('hidden');
 
-    const displayName = householdDisplayName(invitation);
+    const locked = invitationIsLocked(invitation);
+    const detailsButton = document.getElementById('scrollToDetails');
+    if (detailsButton) detailsButton.classList.toggle('hidden', !locked);
 
+    const displayName = householdDisplayName(invitation);
     const invitee = document.getElementById('invitee');
     if (invitee && displayName) {
         invitee.textContent = displayName;
         invitee.classList.remove('hidden');
     }
 
-    const householdName =
-        document.getElementById('household-name');
+    const householdName = document.getElementById('household-name');
+    if (householdName) householdName.textContent = displayName;
 
-    if (householdName) {
-        householdName.textContent = displayName;
-    }
-
-    const guestList =
-        document.getElementById('guest-list');
-
+    const guestList = document.getElementById('guest-list');
     if (!guestList) return;
-
     guestList.innerHTML = '';
 
     invitation.guests.forEach(guest => {
-        const label =
-            document.createElement('label');
+        const row = document.createElement('div');
+        row.className = 'invite-guest-row';
 
-        label.className = 'choice';
+        if (locked) {
+            const status = document.createElement('span');
+            status.className = `invite-rsvp-status ${guest.rsvp_status === 'attending' ? 'yes' : 'no'}`;
+            status.textContent = guest.rsvp_status === 'attending' ? '✓' : '✕';
+            status.setAttribute('aria-label', guest.rsvp_status === 'attending' ? text('attending') : text('notAttending'));
+            const name = document.createElement('span');
+            name.textContent = guestDisplayName(guest);
+            row.append(status, name);
+        } else {
+            const label = document.createElement('label');
+            label.className = 'choice invite-guest-choice';
+            const checkbox = document.createElement('input');
+            checkbox.type = 'checkbox';
+            checkbox.value = guest.id;
+            checkbox.dataset.guestId = guest.id;
+            checkbox.checked = guest.rsvp_status === 'attending';
+            const name = document.createElement('span');
+            name.textContent = guestDisplayName(guest);
+            label.append(checkbox, name);
 
-        const checkbox =
-            document.createElement('input');
-
-        checkbox.type = 'checkbox';
-        checkbox.value = guest.id;
-        checkbox.dataset.guestId = guest.id;
-
-        checkbox.checked =
-            guest.rsvp_status === 'attending';
-
-        const guestName =
-            document.createTextNode(
-                ` ${guest.first_name}${
-                    guest.last_name
-                        ? ' ' + guest.last_name
-                        : ''
-                }`
-            );
-
-        label.appendChild(checkbox);
-        label.appendChild(guestName);
-
-        guestList.appendChild(label);
+            const edit = document.createElement('button');
+            edit.type = 'button';
+            edit.className = 'invite-name-edit';
+            edit.textContent = text('edit');
+            edit.addEventListener('click', () => showGuestEditor(row, guest));
+            row.append(label, edit);
+        }
+        guestList.appendChild(row);
     });
+
+    document.querySelector('.add-person-box')?.classList.toggle('hidden', locked);
+    document.querySelectorAll('.rsvp-button').forEach(button => button.classList.toggle('hidden', locked));
+}
+
+function showGuestEditor(row, guest) {
+    row.innerHTML = '';
+    const form = document.createElement('form');
+    form.className = 'invite-guest-edit-form';
+
+    const title = document.createElement('select');
+    title.name = 'courtesy_title';
+    title.setAttribute('aria-label', text('courtesyTitle'));
+    titleOptions(guest.courtesy_title).forEach(option => title.appendChild(option));
+
+    const first = document.createElement('input');
+    first.name = 'first_name'; first.required = true; first.value = guest.first_name || ''; first.placeholder = text('firstName');
+    const last = document.createElement('input');
+    last.name = 'last_name'; last.value = guest.last_name || ''; last.placeholder = text('lastName');
+    const childLabel = document.createElement('label');
+    childLabel.className = 'add-person-child';
+    const child = document.createElement('input'); child.type = 'checkbox'; child.name = 'is_child'; child.checked = Boolean(guest.is_child);
+    const childText = document.createElement('span'); childText.textContent = text('child');
+    childLabel.append(child, childText);
+
+    const save = document.createElement('button'); save.type = 'submit'; save.className = 'btn secondary'; save.textContent = text('save');
+    const cancel = document.createElement('button'); cancel.type = 'button'; cancel.className = 'btn secondary'; cancel.textContent = text('cancel');
+    cancel.addEventListener('click', () => renderInvitation(currentInvitation));
+    form.append(title, first, last, childLabel, save, cancel);
+    form.addEventListener('submit', async event => {
+        event.preventDefault();
+        save.disabled = true;
+        const { error } = await db.rpc('update_invited_guest', {
+            p_invite_code: currentInviteCode,
+            p_guest_id: guest.id,
+            p_courtesy_title: title.value || null,
+            p_first_name: first.value.trim(),
+            p_last_name: last.value.trim() || null,
+            p_is_child: child.checked
+        });
+        save.disabled = false;
+        if (error) { console.error('Guest edit error:', error); alert(text('genericError')); return; }
+        await loadInvitation();
+    });
+    row.appendChild(form);
 }
 
 
@@ -497,12 +559,14 @@ async function addExtraGuest(event) {
     const form = event.currentTarget;
     const firstName = form.querySelector('[name="first_name"]').value.trim();
     const lastName = form.querySelector('[name="last_name"]').value.trim();
+    const courtesyTitle = form.querySelector('[name="courtesy_title"]')?.value || null;
     const message = document.getElementById('add-person-message');
     if (!firstName) return;
     const button = form.querySelector('button');
     button.disabled = true;
-    const { error } = await db.rpc('add_invited_guest', {
+    const { error } = await db.rpc('add_invited_guest_with_title', {
         p_invite_code: currentInviteCode,
+        p_courtesy_title: courtesyTitle,
         p_first_name: firstName,
         p_last_name: lastName || null,
         p_is_child: form.querySelector('[name="is_child"]')?.checked || false
@@ -573,6 +637,16 @@ document.addEventListener(
 
         const scrollButton =
             document.getElementById('scrollToRsvp');
+        const detailsButton = document.getElementById('scrollToDetails');
+
+        if (detailsButton) {
+            detailsButton.addEventListener('click', () => {
+                const target = ['foodSection', 'stuffSection', 'thingsSection']
+                    .map(id => document.getElementById(id))
+                    .find(section => section && !section.classList.contains('hidden'));
+                target?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            });
+        }
 
         if (scrollButton) {
             scrollButton.addEventListener('click', () => {

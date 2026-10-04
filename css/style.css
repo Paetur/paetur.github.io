@@ -270,3 +270,8 @@ h2 { margin: 8px 0 18px; font-size: 30px; font-weight: 400; }
 .admin-household-add-guest .guest-form-message{grid-column:1/-1}
 @media(max-width:900px){.admin-household-add-guest{grid-template-columns:105px minmax(120px,1fr) minmax(120px,1fr) minmax(100px,1fr);}.admin-household-add-guest .admin-child-control,.admin-household-add-guest .admin-add-guest-save,.admin-household-add-guest .admin-add-guest-cancel{grid-row:2}}
 @media(max-width:620px){.admin-household-add-guest{grid-template-columns:1fr 1fr}.admin-household-add-guest select[name="courtesy_title"],.admin-household-add-guest input[name="first_name"],.admin-household-add-guest input[name="last_name"],.admin-household-add-guest input[name="relation"]{min-width:0}.admin-household-add-guest .admin-child-control,.admin-household-add-guest .admin-add-guest-save,.admin-household-add-guest .admin-add-guest-cancel{grid-row:auto}}
+
+/* Admin guest add/edit: keep title and Child control aligned */
+.stats-guest-form .admin-child-control,.stats-inline-form .admin-child-control{display:inline-flex;align-items:center;gap:5px;white-space:nowrap;width:max-content;min-width:max-content;margin:0}
+.stats-guest-form .admin-child-control input[type="checkbox"],.stats-inline-form .admin-child-control input[type="checkbox"]{width:auto;min-width:0;max-width:none;margin:0;flex:none}
+.stats-guest-form select[name="courtesy_title"]{min-width:82px;max-width:100px}

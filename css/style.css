@@ -275,3 +275,5 @@ h2 { margin: 8px 0 18px; font-size: 30px; font-weight: 400; }
 .stats-guest-form .admin-child-control,.stats-inline-form .admin-child-control{display:inline-flex;align-items:center;gap:5px;white-space:nowrap;width:max-content;min-width:max-content;margin:0}
 .stats-guest-form .admin-child-control input[type="checkbox"],.stats-inline-form .admin-child-control input[type="checkbox"]{width:auto;min-width:0;max-width:none;margin:0;flex:none}
 .stats-guest-form select[name="courtesy_title"]{min-width:82px;max-width:100px}
+
+.admin-flag-control{display:inline-flex!important;align-items:center!important;gap:5px!important;white-space:nowrap;width:max-content!important;min-width:max-content!important;margin:0!important}.admin-flag-control input[type=checkbox]{width:auto!important;min-width:0!important;max-width:none!important;margin:0!important;flex:none!important}.food-claim-remove{margin-left:.3rem}.food-claim-person{display:flex;align-items:center;gap:.35rem;min-height:1.35rem}.food-claim-person .stats-action{font-size:inherit}

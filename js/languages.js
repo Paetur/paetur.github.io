@@ -1,7 +1,7 @@
 window.WEDDING_TRANSLATIONS = {
     fo: {
         addPerson: 'Legg persón(ar), barn/børn, maka afturat…',
-        courtesyTitle: 'Heiti', edit: 'Rætta', save: 'Goym', cancel: 'Angra', moreDetails: 'Meira kunning…', attending: 'Kemur', notAttending: 'Kemur ikki',
+        courtesyTitle: 'Heiti', titleMr: 'Hr.', titleMs: 'Fr.', titleSon: 'Sonur', titleDaughter: 'Dóttir', edit: 'Rætta', save: 'Goym', cancel: 'Angra', moreDetails: 'Meira kunning…', attending: 'Kemur', notAttending: 'Kemur ikki',
         firstName: 'Fornavn',
         childFirstName: 'Fornavn á barni',
         lastName: 'Eftirnavn',
@@ -50,7 +50,7 @@ window.WEDDING_TRANSLATIONS = {
 
     en: {
         addPerson: 'Add Person(s), Child(ren), Partner…',
-        courtesyTitle: 'Title', edit: 'Edit', save: 'Save', cancel: 'Cancel', moreDetails: 'More details…', attending: 'Attending', notAttending: 'Not attending',
+        courtesyTitle: 'Title', titleMr: 'Mr.', titleMs: 'Ms.', titleSon: 'Son', titleDaughter: 'Daughter', edit: 'Edit', save: 'Save', cancel: 'Cancel', moreDetails: 'More details…', attending: 'Attending', notAttending: 'Not attending',
         firstName: 'First name',
         childFirstName: "Child's first name",
         lastName: 'Last name',
@@ -99,7 +99,7 @@ window.WEDDING_TRANSLATIONS = {
 
     de: {
         addPerson: 'Person(en), Kind(er), Partner/in hinzufügen…',
-        courtesyTitle: 'Anrede', edit: 'Bearbeiten', save: 'Speichern', cancel: 'Abbrechen', moreDetails: 'Mehr Details…', attending: 'Kommt', notAttending: 'Kommt nicht',
+        courtesyTitle: 'Anrede', titleMr: 'Herr', titleMs: 'Frau', titleSon: 'Sohn', titleDaughter: 'Tochter', edit: 'Bearbeiten', save: 'Speichern', cancel: 'Abbrechen', moreDetails: 'Mehr Details…', attending: 'Kommt', notAttending: 'Kommt nicht',
         firstName: 'Vorname',
         childFirstName: 'Vorname des Kindes',
         lastName: 'Nachname',
@@ -209,6 +209,13 @@ document.addEventListener('DOMContentLoaded', () => {
             const language = button.dataset.lang;
 
             window.setLanguage(language);
+
+            // Dynamic RSVP rows/editors are created by JavaScript, so rebuild
+            // them as well when the visitor changes language.
+            if (typeof currentInvitation !== 'undefined' && currentInvitation &&
+                typeof renderInvitation === 'function') {
+                renderInvitation(currentInvitation);
+            }
 
             /*
              * Re-render invitation-only food content only after a valid

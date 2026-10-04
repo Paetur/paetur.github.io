@@ -193,10 +193,8 @@ function showGuestEditor(row, guest) {
     const childText = document.createElement('span'); childText.textContent = text('child');
     childLabel.append(child, childText);
 
-    const save = document.createElement('button'); save.type = 'submit'; save.className = 'btn secondary'; save.textContent = text('save');
-    const cancel = document.createElement('button'); cancel.type = 'button'; cancel.className = 'btn secondary'; cancel.textContent = text('cancel');
-    cancel.addEventListener('click', () => renderInvitation(currentInvitation));
-    form.append(title, first, last, childLabel, save, cancel);
+    const save = document.createElement('button'); save.type = 'submit'; save.className = 'invite-name-edit invite-save-link'; save.textContent = text('save');
+    form.append(title, first, last, childLabel, save);
     form.addEventListener('submit', async event => {
         event.preventDefault();
         save.disabled = true;

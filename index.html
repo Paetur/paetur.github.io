@@ -4,12 +4,12 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Pætur & Maria Hentze — Brúdleyp</title>
-  <link rel="stylesheet" href="css/style.css?v=20261004-1808">
+  <link rel="stylesheet" href="css/style.css?v=20261004-1838">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script>
   <script src="js/config.js?v=20260929-2" defer></script>
   <script src="js/supabase.js?v=20260929-2" defer></script>
-  <script src="js/languages.js?v=20261004-1808" defer></script>
-  <script src="js/invitation.js?v=20261004-1808" defer></script>
+  <script src="js/languages.js?v=20261004-1838" defer></script>
+  <script src="js/invitation.js?v=20261004-1838" defer></script>
 </head>
 <body>
   <main class="wrap">
@@ -54,15 +54,15 @@
       <form id="add-person-form" class="add-person-form">
         <select name="courtesy_title" aria-label="Courtesy title">
           <option value="" data-t="courtesyTitle">Title</option>
-          <option value="Mr.">Mr.</option>
-          <option value="Ms.">Ms.</option>
-          <option value="Son">Son</option>
-          <option value="Daughter">Daughter</option>
+          <option value="Mr." data-t="titleMr">Mr.</option>
+          <option value="Ms." data-t="titleMs">Ms.</option>
+          <option value="Son" data-t="titleSon">Son</option>
+          <option value="Daughter" data-t="titleDaughter">Daughter</option>
         </select>
         <input name="first_name" data-t-placeholder="firstName" placeholder="First name" required>
         <input name="last_name" data-t-placeholder="lastName" placeholder="Last name">
         <label class="add-person-child"><input type="checkbox" name="is_child"> <span data-t="child">Child</span></label>
-        <button class="btn secondary add-person-submit" type="submit" aria-label="Add person">✓</button>
+        <button class="invite-name-edit invite-save-link add-person-submit" type="submit" data-t="save">Save</button>
       </form>
       <p id="add-person-message" class="muted small hidden"></p>
     </details>

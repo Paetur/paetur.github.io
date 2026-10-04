@@ -253,3 +253,6 @@ h2 { margin: 8px 0 18px; font-size: 30px; font-weight: 400; }
 .invite-save-link{border:0;background:none;padding:4px 0;color:inherit;font:inherit;font-size:.82rem;text-decoration:underline;cursor:pointer;opacity:.7}
 .invite-save-link:disabled{cursor:default;opacity:.35}
 .add-person-form .invite-save-link{align-self:center;min-width:0;padding:4px 0}
+
+.adminbar-actions{display:flex;align-items:center;gap:.55rem;margin-left:auto}
+@media (max-width:650px){.adminbar-actions{margin-left:0;align-self:stretch;justify-content:flex-end}}

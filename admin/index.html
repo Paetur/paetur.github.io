@@ -8,7 +8,7 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script>
   <script src="../js/config.js" defer></script>
   <script src="../js/supabase.js" defer></script>
-  <script src="admin.js?v=20261004-1825" defer></script>
+  <script src="admin.js?v=20261004-1845" defer></script>
 </head>
 <body>
   <main class="wrap admin-wrap">
@@ -27,7 +27,7 @@
     <section id="adminApp" class="hidden">
       <div class="adminbar">
         <div><b>Pætur & Maria Hentze · Admin</b><div id="adminEmail" class="muted small"></div></div>
-        <button id="logoutButton" class="btn secondary" type="button">Logout</button>
+        <div class="adminbar-actions"><button id="globalEditButton" class="btn secondary" type="button" aria-pressed="false">Edit</button><button id="logoutButton" class="btn secondary" type="button">Logout</button></div>
       </div>
 
       <section class="card admin-dashboard-head">
@@ -124,7 +124,6 @@
           <div class="guest-filters stats-filters">
             <label>Side<select id="statsSideFilter"><option value="all">All</option><option value="paetur_hentze">Pætur</option><option value="maria_haass">Maria</option></select></label>
             <label>Relation group<select id="statsRelationFilter"><option value="all">All</option></select></label>
-            <label class="stats-mode-filter">Mode<select id="statsEditMode" aria-label="View or edit mode"><option value="view">View</option><option value="edit">Edit</option></select></label>
           </div>
           <div id="statsTree" class="stats-tree"></div>
         </section>
@@ -152,7 +151,6 @@
           </div>
           <div class="guest-filters stats-filters food-filters">
             <label>Category<select id="foodCategoryFilter"><option value="">All categories</option></select></label>
-            <label class="stats-mode-filter">Mode<select id="foodEditMode" aria-label="View or edit mode"><option value="view">View</option><option value="edit">Edit</option></select></label>
           </div>
           <p id="foodAdminSummary" class="muted">Loading food…</p><div id="adminFoodList"></div>
         </section>

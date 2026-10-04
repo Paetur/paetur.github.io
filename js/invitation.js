@@ -535,6 +535,26 @@ async function loadMyFood() {
 
         row.appendChild(itemText);
 
+        // Before the household confirms its food selection, allow mistakes
+        // to be removed directly from "What you are bringing".
+        if (!foodSelectionConfirmed) {
+            const removeButton = document.createElement('button');
+            removeButton.type = 'button';
+            removeButton.className = 'food-selection-remove';
+            removeButton.textContent = text('releaseFood');
+            removeButton.addEventListener('click', async () => {
+                removeButton.disabled = true;
+                const success = await releaseFood(item.food_item_id || item.id);
+                if (!success) {
+                    removeButton.disabled = false;
+                    return;
+                }
+                await loadMyFood();
+                await loadFood();
+            });
+            row.appendChild(removeButton);
+        }
+
         container.appendChild(row);
     });
 

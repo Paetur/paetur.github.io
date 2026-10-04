@@ -256,3 +256,8 @@ h2 { margin: 8px 0 18px; font-size: 30px; font-weight: 400; }
 
 .adminbar-actions{display:flex;align-items:center;gap:.55rem;margin-left:auto}
 @media (max-width:650px){.adminbar-actions{margin-left:0;align-self:stretch;justify-content:flex-end}}
+
+/* Admin household add-guest controls */
+.admin-add-guest .add-person-child{display:inline-flex;align-items:center;gap:6px;white-space:nowrap;margin:0;padding:0 4px;flex:0 0 auto}
+.admin-add-guest .add-person-child input[type="checkbox"]{width:auto;min-width:0;flex:none;margin:0}
+.admin-add-guest select[name="courtesy_title"]{flex:0 1 105px;min-width:90px}

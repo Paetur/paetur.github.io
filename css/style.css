@@ -234,9 +234,12 @@ h2 { margin: 8px 0 18px; font-size: 30px; font-weight: 400; }
 .invite-rsvp-status.no{opacity:.55}
 .add-person-form select,.invite-guest-edit-form select,.invite-guest-edit-form input{min-width:120px;padding:10px 12px;border:1px solid var(--line);border-radius:12px;background:#fff;font:inherit}
 .add-person-form select{flex:0 1 130px}
-.invite-guest-edit-form{display:flex;align-items:center;gap:8px;flex-wrap:wrap;width:100%}
-.invite-guest-edit-form input[name="first_name"],.invite-guest-edit-form input[name="last_name"]{flex:1;min-width:130px}
-.invite-guest-edit-form .btn{padding:9px 12px}
-@media(max-width:620px){.invite-guest-edit-form{align-items:stretch}.invite-guest-edit-form select,.invite-guest-edit-form input[name="first_name"],.invite-guest-edit-form input[name="last_name"]{width:100%;flex-basis:100%}}
+.invite-guest-edit-form{display:grid;grid-template-columns:110px minmax(125px,1fr) minmax(105px,.8fr) auto auto auto;align-items:center;gap:8px;width:100%}
+.invite-guest-edit-form select,.invite-guest-edit-form input{min-width:0;width:100%;box-sizing:border-box}
+.invite-guest-edit-form .add-person-child{display:inline-flex;align-items:center;gap:5px;white-space:nowrap;margin:0}
+.invite-guest-edit-form .add-person-child input{width:auto}
+.invite-guest-edit-form .btn{padding:9px 10px;white-space:nowrap}
+@media(max-width:620px){.invite-guest-edit-form{grid-template-columns:minmax(105px,.75fr) minmax(130px,1fr) minmax(100px,.8fr);align-items:center}.invite-guest-edit-form .add-person-child{grid-column:1}.invite-guest-edit-form .btn{width:auto}.invite-guest-edit-form .btn[type="submit"]{grid-column:2}.invite-guest-edit-form .btn[type="button"]{grid-column:3}}
+@media(max-width:470px){.invite-guest-edit-form{grid-template-columns:1fr 1fr}.invite-guest-edit-form select{grid-column:1}.invite-guest-edit-form input[name="first_name"]{grid-column:2}.invite-guest-edit-form input[name="last_name"]{grid-column:1/-1}.invite-guest-edit-form .add-person-child{grid-column:1}.invite-guest-edit-form .btn[type="submit"]{grid-column:2}.invite-guest-edit-form .btn[type="button"]{grid-column:2}}
 
 .guest-name-placeholder{color:var(--muted,#8a8a8a);font-style:italic}

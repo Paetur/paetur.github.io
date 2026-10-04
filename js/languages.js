@@ -1,6 +1,6 @@
 window.WEDDING_TRANSLATIONS = {
     fo: {
-        addPerson: 'Legg persón afturat…',
+        addPerson: 'Legg persón(ar), barn/børn, maka afturat…',
         courtesyTitle: 'Heiti', edit: 'Rætta', save: 'Goym', cancel: 'Angra', moreDetails: 'Meira kunning…', attending: 'Kemur', notAttending: 'Kemur ikki',
         firstName: 'Fornavn',
         childFirstName: 'Fornavn á barni',
@@ -49,7 +49,7 @@ window.WEDDING_TRANSLATIONS = {
     },
 
     en: {
-        addPerson: 'Add a person…',
+        addPerson: 'Add Person(s), Child(ren), Partner…',
         courtesyTitle: 'Title', edit: 'Edit', save: 'Save', cancel: 'Cancel', moreDetails: 'More details…', attending: 'Attending', notAttending: 'Not attending',
         firstName: 'First name',
         childFirstName: "Child's first name",
@@ -98,7 +98,7 @@ window.WEDDING_TRANSLATIONS = {
     },
 
     de: {
-        addPerson: 'Person hinzufügen…',
+        addPerson: 'Person(en), Kind(er), Partner/in hinzufügen…',
         courtesyTitle: 'Anrede', edit: 'Bearbeiten', save: 'Speichern', cancel: 'Abbrechen', moreDetails: 'Mehr Details…', attending: 'Kommt', notAttending: 'Kommt nicht',
         firstName: 'Vorname',
         childFirstName: 'Vorname des Kindes',

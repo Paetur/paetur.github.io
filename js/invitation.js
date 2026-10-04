@@ -56,6 +56,7 @@ async function loadInvitation() {
     }
 
     currentInvitation = data;
+    foodSelectionConfirmed = data.food_confirmed === true;
 
     // Load household feature access and record the first/most recent open.
     const { data: access, error: accessError } = await db.rpc('get_invitation_access', {
@@ -286,13 +287,8 @@ async function saveRsvp(attending) {
    FOOD CONFIRMATION
 ------------------------------------------------------- */
 
-function foodConfirmationKey() {
-    return currentInviteCode ? `wedding-food-confirmed:${currentInviteCode}` : null;
-}
-
 function loadFoodConfirmation() {
-    const key = foodConfirmationKey();
-    foodSelectionConfirmed = Boolean(key && window.localStorage.getItem(key) === '1');
+    foodSelectionConfirmed = currentInvitation?.food_confirmed === true;
     applyFoodConfirmationState();
 }
 
@@ -300,14 +296,27 @@ function applyFoodConfirmationState() {
     const available = document.getElementById('availableFoodSection');
     const confirmButton = document.getElementById('confirmFood');
     if (available) available.classList.toggle('hidden', foodSelectionConfirmed);
-    if (confirmButton && foodSelectionConfirmed) confirmButton.classList.add('hidden');
+    if (confirmButton) confirmButton.classList.toggle('hidden', foodSelectionConfirmed);
 }
 
-function confirmFoodSelection() {
-    const key = foodConfirmationKey();
-    if (!key) return;
-    window.localStorage.setItem(key, '1');
+async function confirmFoodSelection() {
+    if (!currentInviteCode || foodSelectionConfirmed) return;
+    const button = document.getElementById('confirmFood');
+    if (button) button.disabled = true;
+    const { data, error } = await db.rpc('confirm_invitation_food', {
+        p_invite_code: currentInviteCode
+    });
+    if (button) button.disabled = false;
+    if (error || !data?.success) {
+        console.error('Food confirmation error:', error);
+        alert(text('genericError'));
+        return;
+    }
     foodSelectionConfirmed = true;
+    if (currentInvitation) {
+        currentInvitation.food_confirmed = true;
+        currentInvitation.food_confirmed_at = new Date().toISOString();
+    }
     applyFoodConfirmationState();
     const message = document.getElementById('foodConfirmMessage');
     if (message) {

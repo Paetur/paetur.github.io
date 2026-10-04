@@ -1,5 +1,6 @@
 let currentInvitation = null;
 let currentInviteCode = null;
+let foodSelectionConfirmed = false;
 
 
 /* -------------------------------------------------------
@@ -276,6 +277,40 @@ async function saveRsvp(attending) {
 
 
 /* -------------------------------------------------------
+   FOOD CONFIRMATION
+------------------------------------------------------- */
+
+function foodConfirmationKey() {
+    return currentInviteCode ? `wedding-food-confirmed:${currentInviteCode}` : null;
+}
+
+function loadFoodConfirmation() {
+    const key = foodConfirmationKey();
+    foodSelectionConfirmed = Boolean(key && window.localStorage.getItem(key) === '1');
+    applyFoodConfirmationState();
+}
+
+function applyFoodConfirmationState() {
+    const available = document.getElementById('availableFoodSection');
+    const confirmButton = document.getElementById('confirmFood');
+    if (available) available.classList.toggle('hidden', foodSelectionConfirmed);
+    if (confirmButton && foodSelectionConfirmed) confirmButton.classList.add('hidden');
+}
+
+function confirmFoodSelection() {
+    const key = foodConfirmationKey();
+    if (!key) return;
+    window.localStorage.setItem(key, '1');
+    foodSelectionConfirmed = true;
+    applyFoodConfirmationState();
+    const message = document.getElementById('foodConfirmMessage');
+    if (message) {
+        message.textContent = text('foodConfirmed');
+        message.classList.remove('hidden');
+    }
+}
+
+/* -------------------------------------------------------
    CLAIM FOOD
 ------------------------------------------------------- */
 
@@ -325,6 +360,12 @@ async function loadFood() {
     // Food is invitation-only. Never expose or activate it on the generic landing page.
     if (!currentInvitation || !currentInviteCode || !currentInvitation.access?.food) {
         document.getElementById('foodSection')?.classList.add('hidden');
+        return;
+    }
+
+    applyFoodConfirmationState();
+    if (foodSelectionConfirmed) {
+        document.getElementById('foodSection')?.classList.remove('hidden');
         return;
     }
 
@@ -477,40 +518,15 @@ async function loadMyFood() {
                     : ''
             }`;
 
-        const button =
-            document.createElement('button');
-
-        button.type = 'button';
-        button.className = 'linkbtn';
-        button.textContent =
-            text('releaseFood');
-
-        button.addEventListener(
-            'click',
-            async () => {
-                button.disabled = true;
-
-                const success =
-                    await releaseFood(
-                        item.food_item_id
-                    );
-
-                if (success) {
-                    await loadMyFood();
-                    await loadFood();
-                } else {
-                    button.disabled = false;
-                }
-            }
-        );
-
         row.appendChild(itemText);
-        row.appendChild(button);
 
         container.appendChild(row);
     });
 
     section.classList.remove('hidden');
+    const confirmButton = document.getElementById('confirmFood');
+    if (confirmButton) confirmButton.classList.toggle('hidden', foodSelectionConfirmed);
+    applyFoodConfirmationState();
 }
 
 
@@ -616,6 +632,7 @@ document.addEventListener(
         // invite code has been successfully validated by get_invitation().
         if (currentInvitation && currentInviteCode) {
             if (currentInvitation.access?.food) {
+                loadFoodConfirmation();
                 await loadMyFood();
                 await loadFood();
             }
@@ -624,6 +641,7 @@ document.addEventListener(
         }
 
         document.getElementById('add-person-form')?.addEventListener('submit', addExtraGuest);
+        document.getElementById('confirmFood')?.addEventListener('click', confirmFoodSelection);
 
         const attendingButton =
             document.getElementById(

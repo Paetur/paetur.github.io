@@ -27,6 +27,7 @@ window.WEDDING_TRANSLATIONS = {
 
         yourFood: 'Tað, tit taka við',
         availableFood: 'Tøkt at taka við',
+        confirmFood: 'Vátta val', foodConfirmed: 'Takk! Valið er váttað.',
         releaseFood: 'Tak aftur',
         available: 'tøkt',
 
@@ -74,6 +75,7 @@ window.WEDDING_TRANSLATIONS = {
 
         yourFood: 'What you are bringing',
         availableFood: 'Available to bring',
+        confirmFood: 'Confirm', foodConfirmed: 'Thank you! Your selection is confirmed.',
         releaseFood: 'Remove',
         available: 'available',
 
@@ -121,6 +123,7 @@ window.WEDDING_TRANSLATIONS = {
 
         yourFood: 'Das bringt ihr mit',
         availableFood: 'Noch verfügbar',
+        confirmFood: 'Bestätigen', foodConfirmed: 'Vielen Dank! Eure Auswahl ist bestätigt.',
         releaseFood: 'Zurücknehmen',
         available: 'verfügbar',
 

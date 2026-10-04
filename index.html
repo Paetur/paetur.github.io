@@ -4,12 +4,12 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Pætur & Maria Hentze — Brúdleyp</title>
-  <link rel="stylesheet" href="css/style.css?v=20261004a">
+  <link rel="stylesheet" href="css/style.css?v=20261004b">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script>
   <script src="js/config.js?v=20260929-2" defer></script>
   <script src="js/supabase.js?v=20260929-2" defer></script>
-  <script src="js/languages.js?v=20261004a" defer></script>
-  <script src="js/invitation.js?v=20261004a" defer></script>
+  <script src="js/languages.js?v=20261004b" defer></script>
+  <script src="js/invitation.js?v=20261004b" defer></script>
 </head>
 <body>
   <main class="wrap">
@@ -93,10 +93,14 @@
       <div id="myFoodSection" class="hidden">
         <h3 data-t="yourFood">Tað, tit taka við</h3>
         <div id="myFood"></div>
+        <button id="confirmFood" class="btn food-confirm-button hidden" type="button" data-t="confirmFood">Confirm</button>
+        <p id="foodConfirmMessage" class="muted small hidden"></p>
         <hr>
       </div>
-      <h3 data-t="availableFood">Tøkt at taka við</h3>
-      <div class="foodgrid" id="foodgrid"></div>
+      <div id="availableFoodSection">
+        <h3 data-t="availableFood">Tøkt at taka við</h3>
+        <div class="foodgrid" id="foodgrid"></div>
+      </div>
       <p class="muted small" data-t="foodSoon">Food-listin verður lisin úr Supabase í næsta stigi.</p>
     </section>
 

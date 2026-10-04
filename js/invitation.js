@@ -90,9 +90,15 @@ function invitationIsLocked(invitation = currentInvitation) {
 }
 
 function guestDisplayName(guest) {
-    return [guest.courtesy_title, guest.first_name, guest.last_name]
+    const firstName = String(guest.first_name || '').trim();
+    const placeholder = guest.is_child ? text('childFirstName') : text('firstName');
+    return [guest.courtesy_title, firstName || placeholder, guest.last_name]
         .filter(Boolean)
         .join(' ');
+}
+
+function guestNameIsPlaceholder(guest) {
+    return !String(guest.first_name || '').trim();
 }
 
 function titleOptions(selected = '') {
@@ -138,6 +144,7 @@ function renderInvitation(invitation) {
             status.setAttribute('aria-label', guest.rsvp_status === 'attending' ? text('attending') : text('notAttending'));
             const name = document.createElement('span');
             name.textContent = guestDisplayName(guest);
+            if (guestNameIsPlaceholder(guest)) name.classList.add('guest-name-placeholder');
             row.append(status, name);
         } else {
             const label = document.createElement('label');
@@ -149,6 +156,7 @@ function renderInvitation(invitation) {
             checkbox.checked = guest.rsvp_status === 'attending';
             const name = document.createElement('span');
             name.textContent = guestDisplayName(guest);
+            if (guestNameIsPlaceholder(guest)) name.classList.add('guest-name-placeholder');
             label.append(checkbox, name);
 
             const edit = document.createElement('button');
@@ -176,7 +184,7 @@ function showGuestEditor(row, guest) {
     titleOptions(guest.courtesy_title).forEach(option => title.appendChild(option));
 
     const first = document.createElement('input');
-    first.name = 'first_name'; first.required = true; first.value = guest.first_name || ''; first.placeholder = text('firstName');
+    first.name = 'first_name'; first.required = true; first.value = guest.first_name || ''; first.placeholder = guest.is_child ? text('childFirstName') : text('firstName');
     const last = document.createElement('input');
     last.name = 'last_name'; last.value = guest.last_name || ''; last.placeholder = text('lastName');
     const childLabel = document.createElement('label');

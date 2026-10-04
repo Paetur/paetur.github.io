@@ -238,3 +238,5 @@ h2 { margin: 8px 0 18px; font-size: 30px; font-weight: 400; }
 .invite-guest-edit-form input[name="first_name"],.invite-guest-edit-form input[name="last_name"]{flex:1;min-width:130px}
 .invite-guest-edit-form .btn{padding:9px 12px}
 @media(max-width:620px){.invite-guest-edit-form{align-items:stretch}.invite-guest-edit-form select,.invite-guest-edit-form input[name="first_name"],.invite-guest-edit-form input[name="last_name"]{width:100%;flex-basis:100%}}
+
+.guest-name-placeholder{color:var(--muted,#8a8a8a);font-style:italic}

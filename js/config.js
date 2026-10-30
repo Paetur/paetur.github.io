@@ -1,4 +1,5 @@
-// FIRST-TIME SETUP: This file is intentionally not connected to any database.
-// Open setup.html, choose new/existing Supabase, then replace this file with
-// the config.js downloaded by the setup wizard. Never put service_role here.
-window.RSVP_CONFIG = Object.freeze({ supabaseUrl: '', supabaseKey: '' });
+// RSVP Manager public browser configuration. NEVER add a secret/service_role key.
+window.RSVP_CONFIG = Object.freeze({
+  "supabaseUrl": "https://xbiklypjpnumhuohujwo.supabase.co",
+  "supabaseKey": "sb_publishable_cswRFfAw-9iFPg2a4y5Y9w__5Fcf_aa"
+});

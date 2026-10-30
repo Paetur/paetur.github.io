@@ -235,65 +235,90 @@
    const categorySelect=$('newFoodCategory');categorySelect.replaceChildren();
    foodCategoryOptions(categorySelect,foodCategoriesSorted()[0]?.name||'');
    const search=$('foodSearch')?.value.trim().toLowerCase()||'';
-   const categories=foodCategoriesSorted();const known=new Set(categories.map(c=>c.name));
+   const categories=foodCategoriesSorted(),known=new Set(categories.map(c=>c.name));
    const unregistered=[...new Set(store.food.map(f=>f.category||'').filter(c=>!known.has(c)))].sort();
-   const list=[...categories.map(c=>({name:c.name,id:c.id,registered:true})),...unregistered.map(name=>({name,id:null,registered:false}))];
+   const list=[...categories.map(c=>({name:c.name,id:c.id,registered:true})),
+     ...unregistered.map(name=>({name,id:null,registered:false}))];
    for(const [index,category] of list.entries()){
      const items=ordered(store.food.filter(f=>(f.category||'')===category.name),'name_fo');
-     const visible=items.filter(f=>!search||[f.name_fo,f.name_en,f.name_de,f.category].join(' ').toLowerCase().includes(search));
+     const visible=items.filter(f=>!search||[f.name_fo,f.name_en,f.name_de,f.category]
+       .join(' ').toLowerCase().includes(search));
      if(search&&!visible.length)continue;
-     const section=R.dom('section',{class:'food-category'});
-     const heading=R.dom('div',{class:'food-category-heading'});
-     const title=R.dom('h3',{},category.name||'Uncategorized');heading.append(title,R.dom('span',{class:'muted small'},`${items.length} items`));
+     const section=R.dom('details',{class:'food-category tree-disclosure'});
+     section.dataset.treeKey='food:'+category.name;
+     setDisclosure(section,section.dataset.treeKey,index===0,!!search);
+     const heading=R.dom('summary',{class:'food-category-heading'});
+     const title=R.dom('span',{class:'food-category-title'},category.name||'Uncategorized');
+     heading.append(title,R.dom('small',{class:'tree-count'},items.length+' items'));
+     const controls=R.dom('span',{class:'food-heading-actions'});
      if(category.registered){
        const pos=categories.findIndex(c=>c.id===category.id);
-       heading.append(btn('↑','Move category up',()=>rpcAction('admin_move_food_category',{p_category_id:category.id,p_direction:-1},'Category order saved.'),pos<=0));
-       heading.append(btn('↓','Move category down',()=>rpcAction('admin_move_food_category',{p_category_id:category.id,p_direction:1},'Category order saved.'),pos>=categories.length-1));
-       heading.append(btn('Rename','Rename category',async()=>{
-         const next=prompt('New category name',category.name)?.trim();if(!next||next===category.name)return;
-         await rpcAction('admin_rename_food_category',{p_category_id:category.id,p_name:next},'Category renamed and linked food items updated.');
+       controls.append(btn('↑','Move category up',()=>rpcAction('admin_move_food_category',
+         {p_category_id:category.id,p_direction:-1},'Category order saved.'),pos<=0));
+       controls.append(btn('↓','Move category down',()=>rpcAction('admin_move_food_category',
+         {p_category_id:category.id,p_direction:1},'Category order saved.'),pos>=categories.length-1));
+       controls.append(btn('Rename','Rename food category',async()=>{
+         const next=prompt('New category name',category.name)?.trim();
+         if(!next||next===category.name)return;
+         await rpcAction('admin_rename_food_category',
+           {p_category_id:category.id,p_name:next},'Category renamed and linked food items updated.');
        }));
      }else{
-       heading.append(R.dom('span',{class:'tag pending'},'Not registered'));
-       if(category.name)heading.append(btn('Register category','Add this existing category to the category list',async()=>{
+       controls.append(R.dom('span',{class:'tag pending'},'Not registered'));
+       if(category.name)controls.append(btn('Register category','Register existing category',async()=>{
          const {error}=await db.from('food_categories').insert({name:category.name,sort_order:categories.length});
-         if(error)throw error;await reload();show('Category registered.','success');
+         if(error)throw error;
+         await reload();show('Category registered.','success');
        }));
      }
-     section.append(heading);
+     heading.append(controls);section.append(heading);
+     const itemList=R.dom('div',{class:'food-category-items'});
      for(const f of visible){
-       const claim=claimedQuantity(f);const pos=items.findIndex(x=>x.id===f.id);
+       const claim=claimedQuantity(f),pos=items.findIndex(x=>x.id===f.id);
        const wrapper=R.dom('div',{class:'food-manage-item'});
        const main=R.dom('div',{class:'food-manage-main'});
-       const info=R.dom('div');info.append(R.dom('strong',{},foodItemName(f)),R.dom('small',{class:'muted'},`Needed ${f.quantity_needed} · Claimed ${claim} · Available ${Math.max(0,f.quantity_needed-claim)}${f.active?'':' · Inactive'}`));
+       const info=R.dom('div',{class:'food-item-info'});
+       info.append(R.dom('strong',{},foodItemName(f)),
+         R.dom('small',{class:'muted'},`Needed ${f.quantity_needed} · Claimed ${claim} · Available ${Math.max(0,f.quantity_needed-claim)}${f.active?'':' · Inactive'}`));
        const buttons=R.dom('div',{class:'food-item-actions'});
-       buttons.append(btn('↑','Move food item up',()=>rpcAction('admin_move_food_item',{p_food_item_id:f.id,p_direction:-1},'Food order saved.'),pos<=0));
-       buttons.append(btn('↓','Move food item down',()=>rpcAction('admin_move_food_item',{p_food_item_id:f.id,p_direction:1},'Food order saved.'),pos===items.length-1));
+       buttons.append(btn('↑','Move food item up',()=>rpcAction('admin_move_food_item',
+         {p_food_item_id:f.id,p_direction:-1},'Food order saved.'),pos<=0));
+       buttons.append(btn('↓','Move food item down',()=>rpcAction('admin_move_food_item',
+         {p_food_item_id:f.id,p_direction:1},'Food order saved.'),pos===items.length-1));
        const edit=buildFoodEditor(f);
-       buttons.append(btn('Edit','Edit food names, descriptions and quantity',async()=>edit.classList.toggle('hidden')));
-       const changeLabel=R.dom('label',{class:'food-category-picker edit-only'});changeLabel.append(R.dom('span',{},'Category'));
+       buttons.append(btn('Edit','Edit food item',()=>edit.classList.toggle('hidden')));
+       buttons.append(iconAction('delete','Archive food item (preserve existing claims)',async()=>{
+         if(!confirm('Archive '+foodItemName(f)+'? Existing claims are preserved; you can reactivate it using Edit.'))return;
+         const {error}=await db.from('food_items').update({active:false}).eq('id',f.id);
+         if(error)throw error;
+         await reload();show('Food item archived.','success');
+       },!f.active,'edit-only'));
+       const changeLabel=R.dom('label',{class:'food-category-picker edit-only'});
+       changeLabel.append(R.dom('span',{},'Category'));
        const change=R.dom('select');foodCategoryOptions(change,f.category||'');
+       change.setAttribute('aria-label','Category for '+foodItemName(f));
        change.addEventListener('change',async()=>{
          change.disabled=true;
-         try{await rpcAction('admin_set_food_category',{p_food_item_id:f.id,p_category:change.value},'Food category updated.');}
+         try{await rpcAction('admin_set_food_category',
+           {p_food_item_id:f.id,p_category:change.value},'Food category updated.');}
          catch(error){change.value=f.category||'';show(R.safeError(error),'error');}
          finally{change.disabled=false;}
        });
        changeLabel.append(change);buttons.append(changeLabel);
-       main.append(info,buttons);wrapper.append(main,edit);section.append(wrapper);
+       main.append(info,buttons);wrapper.append(main,edit);itemList.append(wrapper);
      }
-     box.append(section);
+     section.append(itemList);box.append(section);
    }
    if(!box.children.length)box.append(R.dom('p',{class:'muted'},'No matching food items.'));
  }
- function renderAdmins(){
+  function renderAdmins(){
    const div=$('adminList');div.replaceChildren();$('authUsersLink').href=store.settings?`https://supabase.com/dashboard/project/${new URL(R.config().supabaseUrl).hostname.split('.')[0]}/auth/users`:'https://supabase.com/dashboard/projects';
    if(!store.admins.length){div.append(R.dom('p',{class:'muted'},'Administrator list unavailable. Apply migration 006 if needed.'));return;}
    store.admins.forEach(a=>{
      const wrap=R.dom('div',{class:'admin-member'}),left=R.dom('div');left.append(R.dom('div',{class:'name'},a.name),R.dom('div',{class:'email'},a.email));
-     const remove=R.dom('button',{class:'text-button danger edit-only',type:'button'},'Revoke');
+     const remove=iconAction('delete','Revoke administrator access for '+a.email,null,false,'edit-only danger');
      remove.disabled=store.admins.length<=1;
-     remove.title=store.admins.length<=1?'You cannot remove the last administrator.':'Remove this administrator';
+     remove.title=store.admins.length<=1?'You cannot remove the last administrator.':'Revoke administrator access';remove.setAttribute('aria-label',remove.title);
      remove.addEventListener('click',async()=>{
        if(!confirm(`Revoke administrator access for ${a.email}?`))return;
        remove.disabled=true;const {error}=await db.rpc('admin_remove_member',{p_user_id:a.user_id});

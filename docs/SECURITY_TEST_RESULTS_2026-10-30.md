@@ -55,3 +55,11 @@ All database behavior tests were performed inside explicit transactions that end
 - Leaked password protection: advisor warning remains and requires Supabase Auth configuration.
 
 **Conclusion:** Database-role and transactional tests passed after publication-guard remediation. **Do not publish** until rate limiting and live HTTP/browser tests are complete.
+
+## Follow-up: throttled guest gateway
+
+- Edge Function `guest-gateway` deployed with an allowlist of five guest operations and server-only service-role credentials.
+- Migration 012 removed anon/authenticated EXECUTE on those RPCs; direct REST bypass denied.
+- Database limiter rejects request 21 to the same fabricated invite code inside a rollback test.
+- Live GitHub Actions Chromium smoke workflow covers guest URL hygiene, mobile viewport, admin login screen and external API behavior.
+- **Auth leaked-password protection still requires enabling in Supabase Auth dashboard.** Browser tests requiring real admin login and valid invite codes remain manual.

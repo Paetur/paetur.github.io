@@ -19,9 +19,9 @@
       const db=R.getClient();
       const {error}=await db.rpc('get_public_event');
       if(error)throw new Error('Database connection or schema validation failed: '+R.safeError(error));
-      const probe=await db.rpc('get_invitation_v2',{p_code:'00000000'});
-      if(probe.error)throw new Error('Required invitation function is missing: '+R.safeError(probe.error));
-      connected=true;stateMessage('Connected to '+new URL(cfg.supabaseUrl).hostname+'. The required public RPCs were found.','success');
+      const probe=await R.guestRpc('get_invitation_v2',{p_code:'AAAAAAAA'});
+      if(probe.error)throw new Error('Guest Edge Function is unavailable. Deploy the guest-gateway function first: '+R.safeError(probe.error));
+      connected=true;stateMessage('Connected to '+new URL(cfg.supabaseUrl).hostname+'. The protected guest gateway responded.','success');
       setTimeout(()=>displayStep(3),1100);
     }catch(err){stateMessage(R.safeError(err),'error');}
     finally{button.disabled=false;}

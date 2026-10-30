@@ -1,0 +1,4 @@
+# The guest gateway validates each request and limits requests by source and invite code.
+# Use server-side secrets only; never commit them.
+[functions.guest-gateway]
+verify_jwt = false

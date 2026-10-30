@@ -15,7 +15,7 @@ See [Security test results (30 October 2026)](SECURITY_TEST_RESULTS_2026-10-30.m
 
 ## Required before launch
 
-1. **Implement and test abuse throttling** for guest-accessible invitation-code functions and block direct PostgREST bypasses. This is a hard release blocker.
+1. **Gateway protection deployed:** Edge Function and atomic SQL limiter added; direct PostgREST calls to guest RPCs are denied. Confirm live rate-limit smoke test and monitor logs.
 2. **Run actual browser and HTTP tests**, including guest links, HTTPS/referrer behavior, admin login/logout, mobile and accessibility checks.
 3. **Test concurrent requests** for duplicate RSVP and food quantity contention with independent connections.
 4. Enable **Supabase Auth leaked-password protection**. See the security advisor and [Supabase Auth password guidance](https://supabase.com/docs/guides/auth/password-security#password-strength-and-leaked-password-protection).
@@ -37,3 +37,7 @@ The initial account must be verified in Supabase Auth and provisioned as an admi
 ## Known warnings
 
 Security advisors flag `SECURITY DEFINER` functions that are callable by guest and authenticated roles. Some are intended capability-code entrypoints and others require a signed-in administrator; guard logic and abuse controls must be reviewed, not ignored. The `admins` table has no direct read policy by design.
+
+## Gateway protection
+
+Migration 012 and the deployed `guest-gateway` now enforce code/IP/global throttling and prevent direct anonymous guest RPC bypass. A live GitHub Actions Chromium smoke workflow tests this connection and should be green before publication. Remaining browser scenarios requiring real admin credentials or existing valid invitation codes require a controlled manual test.

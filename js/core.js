@@ -48,6 +48,12 @@
     });
     return client;
   }
+  async function guestRpc(action,args) {
+    const client=getClient();
+    if(!client)return {data:null,error:new Error('Database not configured')};
+    const {data,error}=await client.functions.invoke('guest-gateway',{body:{action,args}});
+    return {data,error};
+  }
   function invitationURL(code) { const url=new URL('./',siteRoot);url.search='?='+encodeURIComponent(code);return url.href; }
   function getInviteCode() {
     const raw=window.location.search.slice(1).trim();
@@ -94,5 +100,5 @@
     return '// RSVP Manager public browser configuration. NEVER add a secret/service_role key.\n'+
       'window.RSVP_CONFIG = Object.freeze('+JSON.stringify({supabaseUrl:cfg.supabaseUrl,supabaseKey:cfg.supabaseKey},null,2)+');\n';
   }
-  window.RSVP={config,getClient,normalizeUrl,validateKey,savePreview,invitationURL,getInviteCode,codePattern,siteRoot,dom,byId,showStatus,formatDate,safeError,dl,configSource};
+  window.RSVP={config,getClient,guestRpc,normalizeUrl,validateKey,savePreview,invitationURL,getInviteCode,codePattern,siteRoot,dom,byId,showStatus,formatDate,safeError,dl,configSource};
 }());

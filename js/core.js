@@ -48,11 +48,12 @@
     });
     return client;
   }
-  function invitationURL(code) { const url=new URL('index.html',siteRoot);url.search='?'+encodeURIComponent(code);return url.href; }
+  function invitationURL(code) { const url=new URL('./',siteRoot);url.search='?='+encodeURIComponent(code);return url.href; }
   function getInviteCode() {
     const raw=window.location.search.slice(1).trim();
-    const fromParam=new URLSearchParams(raw).get('invite');
-    const code=String(fromParam || (raw.includes('=') ? '' : raw)).trim().toUpperCase();
+    const params=new URLSearchParams(raw);
+    const candidate=params.get('invite') || params.get('code') || params.get('') || (raw.includes('=') ? '' : raw);
+    const code=String(candidate || '').trim().toUpperCase();
     return codePattern.test(code)?code:null;
   }
   function dom(tag,attrs={},text) {

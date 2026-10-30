@@ -335,3 +335,8 @@ html[data-theme="dark"] #adminApp[data-mode="view"] #welcomeForm textarea{
 }
 html[data-theme="dark"] .tag{background:#293e34;color:#cae5d7}
 html[data-theme="dark"] .eyebrow{color:#8cd5b2}
+
+/* Native summary marker must not duplicate the custom household disclosure chevron. */
+#adminApp .household-tree-node>summary.household-node{list-style:none;display:block}
+#adminApp .household-tree-node>summary.household-node::-webkit-details-marker{display:none}
+#adminApp .household-tree-node>summary.household-node::marker{content:''}

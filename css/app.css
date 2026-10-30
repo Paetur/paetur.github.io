@@ -45,3 +45,151 @@
 .publish-ack input{width:auto;flex:none;margin-top:5px}
 .publication-actions{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
 @media(max-width:650px){.admin-heading-actions{width:100%;justify-content:space-between}.admin-layout .panel{padding:17px 15px}.admin-layout .tab-bar button{padding:9px 12px}}
+
+/* Approved compact admin design: text tabs and icon-only top toolbar */
+#adminApp .admin-heading{align-items:center;margin-bottom:10px}
+#adminApp .admin-heading .eyebrow{font-size:.65rem;margin-bottom:4px}
+#adminApp .admin-heading h1{font-size:clamp(1.65rem,3.2vw,2.2rem);margin-bottom:3px}
+#adminApp .admin-heading .muted{font-size:.76rem}
+#adminApp .admin-heading-actions{display:flex;gap:7px;align-items:center;flex-wrap:nowrap;margin-left:auto}
+#adminApp .admin-icon-btn{
+  display:inline-flex;align-items:center;justify-content:center;
+  width:37px;height:37px;flex:0 0 37px;padding:7px;
+  border-radius:9px;border:1px solid var(--line);background:#fff;
+  color:var(--ink);transition:background .15s ease,color .15s ease,border-color .15s ease
+}
+#adminApp .admin-icon-btn:hover{background:#edf5ef;border-color:#b2cbbd}
+#adminApp .admin-icon-btn.active,#adminApp .admin-icon-btn[aria-pressed="true"]{background:var(--teal);border-color:var(--teal);color:white}
+#adminApp .admin-icon-btn svg{width:19px;height:19px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linejoin:round;stroke-linecap:round}
+#adminApp .admin-icon-btn:disabled{cursor:progress;opacity:.62}
+#adminApp .admin-icon-btn.is-refreshing svg{animation:admin-refresh-spin .8s linear infinite}
+@keyframes admin-refresh-spin{to{transform:rotate(360deg)}}
+#adminApp .admin-icon-btn:focus-visible,#adminApp .admin-main-tabs button:focus-visible,
+#adminApp .tree-disclosure>summary:focus-visible,#adminApp .admin-row-icon:focus-visible{outline:2px solid var(--teal);outline-offset:2px}
+#adminApp .admin-main-tabs{
+ display:flex;align-items:stretch;gap:clamp(16px,4.2vw,52px);
+ overflow-x:auto;padding:0 8px;margin:3px 0 17px;
+ border-bottom:2px solid #dce5de;scrollbar-width:thin
+}
+#adminApp .admin-main-tabs button{
+ position:relative;flex:none;background:transparent;border:0;
+ padding:13px 6px 16px;font-size:clamp(1.05rem,2vw,1.65rem);
+ font-weight:750;line-height:1.3;white-space:nowrap;color:#677b78
+}
+#adminApp .admin-main-tabs button.active{color:#126f5e;border:0}
+#adminApp .admin-main-tabs button.active::after{
+ content:"";position:absolute;bottom:0;left:0;right:0;height:5px;background:#126f5e
+}
+/* Settings is a toolbar drawer, not a fourth navigation tab */
+#adminApp .settings-drawer{
+ background:#f0f5ef;border:1px solid #d5e2d8;
+ border-radius:13px;padding:14px 16px;margin-bottom:15px;
+ max-height:76vh;overflow:auto
+}
+#adminApp .settings-drawer-heading{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:12px}
+#adminApp .settings-drawer-heading h2{margin:0;font-size:1.1rem}
+#adminApp .settings-drawer-heading .admin-icon-btn{width:29px;height:29px;flex-basis:29px;font-size:1.25rem}
+#adminApp .settings-tabs{padding-bottom:10px;margin-bottom:14px}
+#adminApp .settings-tabs button{font-size:.77rem;padding:8px 12px}
+#adminApp .settings-subsection{gap:11px}
+#adminApp .settings-drawer .panel{padding:15px;box-shadow:none;border-radius:11px}
+#adminApp .settings-drawer .panel h2{font-size:1.03rem}
+#adminApp .settings-management>.panel{margin-top:9px}
+#adminApp .admin-management{background:white;border:1px solid var(--line);border-radius:10px;margin:10px 0;overflow:hidden}
+#adminApp .admin-management>summary{padding:10px 13px;cursor:pointer;font-size:.83rem;font-weight:700;color:var(--ink);list-style:none}
+#adminApp .admin-management>summary::before{content:"▸";color:var(--teal);margin-right:8px}
+#adminApp .admin-management[open]>summary::before{content:"▾"}
+#adminApp .admin-management>summary::-webkit-details-marker{display:none}
+#adminApp .admin-management>form{margin:2px 13px 14px}
+#adminApp .admin-management>.panel{border:0;margin:0}
+#adminApp .household-toolbar{display:flex;gap:8px;margin:5px 0 11px;flex-wrap:wrap}
+#adminApp .small-tool{background:white;border:1px solid var(--line);padding:6px 11px;border-radius:8px;color:var(--ink);font-size:.76rem}
+#adminApp .small-tool:hover{background:var(--light)}
+#adminApp .hierarchy-view{display:grid;gap:8px}
+#adminApp .tree-disclosure>summary{list-style:none;cursor:pointer}
+#adminApp .tree-disclosure>summary::-webkit-details-marker{display:none}
+#adminApp .hierarchy-section{background:transparent;border:0;padding:0;margin:0}
+#adminApp .tree-side,#adminApp .tree-group{
+ display:flex;align-items:center;gap:9px;padding:10px 12px;border-radius:8px;font-size:.82rem;
+ font-weight:700;line-height:1.3
+}
+#adminApp .tree-side{background:var(--ink);color:white}
+#adminApp .tree-group{background:#e9eee7;color:var(--ink)}
+#adminApp .tree-side::before,#adminApp .tree-group::before{content:"⌄";font-size:1.05rem;line-height:1}
+#adminApp details:not([open])>.tree-side::before,#adminApp details:not([open])>.tree-group::before{content:"›"}
+#adminApp .tree-count{margin-left:auto;font-size:.67rem;color:var(--muted);font-weight:500;white-space:nowrap}
+#adminApp .tree-side .tree-count{color:#d8e3df}
+#adminApp .tree-children{margin-left:17px;padding-left:10px;border-left:1px solid var(--line)}
+#adminApp .hierarchy-group{background:transparent;border:0;padding:0;margin:7px 0}
+#adminApp .household-tree-node{margin-top:6px}
+#adminApp .household-tree-node[open]>.household-node{border-color:#bdd2c4}
+#adminApp .household-node{
+ margin:0;border:1px solid var(--line);border-radius:8px;padding:8px 10px;
+ background:white;border-left-width:1px
+}
+#adminApp .household-tree-node>summary.household-node{cursor:pointer}
+#adminApp .household-tree-node>summary.household-node .household-node-name strong::before{content:"⌄ ";color:var(--teal)}
+#adminApp .household-tree-node:not([open])>summary.household-node .household-node-name strong::before{content:"› "}
+#adminApp .household-node-main{display:flex;align-items:center;justify-content:space-between;gap:9px;width:100%}
+#adminApp .household-node-name{min-width:0;display:flex;align-items:baseline;gap:4px;flex-wrap:wrap}
+#adminApp .household-node-name strong{font-size:.81rem;line-height:1.4}
+#adminApp .household-node-name small{width:auto;font-size:.7rem}
+#adminApp .household-actions{display:flex;align-items:center;gap:5px;flex-wrap:nowrap;margin-left:auto}
+#adminApp .household-guests{font-size:.68rem;margin:3px 7px 7px}
+#adminApp .household-inline-editor{
+ display:flex;align-items:center;gap:7px;flex-wrap:wrap;
+ padding:8px;margin:6px 0;background:#f3f7f4;border:1px solid var(--line);border-radius:8px
+}
+#adminApp .admin-row-icon{
+ display:inline-flex;align-items:center;justify-content:center;
+ width:29px;height:29px;min-width:29px;padding:2px;border-radius:7px;
+ background:#fff;border:1px solid var(--line);color:var(--ink);
+ font-size:1rem;line-height:1
+}
+#adminApp .admin-row-icon svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;pointer-events:none}
+#adminApp .admin-row-icon:hover:not(:disabled){background:var(--light);border-color:#aecabd}
+#adminApp .admin-row-icon.danger,#adminApp .admin-row-icon[title*="Archive"],
+#adminApp .admin-row-icon[title*="Deletion"]{color:var(--danger)}
+#adminApp .admin-row-icon:disabled{opacity:.35;cursor:not-allowed}
+#adminApp .household-inline-editor .parent-picker{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+#adminApp .household-inline-editor .parent-picker select{max-width:220px;min-height:32px}
+#adminApp .food-category{padding:0;margin:0 0 9px;background:white;overflow:hidden;border-radius:10px}
+#adminApp .food-category-heading{
+ display:flex;align-items:center;gap:9px;flex-wrap:wrap;padding:10px 12px;
+ background:#e9eee7;border:0
+}
+#adminApp .food-category-heading::before{content:"⌄";color:var(--teal);font-weight:700}
+#adminApp .food-category:not([open])>.food-category-heading::before{content:"›"}
+#adminApp .food-category-title{font-size:.83rem;font-weight:700}
+#adminApp .food-heading-actions{display:flex;align-items:center;gap:5px}
+#adminApp .food-category-items{padding:0 11px}
+#adminApp .food-manage-item{padding:9px 3px;border-radius:0;border-bottom:1px solid #e7eee9}
+#adminApp .food-manage-item:last-child{border-bottom:0}
+#adminApp .food-manage-main{display:flex;align-items:center;justify-content:space-between;gap:10px}
+#adminApp .food-item-info strong{font-size:.82rem}
+#adminApp .food-item-info small{font-size:.7rem}
+#adminApp .food-item-actions{display:flex;align-items:center;gap:5px}
+#adminApp .food-item-actions .food-category-picker{margin-left:7px}
+#adminApp .food-edit-form{margin-top:8px}
+@media(max-width:700px){
+ #adminApp .admin-heading{flex-direction:row;flex-wrap:wrap;align-items:center}
+ #adminApp .admin-heading-actions{width:auto;margin-left:auto}
+ #adminApp .admin-main-tabs{gap:clamp(11px,4vw,25px);padding:0 4px}
+ #adminApp .admin-main-tabs button{font-size:clamp(1rem,4.8vw,1.25rem);padding:10px 5px 12px}
+ #adminApp .settings-drawer{padding:12px;max-height:75vh}
+ #adminApp .household-node-main,#adminApp .food-manage-main{flex-direction:row;align-items:center}
+ #adminApp .household-actions,#adminApp .food-item-actions{width:auto}
+ #adminApp .household-node-name{flex:1;min-width:110px}
+ #adminApp .food-item-info{min-width:0}
+ #adminApp .food-item-actions{flex-wrap:wrap;justify-content:flex-end}
+ #adminApp .tree-children{margin-left:10px;padding-left:7px}
+}
+@media(max-width:430px){
+ #adminApp .admin-icon-btn{width:33px;height:33px;flex-basis:33px}
+ #adminApp .admin-heading-actions{gap:5px}
+ #adminApp .tree-side,#adminApp .tree-group{padding:8px 9px}
+ #adminApp .household-node{padding:7px}
+ #adminApp .household-node-name small{font-size:.64rem}
+ #adminApp .admin-row-icon{width:26px;height:26px;min-width:26px}
+ #adminApp .tree-count{font-size:.6rem}
+}

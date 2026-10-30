@@ -146,6 +146,7 @@
  background:#fff;border:1px solid var(--line);color:var(--ink);
  font-size:1rem;line-height:1
 }
+#adminApp .admin-row-icon svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;pointer-events:none}
 #adminApp .admin-row-icon:hover:not(:disabled){background:var(--light);border-color:#aecabd}
 #adminApp .admin-row-icon.danger,#adminApp .admin-row-icon[title*="Archive"],
 #adminApp .admin-row-icon[title*="Deletion"]{color:var(--danger)}

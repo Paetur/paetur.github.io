@@ -79,3 +79,18 @@ GitHub Pages is static hosting. A public page can **never** safely run arbitrary
 ## Original project
 
 Original website source is at `https://github.com/Paetur/paetur.github.io`. The new starter is a separate codebase; it does not modify or delete the original repository. The existing database retains its 61 households, 104 guests, 49 food items, 2 claims, and other imported records. The new wedding event is initially **unpublished**.
+
+
+## Guest Edge gateway (required for newly created projects)
+
+The guest-facing app calls `supabase/functions/guest-gateway/index.ts` using the Supabase JS Functions API. Direct public RPC execution is **revoked** by migration 012, so deploying the Edge Function is mandatory; the website will not accept guest RSVPs without it.
+
+- Apply `supabase/install.sql`, including migration 012, in a fresh database.
+- Deploy `guest-gateway` with `verify_jwt=false` as specified in `supabase/config.toml`. This function validates requests itself, rate-limits by IP, code and a global ceiling, and uses a **server-only** Supabase service role key supplied by the Edge runtime.
+- For another event/domain, change `allowedOrigin` in the function to that website's actual HTTPS origin.
+- Never put a secret or service-role key in `js/config.js`. It must contain only a public publishable key.
+- Verify direct REST calls to `get_invitation_v2`, `get_household_food`, `set_household_food_claim`, `confirm_household_food` and `submit_household_rsvp` are denied for both `anon` and `authenticated`.
+- Run the GitHub Actions Chromium smoke test and verify the deployed Edge Function responds as expected.
+
+**Supabase Auth:** Leaked-password protection is configured in the dashboard under Authentication → Providers → Email, not through this repository. See [Supabase password security](https://supabase.com/docs/guides/auth/password-security).
+

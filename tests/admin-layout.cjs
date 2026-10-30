@@ -70,6 +70,7 @@ async function run(){
    assert.equal(await page.locator('html').getAttribute('data-theme'),'dark','dark mode enabled');
    assert.equal(await page.evaluate(()=>localStorage.getItem('rsvp-admin-theme')),'dark','theme preference saved');
    await page.locator('#settingsToggle').click();
+   await page.locator('[data-settings-tab="event"]').click();
    await page.screenshot({path:path.join(previewDir,'admin-settings-dark.png'),fullPage:true});
    assert.equal(await page.locator('#settingName').isVisible(),true,'event settings visible in dark mode');
    await page.locator('#closeSettings').click();

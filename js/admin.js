@@ -3,6 +3,7 @@
  const R=window.RSVP,$=R.byId;
  let db=null,user=null,store={settings:null,sessions:[],locations:[],households:[],guests:[],food:[],claims:[],submissions:[],defaults:[],content:[],admins:[],relationGroups:[],foodCategories:[]};
  let activeTab='dashboard',activeSettingsTab='event',editMode=false;
+ const expandedGroups=new Map();
  const qs=(s)=>document.querySelector(s);
  const show=(msg,type='info')=>R.showStatus('adminMessage',msg,type);
  const fmt=(value)=>value?new Intl.DateTimeFormat('en-GB',{dateStyle:'medium'}).format(new Date(value)):'—';
@@ -12,20 +13,21 @@
  function stat(label,value){const div=R.dom('div',{class:'stat-card'});div.append(R.dom('b',{},value),R.dom('span',{},label));return div;}
  function sessionName(id){return store.sessions.find(s=>s.id===id)?.name||'Session';}
  function settingsTab(name){activeSettingsTab=name;document.querySelectorAll('[data-settings-tab]').forEach(b=>{const active=b.dataset.settingsTab===name;b.classList.toggle('active',active);b.setAttribute('aria-pressed',String(active));});document.querySelectorAll('[data-settings-panel]').forEach(n=>n.classList.toggle('hidden',n.dataset.settingsPanel!==name));}
- function tab(name){activeTab=name;document.querySelectorAll('[data-tab]').forEach(b=>b.classList.toggle('active',b.dataset.tab===name));document.querySelectorAll('[data-panel]').forEach(n=>n.classList.toggle('hidden',n.dataset.panel!==name));if(name==='settings')settingsTab(activeSettingsTab);}
- function mode(isEditing){editMode=isEditing;$('adminApp').dataset.mode=isEditing?'edit':'view';for(const [id,selected] of [['viewModeButton',!isEditing],['editModeButton',isEditing]]){const b=$(id);b.classList.toggle('active',selected);b.setAttribute('aria-pressed',String(selected));}for(const id of ['eventSettingsForm','welcomeForm']){const form=$(id);for(const field of form.querySelectorAll('input,select,textarea'))field.disabled=!isEditing;}}
+ function tab(name){activeTab=name;document.querySelectorAll('[data-tab]').forEach(b=>{const active=b.dataset.tab===name;b.classList.toggle('active',active);b.setAttribute('aria-selected',String(active));});document.querySelectorAll('[data-panel]').forEach(n=>n.classList.toggle('hidden',n.dataset.panel!==name));}
+ function toggleSettings(force){const drawer=$('settingsDrawer');const open=force===undefined?drawer.classList.contains('hidden'):!!force;drawer.classList.toggle('hidden',!open);$('settingsToggle').setAttribute('aria-expanded',String(open));$('settingsToggle').classList.toggle('active',open);if(open)settingsTab(activeSettingsTab);}
+ function mode(isEditing){editMode=isEditing;$('adminApp').dataset.mode=isEditing?'edit':'view';const b=$('editModeButton');b.classList.toggle('active',isEditing);b.setAttribute('aria-pressed',String(isEditing));b.title=isEditing?'Switch to View mode':'Switch to Edit mode';b.setAttribute('aria-label',b.title);$('adminModeLabel').textContent=isEditing?'Edit mode · Changes are saved to the event database':'View mode · Manage invitations, food and event details';for(const id of ['eventSettingsForm','welcomeForm']){const form=$(id);for(const field of form.querySelectorAll('input,select,textarea'))field.disabled=!isEditing;}}
  async function fetchTable(name,columns='*',order){let q=db.from(name).select(columns);if(order)q=q.order(order);const {data,error}=await q;if(error)throw new Error(`${name}: ${R.safeError(error)}`);return data||[];}
  async function reload(){
    show('Loading event data…');
    try{
      const keys=['settings','sessions','locations','households','guests','food','claims','submissions','defaults','content','relationGroups','foodCategories'];
-     const jobs=[fetchTable('event_settings'),fetchTable('event_sessions'),fetchTable('event_locations'),fetchTable('households','id,household_name,invite_code,language,side,email,phone,food,food_confirmed,rsvp_state,sort_order,parent_id'),fetchTable('guests','id,household_id,first_name,last_name,is_child,rsvp_status,language'),fetchTable('food_items'),fetchTable('food_claims'),fetchTable('rsvp_submissions','id,household_id,submitted_at'),fetchTable('household_session_defaults'),fetchTable('event_content'),fetchTable('relation_groups'),fetchTable('food_categories')];
+     const jobs=[fetchTable('event_settings'),fetchTable('event_sessions'),fetchTable('event_locations'),fetchTable('households','id,household_name,invite_code,language,side,relation_group_id,email,phone,food,food_confirmed,rsvp_state,sort_order,parent_id'),fetchTable('guests','id,household_id,first_name,last_name,is_child,rsvp_status,language'),fetchTable('food_items'),fetchTable('food_claims'),fetchTable('rsvp_submissions','id,household_id,submitted_at'),fetchTable('household_session_defaults'),fetchTable('event_content'),fetchTable('relation_groups'),fetchTable('food_categories')];
      const values=await Promise.all(jobs);keys.forEach((key,i)=>store[key]=values[i]);store.settings=store.settings[0]||null;
      const {data:admins,error:adminsError}=await db.rpc('admin_list_members');
      store.admins=adminsError?[]:(admins||[]);
      if(adminsError)show('Admin management API unavailable: '+R.safeError(adminsError),'warning');else show('');
-     renderAll();
-   }catch(e){show(R.safeError(e),'error');}
+     renderAll();return true;
+   }catch(e){show(R.safeError(e),'error');return false;}
  }
  function renderAll(){
    $('adminEventTitle').textContent=store.settings?.event_name||'Event dashboard';
@@ -42,18 +44,35 @@
    return [...list].sort((a,b)=>(a.sort_order||0)-(b.sort_order||0)||
      String(a[label]||'').toLowerCase().localeCompare(String(b[label]||'').toLowerCase())||a.id.localeCompare(b.id));
  }
- function btn(text,title,onClick,disabled=false){
-   const editable=text!=='Copy link';
-   const button=R.dom('button',{class:'text-button'+(editable?' edit-only':''),type:'button',title},text);
-   button.disabled=disabled;
-   button.addEventListener('click',async()=>{
+ function iconAction(kind,title,onClick,disabled=false,extraClass=''){
+   const glyph={edit:'✎',delete:'▤',copy:'⧉',rename:'✎',add:'＋',up:'↑',down:'↓',close:'×'}[kind]||'•';
+   const button=R.dom('button',{class:'admin-row-icon '+extraClass,type:'button',title},glyph);
+   button.setAttribute('aria-label',title);
+   button.disabled=!!disabled;
+   if(onClick)button.addEventListener('click',async event=>{
+     event.preventDefault();event.stopPropagation();
      button.disabled=true;
      try{await onClick();}catch(error){show(R.safeError(error),'error');}
-     finally{button.disabled=false;}
+     finally{button.disabled=!!disabled;}
    });
    return button;
  }
- async function rpcAction(name,params,success){
+ function btn(text,title,onClick,disabled=false){
+   const kind={'↑':'up','↓':'down','Copy link':'copy','Edit':'edit','Rename':'rename','Register category':'add'}[text]||'edit';
+   return iconAction(kind,title,onClick,disabled,(text==='Copy link'?'':'edit-only'));
+ }
+ function setDisclosure(details,key,defaultOpen=false,forceOpen=false){
+   details.open=forceOpen||(expandedGroups.has(key)?expandedGroups.get(key):defaultOpen);
+   details.addEventListener('toggle',()=>{if(!forceOpen)expandedGroups.set(key,details.open);});
+   return details;
+ }
+ function expandHouseholdTree(yes){
+   document.querySelectorAll('#householdRows details').forEach(d=>{
+     d.open=yes;
+     if(d.dataset.treeKey)expandedGroups.set(d.dataset.treeKey,yes);
+   });
+ }
+  async function rpcAction(name,params,success){
    const {error}=await db.rpc(name,params);
    if(error)throw error;
    await reload();
@@ -307,9 +326,18 @@
    });
    $('logout').addEventListener('click',async()=>{await db.auth.signOut();location.reload();});
    document.querySelectorAll('[data-tab]').forEach(b=>b.addEventListener('click',()=>tab(b.dataset.tab)));
-   document.querySelectorAll('[data-settings-tab]').forEach(b=>b.addEventListener('click',()=>{tab('settings');settingsTab(b.dataset.settingsTab);}));
-   $('refreshButton').addEventListener('click',reload);$('householdSearch').addEventListener('input',renderHouseholds);
-   $('viewModeButton').addEventListener('click',()=>mode(false));$('editModeButton').addEventListener('click',()=>mode(true));
+   document.querySelectorAll('[data-settings-tab]').forEach(b=>b.addEventListener('click',()=>settingsTab(b.dataset.settingsTab)));
+   $('settingsToggle').addEventListener('click',()=>toggleSettings());
+   $('closeSettings').addEventListener('click',()=>toggleSettings(false));
+   $('editModeButton').addEventListener('click',()=>mode(!editMode));
+   $('refreshButton').addEventListener('click',async()=>{
+     const button=$('refreshButton');button.disabled=true;button.classList.add('is-refreshing');
+     try{if(await reload())show('Event data refreshed.','success');}
+     finally{button.classList.remove('is-refreshing');button.disabled=false;}
+   });
+   $('expandHouseholds').addEventListener('click',()=>expandHouseholdTree(true));
+   $('collapseHouseholds').addEventListener('click',()=>expandHouseholdTree(false));
+   $('householdSearch').addEventListener('input',renderHouseholds);
    $('foodSearch').addEventListener('input',renderFood);
    $('addCategoryForm').addEventListener('submit',async e=>{
      e.preventDefault();const input=$('categoryName'),name=input.value.trim();if(!name)return;const button=e.target.querySelector('button');button.disabled=true;

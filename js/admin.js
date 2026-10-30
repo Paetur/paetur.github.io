@@ -1,7 +1,7 @@
 (function(){
  'use strict';
  const R=window.RSVP,$=R.byId;
- let db=null,user=null,store={settings:null,sessions:[],locations:[],households:[],guests:[],food:[],claims:[],submissions:[],defaults:[],content:[],admins:[]};
+ let db=null,user=null,store={settings:null,sessions:[],locations:[],households:[],guests:[],food:[],claims:[],submissions:[],defaults:[],content:[],admins:[],relationGroups:[],foodCategories:[]};
  let activeTab='dashboard';
  const qs=(s)=>document.querySelector(s);
  const show=(msg,type='info')=>R.showStatus('adminMessage',msg,type);
@@ -16,8 +16,8 @@
  async function reload(){
    show('Loading event data…');
    try{
-     const keys=['settings','sessions','locations','households','guests','food','claims','submissions','defaults','content'];
-     const jobs=[fetchTable('event_settings'),fetchTable('event_sessions'),fetchTable('event_locations'),fetchTable('households','id,household_name,invite_code,language,side,email,phone,food,food_confirmed,rsvp_state,sort_order,parent_id'),fetchTable('guests','id,household_id,first_name,last_name,is_child,rsvp_status,language'),fetchTable('food_items'),fetchTable('food_claims'),fetchTable('rsvp_submissions','id,household_id,submitted_at'),fetchTable('household_session_defaults'),fetchTable('event_content')];
+     const keys=['settings','sessions','locations','households','guests','food','claims','submissions','defaults','content','relationGroups','foodCategories'];
+     const jobs=[fetchTable('event_settings'),fetchTable('event_sessions'),fetchTable('event_locations'),fetchTable('households','id,household_name,invite_code,language,side,email,phone,food,food_confirmed,rsvp_state,sort_order,parent_id'),fetchTable('guests','id,household_id,first_name,last_name,is_child,rsvp_status,language'),fetchTable('food_items'),fetchTable('food_claims'),fetchTable('rsvp_submissions','id,household_id,submitted_at'),fetchTable('household_session_defaults'),fetchTable('event_content'),fetchTable('relation_groups'),fetchTable('food_categories')];
      const values=await Promise.all(jobs);keys.forEach((key,i)=>store[key]=values[i]);store.settings=store.settings[0]||null;
      const {data:admins,error:adminsError}=await db.rpc('admin_list_members');
      store.admins=adminsError?[]:(admins||[]);
@@ -33,31 +33,200 @@
    $('launchChecklist').replaceChildren(...checks.map(([label,yes])=>{const li=R.dom('li');li.append(R.dom('span',{class:yes?'yes':'no'},yes?'✓':'○'),document.createTextNode(label));return li;}));
    renderHouseholds();renderFood();renderAdmins();renderSettings();renderSessions();renderContent();
  }
- function renderHouseholds(){
-   const search=$('householdSearch').value.trim().toLowerCase();
-   const filtered=store.households.filter(h=>{
-     const guests=store.guests.filter(g=>g.household_id===h.id);
-     const hay=[h.household_name,h.language,h.invite_code,...guests.map(g=>[g.first_name,g.last_name].join(' '))].join(' ').toLowerCase();
-     return hay.includes(search);
-   }).sort((a,b)=>(a.household_name||'').localeCompare(b.household_name||''));
-   const values=filtered.map(h=>{
-     const link=R.dom('button',{class:'text-button',type:'button'},'Copy invite link');link.addEventListener('click',async()=>{
-       const url=R.invitationURL(h.invite_code);
-       try{await navigator.clipboard.writeText(url);show('Invitation link copied. Treat it as private.','success');}
-       catch(_){show('Copy failed: '+url,'warning');}
-     });
-     const guests=store.guests.filter(g=>g.household_id===h.id);
-     const guestList=R.dom('div');guests.forEach((g,i)=>row(guestList,'div',{class:'inline-muted'},[g.first_name,g.last_name].filter(Boolean).join(' ')||`Guest ${i+1}`));
-     return [h.household_name||'—',guestList,h.language||'—',h.rsvp_state||'open',h.food?'Yes':'No',link];
+ function ordered(list, label){
+   return [...list].sort((a,b)=>(a.sort_order||0)-(b.sort_order||0)||
+     String(a[label]||'').toLowerCase().localeCompare(String(b[label]||'').toLowerCase())||a.id.localeCompare(b.id));
+ }
+ function btn(text,title,onClick,disabled=false){
+   const button=R.dom('button',{class:'text-button',type:'button',title},text);
+   button.disabled=disabled;
+   button.addEventListener('click',async()=>{
+     button.disabled=true;
+     try{await onClick();}catch(error){show(R.safeError(error),'error');}
+     finally{button.disabled=false;}
    });
-   $('householdRows').replaceChildren(makeTable(['Household','Guests','Language','RSVP','Food','Private link'],values));
+   return button;
+ }
+ async function rpcAction(name,params,success){
+   const {error}=await db.rpc(name,params);
+   if(error)throw error;
+   await reload();
+   if(success)show(success,'success');
+ }
+ function householdGroupName(h){return store.relationGroups.find(r=>r.id===h.relation_group_id)?.name||'Ungrouped';}
+ function sameGroup(a,b){return a.side===b.side&&a.relation_group_id===b.relation_group_id;}
+ function isDescendantOf(candidateId,ancestorId){
+   const byId=new Map(store.households.map(h=>[h.id,h]));
+   let current=byId.get(candidateId);const seen=new Set();
+   while(current?.parent_id&&!seen.has(current.id)){
+     if(current.parent_id===ancestorId)return true;
+     seen.add(current.id);current=byId.get(current.parent_id);
+   }
+   return false;
+ }
+ function renderHouseholds(){
+   const box=$('householdRows');box.replaceChildren();
+   const search=$('householdSearch').value.trim().toLowerCase();
+   const all=store.households;
+   const byId=new Map(all.map(h=>[h.id,h]));
+   const matched=new Set(all.filter(h=>{
+     const guests=store.guests.filter(g=>g.household_id===h.id);
+     return [h.household_name,h.language,...guests.map(g=>[g.first_name,g.last_name].join(' '))].join(' ').toLowerCase().includes(search);
+   }).map(h=>h.id));
+   const visible=new Set(matched);
+   if(search)for(const id of matched){
+     let h=byId.get(id);const visited=new Set();
+     while(h?.parent_id&&!visited.has(h.id)){visited.add(h.id);visible.add(h.parent_id);h=byId.get(h.parent_id);}
+   }
+   const sides=[...new Set(all.map(h=>h.side))].sort();
+   for(const side of sides){
+     const sideBox=R.dom('section',{class:'hierarchy-section'});
+     sideBox.append(R.dom('h3',{},side.split('_').map(w=>w[0]?.toUpperCase()+w.slice(1)).join(' ')));
+     const groups=[...new Set(all.filter(h=>h.side===side).map(h=>h.relation_group_id||''))];
+     groups.sort((a,b)=>{
+       const ar=store.relationGroups.find(r=>r.id===a),br=store.relationGroups.find(r=>r.id===b);
+       return (ar?.sort_order||0)-(br?.sort_order||0)||(ar?.name||'').localeCompare(br?.name||'');
+     });
+     for(const groupId of groups){
+       const members=all.filter(h=>h.side===side&&(h.relation_group_id||'')===groupId);
+       const visibleMembers=members.filter(h=>visible.has(h.id));
+       if(!visibleMembers.length)continue;
+       const groupBox=R.dom('div',{class:'hierarchy-group'});
+       groupBox.append(R.dom('h4',{},`${householdGroupName(members[0])} · ${members.length}`));
+       const visited=new Set();
+       function draw(h,depth){
+         if(visited.has(h.id)||!visible.has(h.id))return;
+         visited.add(h.id);
+         const siblings=ordered(members.filter(m=>m.parent_id===h.parent_id),'household_name');
+         const pos=siblings.findIndex(m=>m.id===h.id);
+         const card=R.dom('div',{class:'household-node'});
+         card.style.marginLeft=`${Math.min(depth,8)*19}px`;
+         const primary=R.dom('div',{class:'household-node-main'});
+         const name=R.dom('div',{class:'household-node-name'});
+         name.append(R.dom('strong',{},h.household_name||'Unnamed household'));
+         if(h.parent_id)name.append(R.dom('span',{class:'tag'},'Child'));
+         const guests=store.guests.filter(g=>g.household_id===h.id);
+         name.append(R.dom('small',{class:'muted'},`${guests.length} guest${guests.length===1?'':'s'} · ${h.language?.toUpperCase()||'—'} · RSVP ${h.rsvp_state||'open'}`));
+         primary.append(name);
+         const actions=R.dom('div',{class:'household-actions'});
+         actions.append(btn('↑',`Move ${h.household_name} up`,()=>rpcAction('admin_move_household',{p_household_id:h.id,p_direction:-1},'Household order saved.'),pos<=0));
+         actions.append(btn('↓',`Move ${h.household_name} down`,()=>rpcAction('admin_move_household',{p_household_id:h.id,p_direction:1},'Household order saved.'),pos===siblings.length-1));
+         const label=R.dom('label',{class:'parent-picker'});label.append(R.dom('span',{},'Parent'));
+         const select=R.dom('select');
+         select.append(R.dom('option',{value:''},'None (top level)'));
+         ordered(members.filter(m=>m.id!==h.id&&!isDescendantOf(m.id,h.id)),'household_name').forEach(parent=>select.append(R.dom('option',{value:parent.id},parent.household_name||'Unnamed')));
+         select.value=h.parent_id||'';
+         select.addEventListener('change',async()=>{
+           const next=select.value||null;select.disabled=true;
+           try{await rpcAction('admin_set_household_parent',{p_household_id:h.id,p_parent_id:next},'Household parent updated.');}
+           catch(error){select.value=h.parent_id||'';show(R.safeError(error),'error');}
+           finally{select.disabled=false;}
+         });
+         label.append(select);actions.append(label);
+         actions.append(btn('Copy link','Copy private invitation link',async()=>{
+           await navigator.clipboard.writeText(R.invitationURL(h.invite_code));show('Private invitation link copied.','success');
+         }));
+         primary.append(actions);card.append(primary);
+         if(guests.length){const guestNames=R.dom('small',{class:'household-guests muted'},guests.map(g=>[g.first_name,g.last_name].filter(Boolean).join(' ')).join(' · '));card.append(guestNames);}
+         groupBox.append(card);
+         ordered(members.filter(m=>m.parent_id===h.id),'household_name').forEach(ch=>draw(ch,depth+1));
+       }
+       ordered(members.filter(h=>!h.parent_id||!members.some(p=>p.id===h.parent_id)),'household_name').forEach(h=>draw(h,0));
+       // If imported data has a bad/cross-group parent, show it instead of hiding it.
+       visibleMembers.filter(h=>!visited.has(h.id)).forEach(h=>draw(h,0));
+       sideBox.append(groupBox);
+     }
+     if(sideBox.children.length>1)box.append(sideBox);
+   }
+   if(!box.children.length)box.append(R.dom('p',{class:'muted'},'No matching households.'));
+ }
+ function claimedQuantity(item){return store.claims.filter(c=>c.food_item_id===item.id).reduce((n,c)=>n+c.quantity,0);}
+ function foodCategoriesSorted(){return ordered(store.foodCategories,'name');}
+ function foodItemName(item){return item.name_en||item.name_fo||item.name_de||'Unnamed item';}
+ function foodCategoryOptions(select,current){
+   foodCategoriesSorted().forEach(category=>select.append(R.dom('option',{value:category.name},category.name)));
+   if(current&&!store.foodCategories.some(c=>c.name===current))select.append(R.dom('option',{value:current},current+' (unregistered)'));
+   select.value=current||'';
+ }
+ function buildFoodEditor(item){
+   const form=R.dom('form',{class:'food-edit-form hidden'});
+   const fields=[['Faroese name','name_fo'],['English name','name_en'],['German name','name_de'],['Faroese description','description_fo'],['English description','description_en'],['German description','description_de']];
+   for(const [labelText,key] of fields){const label=R.dom('label');label.append(R.dom('span',{},labelText));const input=R.dom(key.startsWith('description')?'textarea':'input',{name:key});input.value=item[key]||'';if(key==='name_fo')input.required=true;label.append(input);form.append(label);}
+   const quantityLabel=R.dom('label');quantityLabel.append(R.dom('span',{},'Quantity needed'));const quantity=R.dom('input',{type:'number',min:'0',name:'quantity_needed'});quantity.value=String(item.quantity_needed);quantity.required=true;quantityLabel.append(quantity);form.append(quantityLabel);
+   const activeLabel=R.dom('label',{class:'checkbox-label'});const active=R.dom('input',{type:'checkbox'});active.checked=item.active;activeLabel.append(active,R.dom('span',{},'Available for guests'));form.append(activeLabel);
+   const footer=R.dom('div',{class:'food-edit-buttons'});
+   const save=R.dom('button',{type:'submit',class:'btn'},'Save food item');
+   const cancel=R.dom('button',{type:'button',class:'btn secondary'},'Cancel');cancel.addEventListener('click',()=>form.classList.add('hidden'));
+   footer.append(save,cancel);form.append(footer);
+   form.addEventListener('submit',async ev=>{
+     ev.preventDefault();const required=Number(quantity.value),claim=claimedQuantity(item);
+     if(!Number.isInteger(required)||required<claim||(!active.checked&&claim>0)){
+       show(`Quantity cannot fall below ${claim} claimed; claimed items cannot be hidden.`,'error');return;
+     }
+     const record={quantity_needed:required,active:active.checked};
+     for(const [,key] of fields)record[key]=form.elements.namedItem(key).value.trim()||null;
+     if(!record.name_fo){show('Faroese name is required.','error');return;}
+     save.disabled=true;
+     try{const {error}=await db.from('food_items').update(record).eq('id',item.id);if(error)throw error;await reload();show('Food item updated.','success');}
+     catch(error){show(R.safeError(error),'error');}finally{save.disabled=false;}
+   });
+   return form;
  }
  function renderFood(){
-   const values=store.food.map(f=>{
-     const claimed=store.claims.filter(c=>c.food_item_id===f.id).reduce((a,c)=>a+c.quantity,0);
-     return [f.name_en||f.name_fo||'—',f.category||'—',String(f.quantity_needed),String(claimed),String(Math.max(0,f.quantity_needed-claimed))];
-   });
-   $('adminFoodList').replaceChildren(makeTable(['Item','Category','Required','Claimed','Remaining'],values));
+   const box=$('adminFoodList');box.replaceChildren();
+   const categorySelect=$('newFoodCategory');categorySelect.replaceChildren();
+   foodCategoryOptions(categorySelect,foodCategoriesSorted()[0]?.name||'');
+   const search=$('foodSearch')?.value.trim().toLowerCase()||'';
+   const categories=foodCategoriesSorted();const known=new Set(categories.map(c=>c.name));
+   const unregistered=[...new Set(store.food.map(f=>f.category||'').filter(c=>!known.has(c)))].sort();
+   const list=[...categories.map(c=>({name:c.name,id:c.id,registered:true})),...unregistered.map(name=>({name,id:null,registered:false}))];
+   for(const [index,category] of list.entries()){
+     const items=ordered(store.food.filter(f=>(f.category||'')===category.name),'name_fo');
+     const visible=items.filter(f=>!search||[f.name_fo,f.name_en,f.name_de,f.category].join(' ').toLowerCase().includes(search));
+     if(search&&!visible.length)continue;
+     const section=R.dom('section',{class:'food-category'});
+     const heading=R.dom('div',{class:'food-category-heading'});
+     const title=R.dom('h3',{},category.name||'Uncategorized');heading.append(title,R.dom('span',{class:'muted small'},`${items.length} items`));
+     if(category.registered){
+       const pos=categories.findIndex(c=>c.id===category.id);
+       heading.append(btn('↑','Move category up',()=>rpcAction('admin_move_food_category',{p_category_id:category.id,p_direction:-1},'Category order saved.'),pos<=0));
+       heading.append(btn('↓','Move category down',()=>rpcAction('admin_move_food_category',{p_category_id:category.id,p_direction:1},'Category order saved.'),pos>=categories.length-1));
+       heading.append(btn('Rename','Rename category',async()=>{
+         const next=prompt('New category name',category.name)?.trim();if(!next||next===category.name)return;
+         await rpcAction('admin_rename_food_category',{p_category_id:category.id,p_name:next},'Category renamed and linked food items updated.');
+       }));
+     }else{
+       heading.append(R.dom('span',{class:'tag pending'},'Not registered'));
+       if(category.name)heading.append(btn('Register category','Add this existing category to the category list',async()=>{
+         const {error}=await db.from('food_categories').insert({name:category.name,sort_order:categories.length});
+         if(error)throw error;await reload();show('Category registered.','success');
+       }));
+     }
+     section.append(heading);
+     for(const f of visible){
+       const claim=claimedQuantity(f);const pos=items.findIndex(x=>x.id===f.id);
+       const wrapper=R.dom('div',{class:'food-manage-item'});
+       const main=R.dom('div',{class:'food-manage-main'});
+       const info=R.dom('div');info.append(R.dom('strong',{},foodItemName(f)),R.dom('small',{class:'muted'},`Needed ${f.quantity_needed} · Claimed ${claim} · Available ${Math.max(0,f.quantity_needed-claim)}${f.active?'':' · Inactive'}`));
+       const buttons=R.dom('div',{class:'food-item-actions'});
+       buttons.append(btn('↑','Move food item up',()=>rpcAction('admin_move_food_item',{p_food_item_id:f.id,p_direction:-1},'Food order saved.'),pos<=0));
+       buttons.append(btn('↓','Move food item down',()=>rpcAction('admin_move_food_item',{p_food_item_id:f.id,p_direction:1},'Food order saved.'),pos===items.length-1));
+       const edit=buildFoodEditor(f);
+       buttons.append(btn('Edit','Edit food names, descriptions and quantity',async()=>edit.classList.toggle('hidden')));
+       const changeLabel=R.dom('label',{class:'food-category-picker'});changeLabel.append(R.dom('span',{},'Category'));
+       const change=R.dom('select');foodCategoryOptions(change,f.category||'');
+       change.addEventListener('change',async()=>{
+         change.disabled=true;
+         try{await rpcAction('admin_set_food_category',{p_food_item_id:f.id,p_category:change.value},'Food category updated.');}
+         catch(error){change.value=f.category||'';show(R.safeError(error),'error');}
+         finally{change.disabled=false;}
+       });
+       changeLabel.append(change);buttons.append(changeLabel);
+       main.append(info,buttons);wrapper.append(main,edit);section.append(wrapper);
+     }
+     box.append(section);
+   }
+   if(!box.children.length)box.append(R.dom('p',{class:'muted'},'No matching food items.'));
  }
  function renderAdmins(){
    const div=$('adminList');div.replaceChildren();$('authUsersLink').href=store.settings?`https://supabase.com/dashboard/project/${new URL(R.config().supabaseUrl).hostname.split('.')[0]}/auth/users`:'https://supabase.com/dashboard/projects';
@@ -130,6 +299,21 @@
    $('logout').addEventListener('click',async()=>{await db.auth.signOut();location.reload();});
    document.querySelectorAll('[data-tab]').forEach(b=>b.addEventListener('click',()=>tab(b.dataset.tab)));
    $('refreshButton').addEventListener('click',reload);$('householdSearch').addEventListener('input',renderHouseholds);
+   $('foodSearch').addEventListener('input',renderFood);
+   $('addCategoryForm').addEventListener('submit',async e=>{
+     e.preventDefault();const input=$('categoryName'),name=input.value.trim();if(!name)return;const button=e.target.querySelector('button');button.disabled=true;
+     try{const {error}=await db.from('food_categories').insert({name,sort_order:store.foodCategories.length});if(error)throw error;input.value='';await reload();show('Food category added.','success');}
+     catch(error){show(R.safeError(error),'error');}finally{button.disabled=false;}
+   });
+   $('addFoodForm').addEventListener('submit',async e=>{
+     e.preventDefault();const button=e.target.querySelector('button');button.disabled=true;
+     const category=$('newFoodCategory').value;const count=Number($('newFoodQuantity').value);
+     if(!Number.isInteger(count)||count<0){show('Enter a non-negative quantity.','error');button.disabled=false;return;}
+     const items=store.food.filter(f=>f.category===category);
+     const record={category,name_fo:$('newFoodFo').value.trim(),name_en:$('newFoodEn').value.trim()||null,name_de:$('newFoodDe').value.trim()||null,quantity_needed:count,active:true,sort_order:Math.max(0,...items.map(f=>f.sort_order||0))+1};
+     try{const {error}=await db.from('food_items').insert(record);if(error)throw error;e.target.reset();await reload();show('Food item added.','success');}
+     catch(error){show(R.safeError(error),'error');}finally{button.disabled=false;}
+   });
    $('addAdminForm').addEventListener('submit',async e=>{
      e.preventDefault();const button=e.target.querySelector('button');button.disabled=true;
      const {error}=await db.rpc('admin_add_existing_user',{p_email:$('newAdminEmail').value.trim(),p_name:$('newAdminName').value.trim()});

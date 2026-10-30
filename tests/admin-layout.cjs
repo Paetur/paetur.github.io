@@ -67,6 +67,7 @@ async function run(){
    const previewDir=path.join(root,'artifacts');fs.mkdirSync(previewDir,{recursive:true});
    await page.screenshot({path:path.join(previewDir,'admin-overview-light.png'),fullPage:true});
    await page.locator('#themeToggle').click();
+   await page.waitForTimeout(220);
    assert.equal(await page.locator('html').getAttribute('data-theme'),'dark','dark mode enabled');
    assert.equal(await page.evaluate(()=>localStorage.getItem('rsvp-admin-theme')),'dark','theme preference saved');
    await page.locator('#settingsToggle').click();
@@ -108,6 +109,7 @@ async function run(){
    assert.equal(await page.locator('.household-guest-row').count(),2,'guests remain visible after saving');
    await page.screenshot({path:path.join(root,'artifacts','admin-households-light.png'),fullPage:true});
    await page.locator('#themeToggle').click();
+   await page.waitForTimeout(220);
    await page.screenshot({path:path.join(root,'artifacts','admin-households-dark.png'),fullPage:true});
 
    await page.locator('[data-tab="food"]').click();

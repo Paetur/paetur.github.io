@@ -62,7 +62,7 @@
   }
   async function loadInvitation(inviteCode){
     const db=R.getClient();if(!db)return;
-    status('');const {data,error}=await db.rpc('get_invitation_v2',{p_code:inviteCode});
+    status('');const {data,error}=await R.guestRpc('get_invitation_v2',{p_code:inviteCode});
     if(error){status(R.safeError(error),'error');return;}
     if(!data){status(t('missing'),'warning');return;}
     code=inviteCode;invitation=data;pendingRequestId=null;
@@ -83,7 +83,7 @@
     if(!responses.length)return;
     if(!pendingRequestId)pendingRequestId=crypto.randomUUID();
     $('saveRsvp').disabled=true;status('');
-    const {error}=await R.getClient().rpc('submit_household_rsvp',{p_code:code,p_request_id:pendingRequestId,p_responses:responses});
+    const {error}=await R.guestRpc('submit_household_rsvp',{p_code:code,p_request_id:pendingRequestId,p_responses:responses});
     $('saveRsvp').disabled=false;
     if(error){status(R.safeError(error),'error');return;}
     status(t('thanks'),'success');pendingRequestId=null;await loadInvitation(code);
@@ -91,7 +91,7 @@
   async function loadFood(){
     const db=R.getClient();
     try{
-      const {data,error}=await db.rpc('get_household_food',{p_code:code});
+      const {data,error}=await R.guestRpc('get_household_food',{p_code:code});
       if(error||!data||!Array.isArray(data.items)){ $('foodCard').classList.add('hidden');return; }
       // The database must itself restrict food data to households with food access.
       foodState=data;$('foodCard').classList.remove('hidden');renderFood();
@@ -121,13 +121,13 @@
   async function saveFood(itemId,qty,button){
     const quantity=Number(qty.value);if(!Number.isInteger(quantity)||quantity<0||quantity>Number(qty.max)){status('Invalid quantity','warning');return;}
     button.disabled=true;
-    const {error}=await R.getClient().rpc('set_household_food_claim',{p_code:code,p_food_item_id:itemId,p_quantity:quantity,p_notes:null});
+    const {error}=await R.guestRpc('set_household_food_claim',{p_code:code,p_food_item_id:itemId,p_quantity:quantity,p_notes:null});
     if(error)status(R.safeError(error),'error');else {status(t('foodSaved'),'success');await loadFood();}
     button.disabled=false;
   }
   async function confirmFood(){if(!code||!window.confirm('Confirm food selections? This will lock further edits.'))return;
     $('confirmFood').disabled=true;
-    const {error}=await R.getClient().rpc('confirm_household_food',{p_code:code});
+    const {error}=await R.guestRpc('confirm_household_food',{p_code:code});
     $('confirmFood').disabled=false;if(error){status(R.safeError(error),'error');return;}
     await loadFood();status(t('foodDone'),'success');
   }

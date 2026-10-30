@@ -18,7 +18,6 @@ const server = http.createServer((req,res)=>{
     fs.createReadStream(filename).pipe(res);
   }catch(e){res.writeHead(500);res.end(String(e));}
 });
-const mockScript=String.raw?null:null;
 const mock = [
 "window.__fetchCount=0;",
 "const h1='11111111-1111-4111-8111-111111111111',h2='22222222-2222-4222-8222-222222222222',h3='33333333-3333-4333-8333-333333333333';",
@@ -48,7 +47,7 @@ async function run(){
  try {
    await page.goto(url,{waitUntil:'load'});
    await page.locator('#adminApp:not(.hidden)').waitFor({timeout:12000});
-   await page.locator('#householdRows .hierarchy-section').first().waitFor();
+   await page.locator('#householdRows .hierarchy-section').first().waitFor({state:'attached'});
    assert.equal(await page.locator('[data-tab]').count(),3,'only three main text tabs');
    assert.deepEqual(await page.locator('[data-tab]').evaluateAll(nodes=>nodes.map(n=>n.textContent.trim())),['Overview','Households','Food']);
    assert.deepEqual(await page.locator('.admin-heading-actions>button').evaluateAll(nodes=>nodes.map(n=>n.id)),['settingsToggle','editModeButton','refreshButton','logout'],'toolbar icon order');

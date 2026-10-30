@@ -596,3 +596,242 @@ INSERT INTO public.event_settings(id,event_name,event_type,default_language,time
 VALUES(1,'My event','other','en','UTC',false)
 ON CONFLICT(id) DO NOTHING;
 COMMIT;
+
+-- ---- Security / hierarchy update 009 ----
+-- RSVP Manager 009: authenticated-admin hierarchy and ordering controls.
+-- Idempotent, non-destructive. Leaves existing parent links and sort_order values unchanged.
+BEGIN;
+
+CREATE OR REPLACE FUNCTION public.admin_set_household_parent(p_household_id uuid, p_parent_id uuid)
+RETURNS void LANGUAGE plpgsql SECURITY DEFINER SET search_path = '' AS $$
+DECLARE v_side text; v_group uuid; v_old_parent uuid; v_parent_side text; v_parent_group uuid; v_next integer;
+BEGIN
+  IF auth.uid() IS NULL OR NOT public.is_admin() THEN RAISE EXCEPTION 'Administrator access required' USING ERRCODE='42501'; END IF;
+  PERFORM pg_catalog.pg_advisory_xact_lock(19421,7744);
+  SELECT side,relation_group_id,parent_id INTO v_side,v_group,v_old_parent
+    FROM public.households WHERE id=p_household_id FOR UPDATE;
+  IF NOT FOUND THEN RAISE EXCEPTION 'Household not found'; END IF;
+  IF p_parent_id IS NOT NULL THEN
+    IF p_parent_id=p_household_id THEN RAISE EXCEPTION 'A household cannot be its own parent'; END IF;
+    SELECT side,relation_group_id INTO v_parent_side,v_parent_group
+      FROM public.households WHERE id=p_parent_id;
+    IF NOT FOUND THEN RAISE EXCEPTION 'Parent household not found'; END IF;
+    IF v_side<>v_parent_side OR v_group IS DISTINCT FROM v_parent_group THEN
+      RAISE EXCEPTION 'Parent must belong to the same side and relation group';
+    END IF;
+  END IF;
+  IF v_old_parent IS NOT DISTINCT FROM p_parent_id THEN RETURN; END IF;
+  SELECT coalesce(max(sort_order),0)+1 INTO v_next FROM public.households
+    WHERE side=v_side AND relation_group_id IS NOT DISTINCT FROM v_group AND parent_id IS NOT DISTINCT FROM p_parent_id;
+  -- The existing guard_household_parent trigger prevents any ancestor cycle.
+  UPDATE public.households SET parent_id=p_parent_id,sort_order=v_next,updated_at=now() WHERE id=p_household_id;
+END $$;
+
+CREATE OR REPLACE FUNCTION public.admin_move_household(p_household_id uuid,p_direction integer)
+RETURNS void LANGUAGE plpgsql SECURITY DEFINER SET search_path = '' AS $$
+DECLARE v_side text;v_group uuid;v_parent uuid;v_order uuid[];v_position integer;v_target integer;v_tmp uuid;
+BEGIN
+  IF auth.uid() IS NULL OR NOT public.is_admin() THEN RAISE EXCEPTION 'Administrator access required' USING ERRCODE='42501'; END IF;
+  IF p_direction NOT IN (-1,1) THEN RAISE EXCEPTION 'Direction must be -1 or 1'; END IF;
+  PERFORM pg_catalog.pg_advisory_xact_lock(19421,7744);
+  SELECT side,relation_group_id,parent_id INTO v_side,v_group,v_parent FROM public.households WHERE id=p_household_id;
+  IF NOT FOUND THEN RAISE EXCEPTION 'Household not found'; END IF;
+  SELECT array_agg(id ORDER BY sort_order,lower(household_name),id) INTO v_order
+  FROM public.households WHERE side=v_side AND relation_group_id IS NOT DISTINCT FROM v_group AND parent_id IS NOT DISTINCT FROM v_parent;
+  v_position:=array_position(v_order,p_household_id);v_target:=v_position+p_direction;
+  IF v_target<1 OR v_target>array_length(v_order,1) THEN RETURN; END IF;
+  v_tmp:=v_order[v_position];v_order[v_position]:=v_order[v_target];v_order[v_target]:=v_tmp;
+  UPDATE public.households h SET sort_order=ordered.ordinality::integer,updated_at=now()
+    FROM unnest(v_order) WITH ORDINALITY AS ordered(id,ordinality) WHERE h.id=ordered.id;
+END $$;
+
+CREATE OR REPLACE FUNCTION public.admin_move_food_category(p_category_id uuid,p_direction integer)
+RETURNS void LANGUAGE plpgsql SECURITY DEFINER SET search_path = '' AS $$
+DECLARE v_order uuid[];v_position integer;v_target integer;v_tmp uuid;
+BEGIN
+  IF auth.uid() IS NULL OR NOT public.is_admin() THEN RAISE EXCEPTION 'Administrator access required' USING ERRCODE='42501'; END IF;
+  IF p_direction NOT IN (-1,1) THEN RAISE EXCEPTION 'Direction must be -1 or 1'; END IF;
+  PERFORM pg_catalog.pg_advisory_xact_lock(19421,7745);
+  SELECT array_agg(id ORDER BY sort_order,lower(name),id) INTO v_order FROM public.food_categories;
+  v_position:=array_position(v_order,p_category_id);
+  IF v_position IS NULL THEN RAISE EXCEPTION 'Category not found'; END IF;
+  v_target:=v_position+p_direction;
+  IF v_target<1 OR v_target>array_length(v_order,1) THEN RETURN; END IF;
+  v_tmp:=v_order[v_position];v_order[v_position]:=v_order[v_target];v_order[v_target]:=v_tmp;
+  UPDATE public.food_categories c SET sort_order=ordered.ordinality::integer
+    FROM unnest(v_order) WITH ORDINALITY AS ordered(id,ordinality) WHERE c.id=ordered.id;
+END $$;
+
+CREATE OR REPLACE FUNCTION public.admin_move_food_item(p_food_item_id uuid,p_direction integer)
+RETURNS void LANGUAGE plpgsql SECURITY DEFINER SET search_path = '' AS $$
+DECLARE v_category text;v_order uuid[];v_position integer;v_target integer;v_tmp uuid;
+BEGIN
+  IF auth.uid() IS NULL OR NOT public.is_admin() THEN RAISE EXCEPTION 'Administrator access required' USING ERRCODE='42501'; END IF;
+  IF p_direction NOT IN (-1,1) THEN RAISE EXCEPTION 'Direction must be -1 or 1'; END IF;
+  PERFORM pg_catalog.pg_advisory_xact_lock(19421,7745);
+  SELECT category INTO v_category FROM public.food_items WHERE id=p_food_item_id;
+  IF NOT FOUND THEN RAISE EXCEPTION 'Food item not found'; END IF;
+  SELECT array_agg(id ORDER BY sort_order,lower(name_fo),id) INTO v_order
+    FROM public.food_items WHERE category IS NOT DISTINCT FROM v_category;
+  v_position:=array_position(v_order,p_food_item_id);v_target:=v_position+p_direction;
+  IF v_target<1 OR v_target>array_length(v_order,1) THEN RETURN; END IF;
+  v_tmp:=v_order[v_position];v_order[v_position]:=v_order[v_target];v_order[v_target]:=v_tmp;
+  UPDATE public.food_items f SET sort_order=ordered.ordinality::integer,updated_at=now()
+    FROM unnest(v_order) WITH ORDINALITY AS ordered(id,ordinality) WHERE f.id=ordered.id;
+END $$;
+
+CREATE OR REPLACE FUNCTION public.admin_set_food_category(p_food_item_id uuid,p_category text)
+RETURNS void LANGUAGE plpgsql SECURITY DEFINER SET search_path = '' AS $$
+DECLARE v_old_category text;v_new_category text;v_next integer;
+BEGIN
+  IF auth.uid() IS NULL OR NOT public.is_admin() THEN RAISE EXCEPTION 'Administrator access required' USING ERRCODE='42501'; END IF;
+  v_new_category:=btrim(coalesce(p_category,''));
+  IF length(v_new_category)>120 THEN RAISE EXCEPTION 'Category is too long'; END IF;
+  PERFORM pg_catalog.pg_advisory_xact_lock(19421,7745);
+  SELECT category INTO v_old_category FROM public.food_items WHERE id=p_food_item_id FOR UPDATE;
+  IF NOT FOUND THEN RAISE EXCEPTION 'Food item not found'; END IF;
+  IF v_new_category<>'' AND NOT EXISTS(SELECT 1 FROM public.food_categories WHERE name=v_new_category) THEN
+    RAISE EXCEPTION 'Create the food category before assigning it';
+  END IF;
+  IF v_old_category IS NOT DISTINCT FROM nullif(v_new_category,'') THEN RETURN; END IF;
+  SELECT coalesce(max(sort_order),0)+1 INTO v_next FROM public.food_items WHERE category IS NOT DISTINCT FROM nullif(v_new_category,'');
+  UPDATE public.food_items SET category=nullif(v_new_category,''),sort_order=v_next,updated_at=now() WHERE id=p_food_item_id;
+END $$;
+
+CREATE OR REPLACE FUNCTION public.admin_rename_food_category(p_category_id uuid,p_name text)
+RETURNS void LANGUAGE plpgsql SECURITY DEFINER SET search_path = '' AS $$
+DECLARE v_old text;v_new text;
+BEGIN
+  IF auth.uid() IS NULL OR NOT public.is_admin() THEN RAISE EXCEPTION 'Administrator access required' USING ERRCODE='42501'; END IF;
+  v_new:=btrim(coalesce(p_name,''));
+  IF length(v_new)=0 OR length(v_new)>120 THEN RAISE EXCEPTION 'Enter a valid category name'; END IF;
+  PERFORM pg_catalog.pg_advisory_xact_lock(19421,7745);
+  SELECT name INTO v_old FROM public.food_categories WHERE id=p_category_id FOR UPDATE;
+  IF NOT FOUND THEN RAISE EXCEPTION 'Category not found'; END IF;
+  IF v_old=v_new THEN RETURN; END IF;
+  IF EXISTS(SELECT 1 FROM public.food_categories WHERE name=v_new) THEN RAISE EXCEPTION 'Category already exists'; END IF;
+  UPDATE public.food_categories SET name=v_new WHERE id=p_category_id;
+  UPDATE public.food_items SET category=v_new,updated_at=now() WHERE category=v_old;
+END $$;
+
+REVOKE ALL ON FUNCTION public.admin_set_household_parent(uuid,uuid) FROM PUBLIC,anon,authenticated;
+REVOKE ALL ON FUNCTION public.admin_move_household(uuid,integer) FROM PUBLIC,anon,authenticated;
+REVOKE ALL ON FUNCTION public.admin_move_food_category(uuid,integer) FROM PUBLIC,anon,authenticated;
+REVOKE ALL ON FUNCTION public.admin_move_food_item(uuid,integer) FROM PUBLIC,anon,authenticated;
+REVOKE ALL ON FUNCTION public.admin_set_food_category(uuid,text) FROM PUBLIC,anon,authenticated;
+REVOKE ALL ON FUNCTION public.admin_rename_food_category(uuid,text) FROM PUBLIC,anon,authenticated;
+GRANT EXECUTE ON FUNCTION public.admin_set_household_parent(uuid,uuid) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.admin_move_household(uuid,integer) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.admin_move_food_category(uuid,integer) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.admin_move_food_item(uuid,integer) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.admin_set_food_category(uuid,text) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.admin_rename_food_category(uuid,text) TO authenticated;
+COMMIT;
+
+-- ---- Security / hierarchy update 010 ----
+-- RSVP Manager 010: order guest food by admin category and item sort order.
+-- Safe on populated projects: no guest, food, or claim data is rewritten.
+BEGIN;
+CREATE OR REPLACE FUNCTION public.get_household_food(p_code text)
+RETURNS jsonb LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path = '' AS $$
+DECLARE v_household uuid; v_result jsonb;
+BEGIN
+ SELECT h.id INTO v_household FROM public.households h
+ WHERE h.invite_code=p_code AND h.food=true
+   AND EXISTS(SELECT 1 FROM public.event_settings e WHERE e.id=1 AND e.is_published);
+ IF NOT FOUND THEN RETURN NULL; END IF;
+ SELECT jsonb_build_object(
+ 'confirmed',(SELECT food_confirmed FROM public.households WHERE id=v_household),
+ 'items',coalesce((SELECT jsonb_agg(jsonb_build_object('id',f.id,'category',f.category,
+   'name_fo',f.name_fo,'name_en',f.name_en,'name_de',f.name_de,
+   'description_fo',f.description_fo,'description_en',f.description_en,'description_de',f.description_de,
+   'quantity_needed',f.quantity_needed,
+   'claimed_total',coalesce((SELECT sum(c.quantity) FROM public.food_claims c WHERE c.food_item_id=f.id),0))
+   ORDER BY coalesce(fc.sort_order,2147483647),lower(coalesce(f.category,'')),f.sort_order,lower(f.name_fo),f.id)
+   FROM public.food_items f LEFT JOIN public.food_categories fc ON fc.name=f.category WHERE f.active),'[]'::jsonb),
+ 'claims',coalesce((SELECT jsonb_agg(jsonb_build_object('food_item_id',c.food_item_id,'quantity',c.quantity,'notes',c.notes))
+   FROM public.food_claims c WHERE c.household_id=v_household),'[]'::jsonb)
+ ) INTO v_result;
+ RETURN v_result;
+END $$;
+REVOKE ALL ON FUNCTION public.get_household_food(text) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.get_household_food(text) TO anon,authenticated;
+COMMIT;
+
+-- ---- Security / hierarchy update 011 ----
+-- Migration 011: public invitation, RSVP and food functions require event publication.
+-- Deployed in the existing wedding project and tested with anonymous role.
+-- Keep per-code rate limiting as a separate edge/API requirement.
+BEGIN;
+CREATE OR REPLACE FUNCTION public.confirm_household_food(p_code text)
+ RETURNS void
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO ''
+AS $function$
+DECLARE v_id uuid;
+BEGIN IF NOT EXISTS(SELECT 1 FROM public.event_settings WHERE id=1 AND is_published=true) THEN RAISE EXCEPTION 'Event is not published' USING ERRCODE='42501'; END IF; 
+ SELECT id INTO v_id FROM public.households WHERE invite_code=p_code AND food=true FOR UPDATE;
+ IF NOT FOUND THEN RAISE EXCEPTION 'Invalid food invitation'; END IF;
+ UPDATE public.households SET food_confirmed=true,food_confirmed_at=coalesce(food_confirmed_at,now()) WHERE id=v_id AND NOT food_confirmed;
+END $function$;
+CREATE OR REPLACE FUNCTION public.get_invitation_v2(p_code text)
+ RETURNS jsonb
+ LANGUAGE plpgsql
+ STABLE SECURITY DEFINER
+ SET search_path TO ''
+AS $function$ DECLARE h public.households%ROWTYPE; BEGIN IF NOT EXISTS(SELECT 1 FROM public.event_settings WHERE id=1 AND is_published=true) THEN RETURN NULL; END IF;  IF p_code IS NULL OR p_code !~ '^[A-HJ-NP-Z2-9]{8}$' THEN RETURN NULL; END IF; SELECT * INTO h FROM public.households WHERE invite_code=p_code; IF NOT FOUND THEN RETURN NULL; END IF; RETURN jsonb_build_object('household',jsonb_build_object('id',h.id,'name',h.household_name,'language',h.language,'rsvp_state',h.rsvp_state,'food_confirmed',h.food_confirmed),'guests',coalesce((SELECT jsonb_agg(jsonb_build_object('id',g.id,'first_name',g.first_name,'last_name',g.last_name,'language',g.language,'is_child',g.is_child,'courtesy_title',g.courtesy_title) ORDER BY g.created_at) FROM public.guests g WHERE g.household_id=h.id),'[]'::jsonb),'invitations',coalesce((SELECT jsonb_agg(jsonb_build_object('guest_id',v.guest_id,'session_id',v.session_id,'requires_rsvp',v.requires_rsvp,'response',r.rsvp_status)) FROM public.effective_session_invitations v LEFT JOIN public.guest_session_responses r ON r.guest_id=v.guest_id AND r.session_id=v.session_id WHERE v.household_id=h.id),'[]'::jsonb)); END $function$;
+CREATE OR REPLACE FUNCTION public.set_household_food_claim(p_code text, p_food_item_id uuid, p_quantity integer, p_notes text DEFAULT NULL::text)
+ RETURNS void
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO ''
+AS $function$
+DECLARE v_household public.households%ROWTYPE;v_needed integer;v_active boolean;v_total integer;v_old integer;
+BEGIN IF NOT EXISTS(SELECT 1 FROM public.event_settings WHERE id=1 AND is_published=true) THEN RAISE EXCEPTION 'Event is not published' USING ERRCODE='42501'; END IF; 
+ IF p_quantity IS NULL OR p_quantity<0 THEN RAISE EXCEPTION 'Invalid quantity'; END IF;
+ SELECT * INTO v_household FROM public.households WHERE invite_code=p_code FOR UPDATE;
+ IF NOT FOUND OR NOT v_household.food OR v_household.food_confirmed THEN RAISE EXCEPTION 'Food claims unavailable'; END IF;
+ SELECT quantity_needed,active INTO v_needed,v_active FROM public.food_items WHERE id=p_food_item_id FOR UPDATE;
+ IF NOT FOUND OR NOT v_active THEN RAISE EXCEPTION 'Food item unavailable'; END IF;
+ SELECT coalesce(sum(quantity),0) INTO v_total FROM public.food_claims WHERE food_item_id=p_food_item_id;
+ SELECT coalesce(quantity,0) INTO v_old FROM public.food_claims WHERE household_id=v_household.id AND food_item_id=p_food_item_id;
+ IF v_total-coalesce(v_old,0)+p_quantity>v_needed THEN RAISE EXCEPTION 'Insufficient remaining quantity'; END IF;
+ IF p_quantity=0 THEN DELETE FROM public.food_claims WHERE household_id=v_household.id AND food_item_id=p_food_item_id;
+ ELSE INSERT INTO public.food_claims(household_id,food_item_id,quantity,notes) VALUES(v_household.id,p_food_item_id,p_quantity,p_notes)
+ ON CONFLICT(food_item_id,household_id) DO UPDATE SET quantity=excluded.quantity,notes=excluded.notes;
+ END IF;
+END $function$;
+CREATE OR REPLACE FUNCTION public.submit_household_rsvp(p_code text, p_request_id uuid, p_responses jsonb)
+ RETURNS jsonb
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO ''
+AS $function$
+DECLARE h public.households%ROWTYPE;d public.event_settings%ROWTYPE;v_expected integer;v_actual integer;v_id uuid;v_number integer;v_snapshot jsonb;
+BEGIN IF NOT EXISTS(SELECT 1 FROM public.event_settings WHERE id=1 AND is_published=true) THEN RAISE EXCEPTION 'Event is not published' USING ERRCODE='42501'; END IF; 
+IF p_code IS NULL OR p_code !~ '^[A-HJ-NP-Z2-9]{8}$' OR p_request_id IS NULL OR jsonb_typeof(p_responses) IS DISTINCT FROM 'array' THEN RAISE EXCEPTION 'Invalid submission'; END IF;
+SELECT * INTO h FROM public.households WHERE invite_code=p_code FOR UPDATE;
+IF NOT FOUND THEN RAISE EXCEPTION 'Invalid invitation'; END IF;
+SELECT id INTO v_id FROM public.rsvp_submissions WHERE household_id=h.id AND request_id=p_request_id;
+IF FOUND THEN RETURN jsonb_build_object('submission_id',v_id,'already_processed',true); END IF;
+IF h.rsvp_state<>'open' THEN RAISE EXCEPTION 'RSVP is locked'; END IF;
+SELECT * INTO d FROM public.event_settings WHERE id=1;
+IF NOT FOUND THEN RAISE EXCEPTION 'Event not configured'; END IF;
+IF d.rsvp_deadline IS NOT NULL AND clock_timestamp()>d.rsvp_deadline AND (h.late_submission_until IS NULL OR clock_timestamp()>h.late_submission_until) THEN RAISE EXCEPTION 'RSVP deadline passed'; END IF;
+IF EXISTS(SELECT 1 FROM jsonb_array_elements(p_responses) x WHERE jsonb_typeof(x)<>'object' OR (x->>'guest_id') IS NULL OR (x->>'session_id') IS NULL OR (x->>'status') IS NULL OR x->>'status' NOT IN ('attending','declined')) THEN RAISE EXCEPTION 'Invalid response entry'; END IF;
+IF EXISTS(SELECT 1 FROM (SELECT (x->>'guest_id')::uuid guest_id,(x->>'session_id')::uuid session_id,count(*) n FROM jsonb_array_elements(p_responses) x GROUP BY 1,2 HAVING count(*)<>1) z) THEN RAISE EXCEPTION 'Duplicate response'; END IF;
+SELECT count(*) INTO v_expected FROM public.effective_session_invitations v WHERE v.household_id=h.id AND v.requires_rsvp;
+SELECT count(*) INTO v_actual FROM jsonb_array_elements(p_responses) x JOIN public.effective_session_invitations v ON v.guest_id=(x->>'guest_id')::uuid AND v.session_id=(x->>'session_id')::uuid WHERE v.household_id=h.id AND v.requires_rsvp;
+IF v_expected<>v_actual OR jsonb_array_length(p_responses)<>v_expected THEN RAISE EXCEPTION 'Incomplete or unauthorized responses'; END IF;
+SELECT coalesce(max(submission_number),0)+1 INTO v_number FROM public.rsvp_submissions WHERE household_id=h.id;
+SELECT coalesce(jsonb_agg(jsonb_build_object('guest_id',(x->>'guest_id')::uuid,'session_id',(x->>'session_id')::uuid,'status',x->>'status') ORDER BY x->>'guest_id',x->>'session_id'),'[]'::jsonb) INTO v_snapshot FROM jsonb_array_elements(p_responses) x;
+INSERT INTO public.rsvp_submissions(household_id,submission_number,request_id,submission_snapshot) VALUES(h.id,v_number,p_request_id,v_snapshot) RETURNING id INTO v_id;
+DELETE FROM public.guest_session_responses r USING public.guests g WHERE r.guest_id=g.id AND g.household_id=h.id;
+INSERT INTO public.guest_session_responses(guest_id,session_id,rsvp_status,last_submission_id) SELECT (x->>'guest_id')::uuid,(x->>'session_id')::uuid,x->>'status',v_id FROM jsonb_array_elements(p_responses) x;
+INSERT INTO public.rsvp_response_audit(household_id,guest_id,session_id,action,new_status) SELECT h.id,(x->>'guest_id')::uuid,(x->>'session_id')::uuid,'submission',x->>'status' FROM jsonb_array_elements(p_responses) x;
+UPDATE public.households SET rsvp_state='locked',rsvp_submitted_at=now(),latest_rsvp_submission_id=v_id,late_submission_until=NULL WHERE id=h.id;
+INSERT INTO public.rsvp_household_audit(household_id,action,submission_id) VALUES(h.id,'submitted',v_id);
+RETURN jsonb_build_object('submission_id',v_id,'submission_number',v_number,'already_processed',false);
+END $function$;
+COMMIT;

@@ -1,10 +1,39 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title></title>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="description" content="A private invitation and RSVP experience.">
+  <meta name="referrer" content="strict-origin-when-cross-origin">
+  <title>RSVP Manager | Invitation</title>
+  <link rel="stylesheet" href="css/app.css">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.10/dist/umd/supabase.min.js" defer></script>
+  <script src="js/config.js" defer></script>
+  <script src="js/core.js" data-app-core defer></script>
+  <script src="js/guest.js" defer></script>
 </head>
 <body>
+  <header class="topbar"><div class="site-width topbar-inner">
+    <a class="brand" href="./"><span class="brand-symbol">✳</span> <span>RSVP<span class="brand-soft"> Manager</span></span></a>
+    <div class="topbar-actions"><div id="languageSwitcher" class="language-switch" aria-label="Language"><button data-language="fo">FO</button><button data-language="en" class="selected">EN</button><button data-language="de">DE</button></div><a class="nav-link" href="admin/">Admin</a></div>
+  </div></header>
+  <main class="site-width guest-layout">
+    <section class="hero-panel">
+      <span class="eyebrow" id="eventType">EVENT INVITATION</span>
+      <h1 id="eventTitle">Your event,<br><em>beautifully arranged.</em></h1>
+      <p id="eventDate" class="hero-date"></p>
+      <p class="lede" id="welcomeMessage">A simple way to celebrate together.</p>
+      <div id="unpublishedMessage" class="notice warning hidden" role="status">This event is not published yet. Invitation access is not available.</div>
+      <p class="micro">Private invitations · Please do not share your invitation link.</p>
+    </section>
+    <div class="guest-main">
+      <div id="guestStatus" class="notice hidden" role="status"></div>
+      <section id="connectNotice" class="panel hidden"><span class="eyebrow">SETUP REQUIRED</span><h2>Connect your event</h2><p>This website has not been connected to Supabase yet.</p><a class="btn" href="setup.html">Open first-time setup</a></section>
+      <section id="codeCard" class="panel hidden"><span class="eyebrow">YOUR INVITATION</span><h2>Open your invitation</h2><p class="muted">Enter the eight-character invitation code or open the private link you received.</p><form id="codeForm" class="inline-form"><label class="sr-only" for="inviteCode">Invitation code</label><input id="inviteCode" maxlength="8" autocomplete="off" spellcheck="false" placeholder="Invitation code" required pattern="[A-HJ-NP-Z2-9]{8}"><button class="btn" type="submit">Open</button></form></section>
+      <section id="invitationCard" class="panel hidden"><span class="eyebrow">PERSONAL INVITATION</span><h2 id="householdName">Welcome</h2><p id="invitationDescription" class="muted">Please let us know who will attend.</p><form id="rsvpForm"><div id="rsvpRows" class="rsvp-rows"></div><div class="form-footer"><button id="saveRsvp" type="submit" class="btn">Submit RSVP</button><span id="rsvpHint" class="muted small"></span></div></form></section>
+      <section id="foodCard" class="panel hidden"><span class="eyebrow">FOOD COORDINATION</span><h2>What can you bring?</h2><p class="muted">Choose items only if you want to contribute. Quantities cannot exceed what is needed.</p><div id="foodList" class="food-list"></div><div class="form-footer"><button id="confirmFood" class="btn secondary hidden" type="button">Confirm my selections</button><span id="foodHint" class="muted small"></span></div></section>
+    </div>
+  </main>
+  <footer class="site-width footer"><span>RSVP Manager</span><span>Powered by your own Supabase project</span></footer>
 </body>
 </html>

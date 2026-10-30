@@ -35,10 +35,10 @@
 .admin-layout .hierarchy-section,.admin-layout .hierarchy-group,.admin-layout .food-category{margin-bottom:12px}
 .admin-layout .household-node,.admin-layout .food-manage-item{padding:9px 10px;border-radius:8px}
 .admin-layout .household-node-main,.admin-layout .food-manage-main{gap:10px}
-.admin-layout[data-mode="view"] .edit-only{display:none!important}
-.admin-layout[data-mode="view"] .food-edit-form{display:none!important}
-.admin-layout[data-mode="view"] #eventSettingsForm input,.admin-layout[data-mode="view"] #eventSettingsForm select,
-.admin-layout[data-mode="view"] #welcomeForm textarea{background:#f7faf8;color:var(--ink);opacity:1;cursor:default}
+#adminApp[data-mode="view"] .edit-only{display:none!important}
+#adminApp[data-mode="view"] .food-edit-form{display:none!important}
+#adminApp[data-mode="view"] #eventSettingsForm input,#adminApp[data-mode="view"] #eventSettingsForm select,
+#adminApp[data-mode="view"] #welcomeForm textarea{background:#f7faf8;color:var(--ink);opacity:1;cursor:default}
 .publication-panel{border-top:1px solid var(--line);margin-top:20px;padding-top:17px}
 .publication-panel .notice{margin-bottom:9px}
 .publish-ack{display:flex;align-items:flex-start;gap:9px;font-size:.82rem;margin:12px 0}

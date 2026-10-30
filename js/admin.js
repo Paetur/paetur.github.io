@@ -45,8 +45,21 @@
      String(a[label]||'').toLowerCase().localeCompare(String(b[label]||'').toLowerCase())||a.id.localeCompare(b.id));
  }
  function iconAction(kind,title,onClick,disabled=false,extraClass=''){
-   const glyph={edit:'✎',delete:'▤',copy:'⧉',rename:'✎',add:'＋',up:'↑',down:'↓',close:'×'}[kind]||'•';
+   const glyph={up:'↑',down:'↓'}[kind]||'';
    const button=R.dom('button',{class:'admin-row-icon '+extraClass,type:'button',title},glyph);
+   const drawings={
+     edit:['m16 5 3 3','M4 20l4-1 12-12a2.1 2.1 0 0 0-3-3L5 16l-1 4Z'],
+     delete:['M3 6h18','M8 6V4h8v2','M5 6l1 14h12l1-14','M10 10v6','M14 10v6'],
+     copy:['M8 3h11a2 2 0 0 1 2 2v11','M16 8H5a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h11a2 2 0 0 0 2-2v-9a2 2 0 0 0-2-2Z'],
+     add:['M12 5v14','M5 12h14']
+   };
+   const key=kind==='rename'?'edit':kind;
+   if(drawings[key]){
+     const ns='http://www.w3.org/2000/svg',svg=document.createElementNS(ns,'svg');
+     svg.setAttribute('viewBox','0 0 24 24');svg.setAttribute('aria-hidden','true');
+     for(const d of drawings[key]){const path=document.createElementNS(ns,'path');path.setAttribute('d',d);svg.append(path);}
+     button.append(svg);
+   }
    button.setAttribute('aria-label',title);
    button.disabled=!!disabled;
    if(onClick)button.addEventListener('click',async event=>{

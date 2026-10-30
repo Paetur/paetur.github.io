@@ -2,7 +2,7 @@
  'use strict';
  const R=window.RSVP,$=R.byId;
  let db=null,user=null,store={settings:null,sessions:[],locations:[],households:[],guests:[],food:[],claims:[],submissions:[],defaults:[],content:[],admins:[],relationGroups:[],foodCategories:[]};
- let activeTab='dashboard';
+ let activeTab='dashboard',activeSettingsTab='event';
  const qs=(s)=>document.querySelector(s);
  const show=(msg,type='info')=>R.showStatus('adminMessage',msg,type);
  const fmt=(value)=>value?new Intl.DateTimeFormat('en-GB',{dateStyle:'medium'}).format(new Date(value)):'—';
@@ -11,7 +11,8 @@
  function makeTable(headers,values){const table=R.dom('table',{class:'data-table'});const thead=row(table,'thead'),tr=row(thead,'tr');headers.forEach(h=>row(tr,'th',{},h));const tbody=row(table,'tbody');values.forEach(cols=>{const tr=row(tbody,'tr');cols.forEach(v=>{const td=row(tr,'td');if(v instanceof Node)td.append(v);else td.textContent=String(v??'');});});return table;}
  function stat(label,value){const div=R.dom('div',{class:'stat-card'});div.append(R.dom('b',{},value),R.dom('span',{},label));return div;}
  function sessionName(id){return store.sessions.find(s=>s.id===id)?.name||'Session';}
- function tab(name){activeTab=name;document.querySelectorAll('[data-tab]').forEach(b=>b.classList.toggle('active',b.dataset.tab===name));document.querySelectorAll('[data-panel]').forEach(n=>n.classList.toggle('hidden',n.dataset.panel!==name));}
+ function settingsTab(name){activeSettingsTab=name;document.querySelectorAll('[data-settings-tab]').forEach(b=>{const active=b.dataset.settingsTab===name;b.classList.toggle('active',active);b.setAttribute('aria-pressed',String(active));});document.querySelectorAll('[data-settings-panel]').forEach(n=>n.classList.toggle('hidden',n.dataset.settingsPanel!==name));}
+ function tab(name){activeTab=name;document.querySelectorAll('[data-tab]').forEach(b=>b.classList.toggle('active',b.dataset.tab===name));document.querySelectorAll('[data-panel]').forEach(n=>n.classList.toggle('hidden',n.dataset.panel!==name));if(name==='settings')settingsTab(activeSettingsTab);}
  async function fetchTable(name,columns='*',order){let q=db.from(name).select(columns);if(order)q=q.order(order);const {data,error}=await q;if(error)throw new Error(`${name}: ${R.safeError(error)}`);return data||[];}
  async function reload(){
    show('Loading event data…');
@@ -29,7 +30,10 @@
    $('adminEventTitle').textContent=store.settings?.event_name||'Event dashboard';
    const invitedCount=store.guests.length;
    $('statsGrid').replaceChildren(stat('Households',store.households.length),stat('Guests',invitedCount),stat('New RSVP submissions',store.submissions.length),stat('Food items',store.food.length));
-   const checks=[['Admin account connected',true],['Event name and date entered',!!(store.settings?.event_name&&store.settings?.event_date)],['At least one session created',store.sessions.some(s=>s.is_active)],['Invitations assigned',store.defaults.some(d=>d.is_invited)],['Website configuration committed',!!store.settings?.website_url],['Event published',!!store.settings?.is_published]];
+   const deployed=window.RSVP_CONFIG||{};
+   let websiteConfigured=false;
+   try{websiteConfigured=Boolean(deployed.supabaseUrl&&deployed.supabaseKey&&R.normalizeUrl(deployed.supabaseUrl)===R.normalizeUrl(R.config().supabaseUrl)&&R.validateKey(deployed.supabaseKey));}catch(_){websiteConfigured=false;}
+   const checks=[['Admin account connected',true],['Event name and date entered',!!(store.settings?.event_name&&store.settings?.event_date)],['At least one session created',store.sessions.some(s=>s.is_active)],['Invitations assigned',store.defaults.some(d=>d.is_invited)],['Website connection in deployed config.js',websiteConfigured],['Website address saved in event settings',!!store.settings?.website_url],['Event published',!!store.settings?.is_published]];
    $('launchChecklist').replaceChildren(...checks.map(([label,yes])=>{const li=R.dom('li');li.append(R.dom('span',{class:yes?'yes':'no'},yes?'✓':'○'),document.createTextNode(label));return li;}));
    renderHouseholds();renderFood();renderAdmins();renderSettings();renderSessions();renderContent();
  }
@@ -298,6 +302,7 @@
    });
    $('logout').addEventListener('click',async()=>{await db.auth.signOut();location.reload();});
    document.querySelectorAll('[data-tab]').forEach(b=>b.addEventListener('click',()=>tab(b.dataset.tab)));
+   document.querySelectorAll('[data-settings-tab]').forEach(b=>b.addEventListener('click',()=>{tab('settings');settingsTab(b.dataset.settingsTab);}));
    $('refreshButton').addEventListener('click',reload);$('householdSearch').addEventListener('input',renderHouseholds);
    $('foodSearch').addEventListener('input',renderFood);
    $('addCategoryForm').addEventListener('submit',async e=>{

@@ -143,7 +143,10 @@
       else if(error)throw error;else eventData=data;
     }catch(e){status(t('offline')+' '+R.safeError(e),'error');return;}
     if(!eventData){$('unpublishedMessage').textContent=t('notPublished');$('unpublishedMessage').classList.remove('hidden');return;}
-    renderEvent();$('codeCard').classList.remove('hidden');const rawCode=R.getInviteCode();if(rawCode){$('inviteCode').value=rawCode;await loadInvitation(rawCode);}
+    renderEvent();$('codeCard').classList.remove('hidden');const rawCode=R.getInviteCode();
+    // Remove invitation codes from the address bar and browser history.
+    if(window.location.search)history.replaceState(history.state,'',window.location.pathname+window.location.hash);
+    if(rawCode){$('inviteCode').value=rawCode;await loadInvitation(rawCode);}
   }
   document.addEventListener('DOMContentLoaded',()=>{init().catch(e=>status(R.safeError(e),'error'));});
 }());

@@ -110,6 +110,10 @@ async function run(){
    await page.screenshot({path:path.join(root,'artifacts','admin-households-light.png'),fullPage:true});
    await page.locator('#themeToggle').click();
    await page.waitForTimeout(220);
+   const actionBackground=await page.locator('.household-guest-row .admin-row-icon').first().evaluate(el=>getComputedStyle(el).backgroundColor);
+   const toolBackground=await page.locator('#expandHouseholds').evaluate(el=>getComputedStyle(el).backgroundColor);
+   assert.notEqual(actionBackground,'rgb(255, 255, 255)','guest action icons must not have light backgrounds in dark mode');
+   assert.notEqual(toolBackground,'rgb(255, 255, 255)','household controls must not have light backgrounds in dark mode');
    await page.screenshot({path:path.join(root,'artifacts','admin-households-dark.png'),fullPage:true});
 
    await page.locator('[data-tab="food"]').click();

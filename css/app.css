@@ -193,3 +193,162 @@
  #adminApp .admin-row-icon{width:26px;height:26px;min-width:26px}
  #adminApp .tree-count{font-size:.6rem}
 }
+
+/* Expanded household guest list, restored after the compact tree redesign. */
+#adminApp .household-expanded{margin:3px 0 9px 11px;padding:1px 0 1px 12px;border-left:1px solid var(--line)}
+#adminApp .guest-list-heading{color:var(--muted);font-size:.67rem;letter-spacing:.045em;text-transform:uppercase;font-weight:800;margin:9px 0 5px}
+#adminApp .household-guest-list{display:grid;gap:5px;margin-bottom:10px}
+#adminApp .household-guest-entry{background:#fff;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+#adminApp .household-guest-row{min-height:41px;display:flex;justify-content:space-between;align-items:center;gap:9px;padding:7px 10px}
+#adminApp .household-guest-info{display:flex;align-items:baseline;flex-wrap:wrap;column-gap:10px;row-gap:2px;min-width:0}
+#adminApp .household-guest-info strong{font-size:.78rem;line-height:1.35}
+#adminApp .household-guest-info small{font-size:.67rem}
+#adminApp .household-guest-row .admin-row-icon{flex:none}
+#adminApp .guest-edit-form{margin:0 10px 10px;padding:12px;border:1px solid var(--line);border-radius:9px;background:#f7faf7}
+#adminApp .guest-edit-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+#adminApp .guest-edit-field{display:grid;gap:4px;min-width:0;font-size:.72rem;font-weight:700}
+#adminApp .guest-edit-field input,#adminApp .guest-edit-field select,#adminApp .guest-edit-field textarea{min-width:0;min-height:36px;padding:7px 9px;font-size:.78rem}
+#adminApp .guest-edit-field textarea{min-height:64px;resize:vertical}
+#adminApp .guest-child-field{display:flex;align-items:center;gap:8px;font-size:.75rem;font-weight:700;align-self:end;min-height:36px}
+#adminApp .guest-child-field input{width:auto;min-height:0}
+#adminApp .guest-edit-actions{display:flex;justify-content:flex-end;gap:9px;margin-top:10px}
+#adminApp .guest-edit-actions button{min-height:35px;padding:7px 13px;font-size:.76rem}
+@media(max-width:600px){
+ #adminApp .household-expanded{margin-left:4px;padding-left:7px}
+ #adminApp .guest-edit-fields{grid-template-columns:1fr}
+ #adminApp .household-guest-info{display:block}
+ #adminApp .household-guest-info strong,#adminApp .household-guest-info small{display:block}
+}
+
+/* Unified top navigation and a full, navigable Settings page. */
+.topbar .admin-topbar-actions{display:flex;align-items:center;gap:9px;min-width:0}
+.topbar .admin-top-actions{display:flex;align-items:center;gap:6px;min-width:0}
+.topbar .admin-top-actions.hidden{display:none!important}
+.topbar .admin-icon-btn{
+  display:inline-flex;align-items:center;justify-content:center;flex:0 0 36px;
+  height:36px;width:36px;padding:7px;border:1px solid var(--line);
+  border-radius:9px;background:var(--white);color:var(--ink);
+  text-decoration:none;transition:background .15s ease,color .15s ease,border-color .15s ease
+}
+.topbar .admin-icon-btn:hover{background:var(--light);border-color:var(--teal)}
+.topbar .admin-icon-btn.active,.topbar .admin-icon-btn[aria-pressed="true"]{background:var(--teal);border-color:var(--teal);color:#fff}
+.topbar .admin-icon-btn svg{width:19px;height:19px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linejoin:round;stroke-linecap:round}
+.topbar .admin-icon-btn:disabled{opacity:.55;cursor:wait}
+.topbar .admin-icon-btn:focus-visible,.settings-back:focus-visible{outline:2px solid var(--teal);outline-offset:2px}
+.topbar .admin-icon-btn.is-refreshing svg{animation:admin-refresh-spin .8s linear infinite}
+.topbar .admin-icon-btn .theme-sun{display:none}
+html[data-theme="dark"] .topbar .admin-icon-btn .theme-sun{display:block}
+html[data-theme="dark"] .topbar .admin-icon-btn .theme-moon{display:none}
+.topbar .admin-identity{max-width:155px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#adminApp.showing-settings .admin-main-tabs{display:none}
+#adminApp .settings-page{max-width:100%;padding:0;margin-bottom:16px;gap:12px}
+#adminApp .settings-page-heading{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:11px 0 6px}
+#adminApp .settings-page-heading h2{font-family:'Playfair Display',Georgia,serif;font-size:clamp(1.8rem,3.5vw,2.4rem);font-weight:500;margin:4px 0}
+#adminApp .settings-page-heading .muted{margin:0}
+#adminApp .settings-back{display:inline-flex;align-items:center;gap:6px;background:var(--white);color:var(--ink);border:1px solid var(--line);padding:8px 12px;border-radius:9px;font-size:.83rem;font-weight:650}
+#adminApp .settings-back:hover{background:var(--light)}
+#adminApp .settings-back svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+#adminApp .settings-page .settings-tabs{margin:3px 0 10px;border-bottom:1px solid var(--line)}
+#adminApp .settings-page .settings-subsection{display:grid;gap:15px}
+#adminApp .settings-page .settings-subsection.hidden{display:none!important}
+#adminApp .settings-page .panel{max-width:100%;background:var(--white)}
+#adminApp .settings-page .settings-management{background:var(--white)}
+@media(max-width:700px){
+  .topbar .admin-topbar-actions{gap:6px}
+  .topbar .admin-top-actions{gap:4px}
+  .topbar .admin-identity{display:none}
+}
+@media(max-width:430px){
+  .topbar-inner{min-height:61px;gap:7px;padding:0 10px}
+  .topbar .brand{font-size:.93rem;gap:6px}
+  .topbar .brand-symbol{width:28px;height:28px;font-size:18px;border-radius:8px}
+  .topbar .brand-soft{display:none}
+  .topbar .admin-icon-btn{width:30px;height:30px;flex-basis:30px;padding:5px;border-radius:7px}
+  .topbar .admin-icon-btn svg{width:17px;height:17px}
+  .topbar .admin-top-actions{gap:3px}
+  #adminApp .settings-page-heading h2{font-size:1.6rem}
+}
+/* Dark mode is restricted to the admin document, activated by its persistent theme control. */
+html[data-theme="dark"]{
+  color-scheme:dark;
+  --paper:#101a18;--white:#1b2925;--ink:#ecf3ef;--muted:#a9bfb6;
+  --line:#344b41;--teal:#3b9377;--teal-dark:#6fc4a6;
+  --light:#253b32;--warning:#3c301f;--danger:#ff9b94;--success:#1e4430;
+  --shadow:0 14px 45px rgba(0,0,0,.26)
+}
+html[data-theme="dark"] body{background:var(--paper);color:var(--ink)}
+html[data-theme="dark"] .topbar{background:#17251f;border-color:var(--line)}
+html[data-theme="dark"] .brand{color:var(--ink)}
+html[data-theme="dark"] .brand-soft{color:var(--muted)}
+html[data-theme="dark"] .panel,
+html[data-theme="dark"] #adminApp .panel,
+html[data-theme="dark"] .stat-card,
+html[data-theme="dark"] #adminApp .settings-page .panel,
+html[data-theme="dark"] .login-panel{background:var(--white);border-color:var(--line);color:var(--ink)}
+html[data-theme="dark"] .muted,html[data-theme="dark"] .micro,html[data-theme="dark"] .small{color:var(--muted)}
+html[data-theme="dark"] input,html[data-theme="dark"] select,html[data-theme="dark"] textarea{
+ background:#13231e;color:var(--ink);border-color:var(--line);color-scheme:dark
+}
+html[data-theme="dark"] input::placeholder,html[data-theme="dark"] textarea::placeholder{color:#91a89d}
+html[data-theme="dark"] button:not(.btn),html[data-theme="dark"] .quiet-link{color:inherit}
+html[data-theme="dark"] .btn.secondary,
+html[data-theme="dark"] .text-button,
+html[data-theme="dark"] .small-tool,
+html[data-theme="dark"] .admin-row-icon,
+html[data-theme="dark"] #adminApp .settings-back{background:#23352e;color:var(--ink);border-color:var(--line)}
+html[data-theme="dark"] #adminApp .admin-main-tabs{border-color:var(--line)}
+html[data-theme="dark"] #adminApp .admin-main-tabs button{color:#a2b9ac}
+html[data-theme="dark"] #adminApp .admin-main-tabs button.active{color:#8bdfba}
+html[data-theme="dark"] #adminApp .admin-main-tabs button.active::after{background:#8bdfba}
+html[data-theme="dark"] #adminApp .tree-side{background:#24443a;color:var(--ink)}
+html[data-theme="dark"] #adminApp .tree-group,
+html[data-theme="dark"] #adminApp .food-category-heading{background:#2a4037;color:var(--ink)}
+html[data-theme="dark"] #adminApp .tree-side .tree-count,
+html[data-theme="dark"] #adminApp .tree-count{color:#c5d6cc}
+html[data-theme="dark"] #adminApp .household-node,
+html[data-theme="dark"] #adminApp .household-guest-entry,
+html[data-theme="dark"] #adminApp .food-category,
+html[data-theme="dark"] #adminApp .food-manage-item,
+html[data-theme="dark"] #adminApp .admin-management,
+html[data-theme="dark"] #adminApp .guest-edit-form,
+html[data-theme="dark"] #adminApp .food-edit-form,
+html[data-theme="dark"] #adminApp .household-inline-editor{
+ background:#1d2d27;color:var(--ink);border-color:var(--line)
+}
+html[data-theme="dark"] #adminApp .household-tree-node[open]>.household-node{border-color:#4e7765}
+html[data-theme="dark"] #adminApp .household-guest-row{background:transparent}
+html[data-theme="dark"] #adminApp .settings-tabs{border-color:var(--line)}
+html[data-theme="dark"] #adminApp .settings-tabs button{background:#22362d;color:var(--ink);border-color:var(--line)}
+html[data-theme="dark"] #adminApp .settings-tabs button.active{background:var(--teal);color:white}
+html[data-theme="dark"] #adminApp .admin-management>summary{color:var(--ink)}
+html[data-theme="dark"] #adminApp .check-list li,
+html[data-theme="dark"] .admin-member,
+html[data-theme="dark"] #adminApp .food-manage-item{border-color:var(--line)}
+html[data-theme="dark"] .notice{background:#263f32;color:var(--ink);border-color:var(--line)}
+html[data-theme="dark"] .notice.warning{background:#3b3320}
+html[data-theme="dark"] .notice.error{background:#4a2928}
+html[data-theme="dark"] .notice.success{background:#1e4430}
+html[data-theme="dark"] #adminApp[data-mode="view"] #eventSettingsForm input,
+html[data-theme="dark"] #adminApp[data-mode="view"] #eventSettingsForm select,
+html[data-theme="dark"] #adminApp[data-mode="view"] #welcomeForm textarea{
+ background:#23352e;color:var(--ink);opacity:1
+}
+html[data-theme="dark"] .tag{background:#293e34;color:#cae5d7}
+html[data-theme="dark"] .eyebrow{color:#8cd5b2}
+
+/* Native summary marker must not duplicate the custom household disclosure chevron. */
+#adminApp .household-tree-node>summary.household-node{list-style:none;display:block}
+#adminApp .household-tree-node>summary.household-node::-webkit-details-marker{display:none}
+#adminApp .household-tree-node>summary.household-node::marker{content:''}
+
+/* Admin-specific dark controls override the original ID-scoped light button styles. */
+html[data-theme="dark"] #adminApp .admin-row-icon,
+html[data-theme="dark"] #adminApp .small-tool,
+html[data-theme="dark"] #adminApp .tool-btn,
+html[data-theme="dark"] #adminApp .text-button{
+ background:#253c32;color:#e3f2e8;border-color:#486357
+}
+html[data-theme="dark"] #adminApp .admin-row-icon:disabled{background:#24312b;color:#aebcb0;opacity:.5}
+html[data-theme="dark"] #adminApp .admin-row-icon.danger{color:#ff9b94}
+html[data-theme="dark"] #adminApp .admin-row-icon:hover:not(:disabled),
+html[data-theme="dark"] #adminApp .small-tool:hover{background:#345043;border-color:#5d947a}

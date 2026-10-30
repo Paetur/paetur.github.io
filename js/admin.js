@@ -2,7 +2,7 @@
  'use strict';
  const R=window.RSVP,$=R.byId;
  let db=null,user=null,store={settings:null,sessions:[],locations:[],households:[],guests:[],food:[],claims:[],submissions:[],defaults:[],content:[],admins:[],relationGroups:[],foodCategories:[]};
- let activeTab='dashboard',activeSettingsTab='event',editMode=false;
+ let activeTab='dashboard',lastMainTab='dashboard',activeSettingsTab='event',editMode=false;
  const expandedGroups=new Map();
  const qs=(s)=>document.querySelector(s);
  const show=(msg,type='info')=>R.showStatus('adminMessage',msg,type);
@@ -13,8 +13,35 @@
  function stat(label,value){const div=R.dom('div',{class:'stat-card'});div.append(R.dom('b',{},value),R.dom('span',{},label));return div;}
  function sessionName(id){return store.sessions.find(s=>s.id===id)?.name||'Session';}
  function settingsTab(name){activeSettingsTab=name;document.querySelectorAll('[data-settings-tab]').forEach(b=>{const active=b.dataset.settingsTab===name;b.classList.toggle('active',active);b.setAttribute('aria-pressed',String(active));});document.querySelectorAll('[data-settings-panel]').forEach(n=>n.classList.toggle('hidden',n.dataset.settingsPanel!==name));}
- function tab(name){activeTab=name;document.querySelectorAll('[data-tab]').forEach(b=>{const active=b.dataset.tab===name;b.classList.toggle('active',active);b.setAttribute('aria-selected',String(active));});document.querySelectorAll('[data-panel]').forEach(n=>n.classList.toggle('hidden',n.dataset.panel!==name));}
- function toggleSettings(force){const drawer=$('settingsDrawer');const open=force===undefined?drawer.classList.contains('hidden'):!!force;drawer.classList.toggle('hidden',!open);$('settingsToggle').setAttribute('aria-expanded',String(open));$('settingsToggle').classList.toggle('active',open);if(open)settingsTab(activeSettingsTab);}
+ function tab(name,updateUrl=true){
+   if(!['dashboard','households','food','settings'].includes(name))name='dashboard';
+   activeTab=name;if(name!=='settings')lastMainTab=name;
+   document.querySelectorAll('[data-tab]').forEach(b=>{
+     const active=b.dataset.tab===name;b.classList.toggle('active',active);
+     b.setAttribute('aria-selected',String(active));
+   });
+   document.querySelectorAll('[data-panel]').forEach(n=>n.classList.toggle('hidden',n.dataset.panel!==name));
+   $('adminApp').classList.toggle('showing-settings',name==='settings');
+   $('settingsToggle').classList.toggle('active',name==='settings');
+   $('settingsToggle').setAttribute('aria-pressed',String(name==='settings'));
+   if(name==='settings')settingsTab(activeSettingsTab);
+   if(updateUrl){
+     const hash=name==='dashboard'?'':'#'+name;
+     const next=location.pathname+location.search+hash;
+     if(location.pathname+location.search+location.hash!==next)history.pushState({adminSection:name},'',next);
+   }
+ }
+ function toggleSettings(){tab(activeTab==='settings'?lastMainTab:'settings');}
+ function setTheme(value,persist=true){
+   const dark=value==='dark';
+   document.documentElement.dataset.theme=dark?'dark':'light';
+   const button=$('themeToggle');
+   button.classList.toggle('active',dark);
+   button.setAttribute('aria-pressed',String(dark));
+   const label=dark?'Switch to light mode':'Switch to dark mode';
+   button.title=label;button.setAttribute('aria-label',label);
+   if(persist)try{localStorage.setItem('rsvp-admin-theme',dark?'dark':'light');}catch(_){}
+ }
  function mode(isEditing){editMode=isEditing;$('adminApp').dataset.mode=isEditing?'edit':'view';const b=$('editModeButton');b.classList.toggle('active',isEditing);b.setAttribute('aria-pressed',String(isEditing));b.title=isEditing?'Switch to View mode':'Switch to Edit mode';b.setAttribute('aria-label',b.title);$('adminModeLabel').textContent=isEditing?'Edit mode · Changes are saved to the event database':'View mode · Manage invitations, food and event details';for(const id of ['eventSettingsForm','welcomeForm']){const form=$(id);for(const field of form.querySelectorAll('input,select,textarea'))field.disabled=!isEditing;}}
  async function fetchTable(name,columns='*',order){let q=db.from(name).select(columns);if(order)q=q.order(order);const {data,error}=await q;if(error)throw new Error(`${name}: ${R.safeError(error)}`);return data||[];}
  async function reload(){
@@ -456,10 +483,18 @@
    const {data:access,error}=await db.rpc('is_admin');
    if(error)throw error;
    if(access!==true)throw new Error('Your account does not have administrator access. Ask an existing administrator to grant it first.');
-   $('loginPanel').classList.add('hidden');$('adminApp').classList.remove('hidden');$('logout').classList.remove('hidden');$('loggedInAs').textContent=user.email||'';
-   tab(activeTab);mode(false);await reload();
+   $('loginPanel').classList.add('hidden');$('adminApp').classList.remove('hidden');$('adminTopActions').classList.remove('hidden');$('loggedInAs').textContent=user.email||'';
+   const fragment=location.hash.slice(1);activeTab=['dashboard','households','food','settings'].includes(fragment)?fragment:'dashboard';
+   tab(activeTab,false);mode(false);await reload();
  }
  async function init(){
+   let savedTheme='light';try{savedTheme=localStorage.getItem('rsvp-admin-theme')||'light';}catch(_){}
+   setTheme(savedTheme,false);
+   $('themeToggle').addEventListener('click',()=>setTheme(document.documentElement.dataset.theme==='dark'?'light':'dark'));
+   window.addEventListener('popstate',()=>{
+     const fragment=location.hash.slice(1);
+     tab(['dashboard','households','food','settings'].includes(fragment)?fragment:'dashboard',false);
+   });
    db=R.getClient();
    if(!db){$('loginPanel').classList.remove('hidden');show('Database not connected. Complete the setup wizard first.','warning');$('loginForm').querySelector('button').disabled=true;return;}
    const {data:{user:current}}=await db.auth.getUser();if(current){user=current;try{await checkAccess();}catch(e){show(R.safeError(e),'error');}}
@@ -475,7 +510,7 @@
    document.querySelectorAll('[data-tab]').forEach(b=>b.addEventListener('click',()=>tab(b.dataset.tab)));
    document.querySelectorAll('[data-settings-tab]').forEach(b=>b.addEventListener('click',()=>settingsTab(b.dataset.settingsTab)));
    $('settingsToggle').addEventListener('click',()=>toggleSettings());
-   $('closeSettings').addEventListener('click',()=>toggleSettings(false));
+   $('closeSettings').addEventListener('click',()=>tab(lastMainTab));
    $('editModeButton').addEventListener('click',()=>mode(!editMode));
    $('refreshButton').addEventListener('click',async()=>{
      const button=$('refreshButton');button.disabled=true;button.classList.add('is-refreshing');

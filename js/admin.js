@@ -21,7 +21,7 @@
    show('Loading event data…');
    try{
      const keys=['settings','sessions','locations','households','guests','food','claims','submissions','defaults','content','relationGroups','foodCategories'];
-     const jobs=[fetchTable('event_settings'),fetchTable('event_sessions'),fetchTable('event_locations'),fetchTable('households','id,household_name,invite_code,language,side,relation_group_id,email,phone,food,food_confirmed,rsvp_state,sort_order,parent_id'),fetchTable('guests','id,household_id,first_name,last_name,is_child,rsvp_status,language'),fetchTable('food_items'),fetchTable('food_claims'),fetchTable('rsvp_submissions','id,household_id,submitted_at'),fetchTable('household_session_defaults'),fetchTable('event_content'),fetchTable('relation_groups'),fetchTable('food_categories')];
+     const jobs=[fetchTable('event_settings'),fetchTable('event_sessions'),fetchTable('event_locations'),fetchTable('households','id,household_name,invite_code,language,side,relation_group_id,email,phone,food,food_confirmed,rsvp_state,sort_order,parent_id'),fetchTable('guests','id,household_id,first_name,last_name,courtesy_title,relation,language,is_child,rsvp_status,dietary_requirements,notes'),fetchTable('food_items'),fetchTable('food_claims'),fetchTable('rsvp_submissions','id,household_id,submitted_at'),fetchTable('household_session_defaults'),fetchTable('event_content'),fetchTable('relation_groups'),fetchTable('food_categories')];
      const values=await Promise.all(jobs);keys.forEach((key,i)=>store[key]=values[i]);store.settings=store.settings[0]||null;
      const {data:admins,error:adminsError}=await db.rpc('admin_list_members');
      store.admins=adminsError?[]:(admins||[]);
@@ -101,6 +101,82 @@
      seen.add(current.id);current=byId.get(current.parent_id);
    }
    return false;
+ }
+ function buildGuestEditor(guest){
+   const form=R.dom('form',{class:'guest-edit-form edit-only hidden'});
+   const fields=R.dom('div',{class:'guest-edit-fields'});
+   function labeledInput(label,value,maxLength,required=false,multiline=false){
+     const wrap=R.dom('label',{class:'guest-edit-field'});
+     wrap.append(R.dom('span',{},label));
+     const input=R.dom(multiline?'textarea':'input',multiline?{}:{type:'text'});
+     input.value=value||'';input.maxLength=maxLength;if(required)input.required=true;
+     wrap.append(input);fields.append(wrap);return input;
+   }
+   function labeledSelect(label,value,options){
+     const wrap=R.dom('label',{class:'guest-edit-field'});
+     wrap.append(R.dom('span',{},label));
+     const select=R.dom('select');
+     for(const [key,display] of options)select.append(R.dom('option',{value:key},display));
+     select.value=value||'';wrap.append(select);fields.append(wrap);return select;
+   }
+   const first=labeledInput('First name',guest.first_name,120,true);
+   const last=labeledInput('Last name',guest.last_name,120);
+   const title=labeledSelect('Title',guest.courtesy_title,[
+     ['','None'],['Mr.','Mr.'],['Ms.','Ms.'],['Son','Son'],['Daughter','Daughter']]);
+   const relation=labeledInput('Relation',guest.relation,160);
+   const language=labeledSelect('Language',guest.language,[
+     ['','Household default'],['fo','Faroese'],['en','English'],['de','German']]);
+   const childWrap=R.dom('label',{class:'guest-child-field'});
+   const child=R.dom('input',{type:'checkbox'});child.checked=!!guest.is_child;
+   childWrap.append(child,R.dom('span',{},'Child guest'));fields.append(childWrap);
+   const dietary=labeledInput('Dietary requirements',guest.dietary_requirements,1000,false,true);
+   const notes=labeledInput('Notes',guest.notes,2000,false,true);
+   form.append(fields,R.dom('p',{class:'micro'},'RSVP status and household assignment are not changed by editing guest details.'));
+   const buttons=R.dom('div',{class:'guest-edit-actions'});
+   const save=R.dom('button',{type:'submit',class:'btn'},'Save guest');
+   const cancel=R.dom('button',{type:'button',class:'btn secondary'},'Cancel');
+   cancel.addEventListener('click',()=>form.classList.add('hidden'));
+   buttons.append(save,cancel);form.append(buttons);
+   form.addEventListener('submit',async event=>{
+     event.preventDefault();event.stopPropagation();
+     const firstName=first.value.trim();
+     if(!firstName){first.focus();show('First name is required.','warning');return;}
+     const payload={
+       p_guest_id:guest.id,p_first_name:firstName,p_last_name:last.value.trim()||null,
+       p_courtesy_title:title.value||null,p_relation:relation.value.trim()||null,
+       p_language:language.value||null,p_is_child:child.checked,
+       p_dietary_requirements:dietary.value.trim()||null,p_notes:notes.value.trim()||null
+     };
+     save.disabled=true;
+     try{
+       const {error}=await db.rpc('admin_update_guest',payload);
+       if(error)throw error;
+       const refreshed=await reload();
+       if(refreshed)show('Guest details saved.','success');
+     }catch(error){show(R.safeError(error),'error');}
+     finally{save.disabled=false;}
+   });
+   return form;
+ }
+ function buildGuestList(guests){
+   const list=R.dom('div',{class:'household-guest-list'});
+   list.append(R.dom('div',{class:'guest-list-heading'},'Individual guests'));
+   const sorted=[...guests].sort((a,b)=>String(a.first_name||'').localeCompare(String(b.first_name||''))||
+     String(a.last_name||'').localeCompare(String(b.last_name||'')));
+   for(const g of sorted){
+     const entry=R.dom('div',{class:'household-guest-entry'});
+     const header=R.dom('div',{class:'household-guest-row'});
+     const info=R.dom('div',{class:'household-guest-info'});
+     const name=[g.courtesy_title,g.first_name,g.last_name].filter(Boolean).join(' ');
+     info.append(R.dom('strong',{},name||'Unnamed guest'));
+     const meta=[g.is_child?'Child':null,g.relation,'RSVP '+(g.rsvp_status||'pending')].filter(Boolean).join(' · ');
+     info.append(R.dom('small',{class:'muted'},meta));header.append(info);
+     const editor=buildGuestEditor(g);
+     header.append(iconAction('edit','Edit guest: '+name,()=>editor.classList.toggle('hidden'),false,'edit-only'));
+     entry.append(header,editor);list.append(entry);
+   }
+   if(!sorted.length)list.append(R.dom('p',{class:'micro'},'No guests assigned to this household.'));
+   return list;
  }
  function renderHouseholds(){
    const box=$('householdRows');box.replaceChildren();

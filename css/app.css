@@ -12,3 +12,36 @@
 .settings-tabs button.active,.settings-tabs button[aria-pressed=true]{color:white;background:var(--teal);border-color:var(--teal)}
 .settings-subsection{display:grid;gap:22px}
 .settings-subsection.hidden{display:none!important}
+
+/* Compact admin workspace and deliberate View/Edit modes. */
+.admin-heading-actions{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.mode-switch{display:inline-flex;gap:3px;padding:3px;border:1px solid var(--line);border-radius:10px;background:#fff}
+.mode-switch button{border:0;border-radius:7px;background:transparent;color:var(--muted);padding:7px 12px;font-size:.82rem;font-weight:700}
+.mode-switch button.active{background:var(--teal);color:#fff}
+.admin-layout{padding-top:30px;padding-bottom:60px}
+.admin-heading{margin-bottom:14px}
+.admin-heading h1{font-size:clamp(1.8rem,3vw,2.45rem);margin-bottom:5px}
+.admin-heading .eyebrow{margin-bottom:7px}
+.admin-heading .muted{margin-bottom:0;font-size:.84rem}
+.admin-layout .panel{padding:20px 23px;border-radius:13px;box-shadow:none}
+.admin-layout .panel h2{font-size:1.25rem;margin-bottom:6px}
+.admin-layout .panel h3{margin-top:16px}
+.admin-layout .tab-bar{margin-bottom:18px}
+.admin-layout .tab-bar button{padding:10px 15px}
+.admin-layout .tab-section{gap:15px}
+.admin-layout .stats-grid{gap:10px}
+.admin-layout .stat-card{padding:14px 16px;border-radius:10px}
+.admin-layout .stat-card b{font-size:1.7rem}
+.admin-layout .hierarchy-section,.admin-layout .hierarchy-group,.admin-layout .food-category{margin-bottom:12px}
+.admin-layout .household-node,.admin-layout .food-manage-item{padding:9px 10px;border-radius:8px}
+.admin-layout .household-node-main,.admin-layout .food-manage-main{gap:10px}
+#adminApp[data-mode="view"] .edit-only{display:none!important}
+#adminApp[data-mode="view"] .food-edit-form{display:none!important}
+#adminApp[data-mode="view"] #eventSettingsForm input,#adminApp[data-mode="view"] #eventSettingsForm select,
+#adminApp[data-mode="view"] #welcomeForm textarea{background:#f7faf8;color:var(--ink);opacity:1;cursor:default}
+.publication-panel{border-top:1px solid var(--line);margin-top:20px;padding-top:17px}
+.publication-panel .notice{margin-bottom:9px}
+.publish-ack{display:flex;align-items:flex-start;gap:9px;font-size:.82rem;margin:12px 0}
+.publish-ack input{width:auto;flex:none;margin-top:5px}
+.publication-actions{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+@media(max-width:650px){.admin-heading-actions{width:100%;justify-content:space-between}.admin-layout .panel{padding:17px 15px}.admin-layout .tab-bar button{padding:9px 12px}}

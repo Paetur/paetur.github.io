@@ -2,7 +2,7 @@
  'use strict';
  const R=window.RSVP,$=R.byId;
  let db=null,user=null,store={settings:null,sessions:[],locations:[],households:[],guests:[],food:[],claims:[],submissions:[],defaults:[],content:[],admins:[],relationGroups:[],foodCategories:[]};
- let activeTab='dashboard',activeSettingsTab='event';
+ let activeTab='dashboard',activeSettingsTab='event',editMode=false;
  const qs=(s)=>document.querySelector(s);
  const show=(msg,type='info')=>R.showStatus('adminMessage',msg,type);
  const fmt=(value)=>value?new Intl.DateTimeFormat('en-GB',{dateStyle:'medium'}).format(new Date(value)):'—';
@@ -13,6 +13,7 @@
  function sessionName(id){return store.sessions.find(s=>s.id===id)?.name||'Session';}
  function settingsTab(name){activeSettingsTab=name;document.querySelectorAll('[data-settings-tab]').forEach(b=>{const active=b.dataset.settingsTab===name;b.classList.toggle('active',active);b.setAttribute('aria-pressed',String(active));});document.querySelectorAll('[data-settings-panel]').forEach(n=>n.classList.toggle('hidden',n.dataset.settingsPanel!==name));}
  function tab(name){activeTab=name;document.querySelectorAll('[data-tab]').forEach(b=>b.classList.toggle('active',b.dataset.tab===name));document.querySelectorAll('[data-panel]').forEach(n=>n.classList.toggle('hidden',n.dataset.panel!==name));if(name==='settings')settingsTab(activeSettingsTab);}
+ function mode(isEditing){editMode=isEditing;$('adminApp').dataset.mode=isEditing?'edit':'view';for(const [id,selected] of [['viewModeButton',!isEditing],['editModeButton',isEditing]]){const b=$(id);b.classList.toggle('active',selected);b.setAttribute('aria-pressed',String(selected));}for(const id of ['eventSettingsForm','welcomeForm']){const form=$(id);for(const field of form.querySelectorAll('input,select,textarea'))field.disabled=!isEditing;}}
  async function fetchTable(name,columns='*',order){let q=db.from(name).select(columns);if(order)q=q.order(order);const {data,error}=await q;if(error)throw new Error(`${name}: ${R.safeError(error)}`);return data||[];}
  async function reload(){
    show('Loading event data…');
@@ -42,7 +43,8 @@
      String(a[label]||'').toLowerCase().localeCompare(String(b[label]||'').toLowerCase())||a.id.localeCompare(b.id));
  }
  function btn(text,title,onClick,disabled=false){
-   const button=R.dom('button',{class:'text-button',type:'button',title},text);
+   const editable=text!=='Copy link';
+   const button=R.dom('button',{class:'text-button'+(editable?' edit-only':''),type:'button',title},text);
    button.disabled=disabled;
    button.addEventListener('click',async()=>{
      button.disabled=true;
@@ -115,7 +117,7 @@
          const actions=R.dom('div',{class:'household-actions'});
          actions.append(btn('↑',`Move ${h.household_name} up`,()=>rpcAction('admin_move_household',{p_household_id:h.id,p_direction:-1},'Household order saved.'),pos<=0));
          actions.append(btn('↓',`Move ${h.household_name} down`,()=>rpcAction('admin_move_household',{p_household_id:h.id,p_direction:1},'Household order saved.'),pos===siblings.length-1));
-         const label=R.dom('label',{class:'parent-picker'});label.append(R.dom('span',{},'Parent'));
+         const label=R.dom('label',{class:'parent-picker edit-only'});label.append(R.dom('span',{},'Parent'));
          const select=R.dom('select');
          select.append(R.dom('option',{value:''},'None (top level)'));
          ordered(members.filter(m=>m.id!==h.id&&!isDescendantOf(m.id,h.id)),'household_name').forEach(parent=>select.append(R.dom('option',{value:parent.id},parent.household_name||'Unnamed')));
@@ -217,7 +219,7 @@
        buttons.append(btn('↓','Move food item down',()=>rpcAction('admin_move_food_item',{p_food_item_id:f.id,p_direction:1},'Food order saved.'),pos===items.length-1));
        const edit=buildFoodEditor(f);
        buttons.append(btn('Edit','Edit food names, descriptions and quantity',async()=>edit.classList.toggle('hidden')));
-       const changeLabel=R.dom('label',{class:'food-category-picker'});changeLabel.append(R.dom('span',{},'Category'));
+       const changeLabel=R.dom('label',{class:'food-category-picker edit-only'});changeLabel.append(R.dom('span',{},'Category'));
        const change=R.dom('select');foodCategoryOptions(change,f.category||'');
        change.addEventListener('change',async()=>{
          change.disabled=true;
@@ -237,7 +239,7 @@
    if(!store.admins.length){div.append(R.dom('p',{class:'muted'},'Administrator list unavailable. Apply migration 006 if needed.'));return;}
    store.admins.forEach(a=>{
      const wrap=R.dom('div',{class:'admin-member'}),left=R.dom('div');left.append(R.dom('div',{class:'name'},a.name),R.dom('div',{class:'email'},a.email));
-     const remove=R.dom('button',{class:'text-button danger',type:'button'},'Revoke');
+     const remove=R.dom('button',{class:'text-button danger edit-only',type:'button'},'Revoke');
      remove.disabled=store.admins.length<=1;
      remove.title=store.admins.length<=1?'You cannot remove the last administrator.':'Remove this administrator';
      remove.addEventListener('click',async()=>{
@@ -254,7 +256,10 @@
    $('settingName').value=e.event_name||'';$('settingType').value=e.event_type||'other';$('settingDate').value=e.event_date||'';
    $('settingLanguage').value=e.default_language||'en';$('settingTimezone').value=e.timezone||'UTC';
    $('settingUrl').value=e.website_url||'';$('settingDeadline').value=stamp(e.rsvp_deadline);
-   $('publicationState').textContent=e.is_published?'The event is currently published. Editing or unpublishing may affect guests.':'Event is unpublished. Publication is intentionally controlled outside this starter until testing is complete.';
+   $('publicationState').textContent=e.is_published?'Event is published: invited guests can access RSVP. You can unpublish it below.':'Event is unpublished: guest-facing event details and food remain hidden until you publish.';
+   $('publicationState').classList.toggle('success',!!e.is_published);$('publicationState').classList.toggle('warning',!e.is_published);
+   $('publishEventButton').disabled=!!e.is_published;
+   $('unpublishEventButton').disabled=!e.is_published;
  }
  function renderSessions(){
    const div=$('sessionsList');div.replaceChildren();
@@ -262,7 +267,7 @@
      const assigned=store.defaults.filter(d=>d.session_id===s.id&&d.is_invited).length;
      const wrap=R.dom('div',{class:'session-row'}),left=R.dom('div');
      left.append(R.dom('strong',{},s.name),R.dom('small',{},`${s.session_key} · ${assigned} households invited · ${s.requires_rsvp?'RSVP required':'No RSVP'}${s.starts_at?' · '+R.formatDate(s.starts_at,'en',store.settings?.timezone):''}`));
-     const addAll=R.dom('button',{class:'btn secondary',type:'button'},'Invite all households');
+     const addAll=R.dom('button',{class:'btn secondary edit-only',type:'button'},'Invite all households');
      addAll.disabled=assigned>=store.households.length;
      addAll.addEventListener('click',async()=>{
        if(!confirm(`Invite all ${store.households.length} existing households to ${s.name}?`))return;
@@ -286,7 +291,7 @@
    if(error)throw error;
    if(access!==true)throw new Error('Your account does not have administrator access. Ask an existing administrator to grant it first.');
    $('loginPanel').classList.add('hidden');$('adminApp').classList.remove('hidden');$('logout').classList.remove('hidden');$('loggedInAs').textContent=user.email||'';
-   tab(activeTab);await reload();
+   tab(activeTab);mode(false);await reload();
  }
  async function init(){
    db=R.getClient();
@@ -304,6 +309,7 @@
    document.querySelectorAll('[data-tab]').forEach(b=>b.addEventListener('click',()=>tab(b.dataset.tab)));
    document.querySelectorAll('[data-settings-tab]').forEach(b=>b.addEventListener('click',()=>{tab('settings');settingsTab(b.dataset.settingsTab);}));
    $('refreshButton').addEventListener('click',reload);$('householdSearch').addEventListener('input',renderHouseholds);
+   $('viewModeButton').addEventListener('click',()=>mode(false));$('editModeButton').addEventListener('click',()=>mode(true));
    $('foodSearch').addEventListener('input',renderFood);
    $('addCategoryForm').addEventListener('submit',async e=>{
      e.preventDefault();const input=$('categoryName'),name=input.value.trim();if(!name)return;const button=e.target.querySelector('button');button.disabled=true;
@@ -331,6 +337,25 @@
      const settings={event_name:$('settingName').value.trim(),event_type:$('settingType').value.trim(),event_date:$('settingDate').value||null,default_language:$('settingLanguage').value,timezone:$('settingTimezone').value.trim(),website_url:$('settingUrl').value.trim()||null,rsvp_deadline:deadline?new Date(deadline).toISOString():null,updated_at:new Date().toISOString()};
      const {error}=await db.from('event_settings').upsert({id:1,...settings},{onConflict:'id'});
      if(error)show(R.safeError(error),'error');else{show('Event settings saved.','success');await reload();}
+   });
+   $('publishEventButton').addEventListener('click',async()=>{
+     if(!editMode){show('Switch to Edit mode first.','warning');return;}
+     if(!$('publishAck').checked){show('Confirm the release acknowledgement before publishing.','warning');return;}
+     const ready=store.settings?.event_name&&store.settings?.event_date&&store.settings?.website_url&&store.sessions.some(x=>x.is_active)&&store.defaults.some(x=>x.is_invited);
+     if(!ready){show('Complete the event name, date, website URL, active session and invitations before publishing.','error');return;}
+     if(!confirm('Publish this event now? Invite-code holders may access guest RSVP and food details. Proceed only after security and guest-flow testing.'))return;
+     const button=$('publishEventButton');button.disabled=true;
+     const {error}=await db.from('event_settings').update({is_published:true,updated_at:new Date().toISOString()}).eq('id',1);
+     if(error)show(R.safeError(error),'error');else{show('Event published.','success');$('publishAck').checked=false;await reload();}
+     button.disabled=false;
+   });
+   $('unpublishEventButton').addEventListener('click',async()=>{
+     if(!editMode){show('Switch to Edit mode first.','warning');return;}
+     if(!confirm('Unpublish this event? Guest access to published event details will stop.'))return;
+     const button=$('unpublishEventButton');button.disabled=true;
+     const {error}=await db.from('event_settings').update({is_published:false,updated_at:new Date().toISOString()}).eq('id',1);
+     if(error)show(R.safeError(error),'error');else{show('Event unpublished.','success');await reload();}
+     button.disabled=false;
    });
    $('newSessionForm').addEventListener('submit',async e=>{
      e.preventDefault();const data={session_key:$('newSessionKey').value.toLowerCase().trim(),name:$('newSessionName').value.trim(),requires_rsvp:true,is_active:true,sort_order:store.sessions.length+1};

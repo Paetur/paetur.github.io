@@ -193,3 +193,29 @@
  #adminApp .admin-row-icon{width:26px;height:26px;min-width:26px}
  #adminApp .tree-count{font-size:.6rem}
 }
+
+/* Expanded household guest list, restored after the compact tree redesign. */
+#adminApp .household-expanded{margin:3px 0 9px 11px;padding:1px 0 1px 12px;border-left:1px solid var(--line)}
+#adminApp .guest-list-heading{color:var(--muted);font-size:.67rem;letter-spacing:.045em;text-transform:uppercase;font-weight:800;margin:9px 0 5px}
+#adminApp .household-guest-list{display:grid;gap:5px;margin-bottom:10px}
+#adminApp .household-guest-entry{background:#fff;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+#adminApp .household-guest-row{min-height:41px;display:flex;justify-content:space-between;align-items:center;gap:9px;padding:7px 10px}
+#adminApp .household-guest-info{display:flex;align-items:baseline;flex-wrap:wrap;column-gap:10px;row-gap:2px;min-width:0}
+#adminApp .household-guest-info strong{font-size:.78rem;line-height:1.35}
+#adminApp .household-guest-info small{font-size:.67rem}
+#adminApp .household-guest-row .admin-row-icon{flex:none}
+#adminApp .guest-edit-form{margin:0 10px 10px;padding:12px;border:1px solid var(--line);border-radius:9px;background:#f7faf7}
+#adminApp .guest-edit-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+#adminApp .guest-edit-field{display:grid;gap:4px;min-width:0;font-size:.72rem;font-weight:700}
+#adminApp .guest-edit-field input,#adminApp .guest-edit-field select,#adminApp .guest-edit-field textarea{min-width:0;min-height:36px;padding:7px 9px;font-size:.78rem}
+#adminApp .guest-edit-field textarea{min-height:64px;resize:vertical}
+#adminApp .guest-child-field{display:flex;align-items:center;gap:8px;font-size:.75rem;font-weight:700;align-self:end;min-height:36px}
+#adminApp .guest-child-field input{width:auto;min-height:0}
+#adminApp .guest-edit-actions{display:flex;justify-content:flex-end;gap:9px;margin-top:10px}
+#adminApp .guest-edit-actions button{min-height:35px;padding:7px 13px;font-size:.76rem}
+@media(max-width:600px){
+ #adminApp .household-expanded{margin-left:4px;padding-left:7px}
+ #adminApp .guest-edit-fields{grid-template-columns:1fr}
+ #adminApp .household-guest-info{display:block}
+ #adminApp .household-guest-info strong,#adminApp .household-guest-info small{display:block}
+}

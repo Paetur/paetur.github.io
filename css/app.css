@@ -219,3 +219,119 @@
  #adminApp .household-guest-info{display:block}
  #adminApp .household-guest-info strong,#adminApp .household-guest-info small{display:block}
 }
+
+/* Unified top navigation and a full, navigable Settings page. */
+.topbar .admin-topbar-actions{display:flex;align-items:center;gap:9px;min-width:0}
+.topbar .admin-top-actions{display:flex;align-items:center;gap:6px;min-width:0}
+.topbar .admin-top-actions.hidden{display:none!important}
+.topbar .admin-icon-btn{
+  display:inline-flex;align-items:center;justify-content:center;flex:0 0 36px;
+  height:36px;width:36px;padding:7px;border:1px solid var(--line);
+  border-radius:9px;background:var(--white);color:var(--ink);
+  text-decoration:none;transition:background .15s ease,color .15s ease,border-color .15s ease
+}
+.topbar .admin-icon-btn:hover{background:var(--light);border-color:var(--teal)}
+.topbar .admin-icon-btn.active,.topbar .admin-icon-btn[aria-pressed="true"]{background:var(--teal);border-color:var(--teal);color:#fff}
+.topbar .admin-icon-btn svg{width:19px;height:19px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linejoin:round;stroke-linecap:round}
+.topbar .admin-icon-btn:disabled{opacity:.55;cursor:wait}
+.topbar .admin-icon-btn:focus-visible,.settings-back:focus-visible{outline:2px solid var(--teal);outline-offset:2px}
+.topbar .admin-icon-btn.is-refreshing svg{animation:admin-refresh-spin .8s linear infinite}
+.topbar .admin-icon-btn .theme-sun{display:none}
+html[data-theme="dark"] .topbar .admin-icon-btn .theme-sun{display:block}
+html[data-theme="dark"] .topbar .admin-icon-btn .theme-moon{display:none}
+.topbar .admin-identity{max-width:155px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#adminApp.showing-settings .admin-main-tabs{display:none}
+#adminApp .settings-page{max-width:100%;padding:0;margin-bottom:16px;gap:12px}
+#adminApp .settings-page-heading{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:11px 0 6px}
+#adminApp .settings-page-heading h2{font-family:'Playfair Display',Georgia,serif;font-size:clamp(1.8rem,3.5vw,2.4rem);font-weight:500;margin:4px 0}
+#adminApp .settings-page-heading .muted{margin:0}
+#adminApp .settings-back{display:inline-flex;align-items:center;gap:6px;background:var(--white);color:var(--ink);border:1px solid var(--line);padding:8px 12px;border-radius:9px;font-size:.83rem;font-weight:650}
+#adminApp .settings-back:hover{background:var(--light)}
+#adminApp .settings-back svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+#adminApp .settings-page .settings-tabs{margin:3px 0 10px;border-bottom:1px solid var(--line)}
+#adminApp .settings-page .settings-subsection{display:grid;gap:15px}
+#adminApp .settings-page .settings-subsection.hidden{display:none!important}
+#adminApp .settings-page .panel{max-width:100%;background:var(--white)}
+#adminApp .settings-page .settings-management{background:var(--white)}
+@media(max-width:700px){
+  .topbar .admin-topbar-actions{gap:6px}
+  .topbar .admin-top-actions{gap:4px}
+  .topbar .admin-identity{display:none}
+}
+@media(max-width:430px){
+  .topbar-inner{min-height:61px;gap:7px;padding:0 10px}
+  .topbar .brand{font-size:.93rem;gap:6px}
+  .topbar .brand-symbol{width:28px;height:28px;font-size:18px;border-radius:8px}
+  .topbar .brand-soft{display:none}
+  .topbar .admin-icon-btn{width:30px;height:30px;flex-basis:30px;padding:5px;border-radius:7px}
+  .topbar .admin-icon-btn svg{width:17px;height:17px}
+  .topbar .admin-top-actions{gap:3px}
+  #adminApp .settings-page-heading h2{font-size:1.6rem}
+}
+/* Dark mode is restricted to the admin document, activated by its persistent theme control. */
+html[data-theme="dark"]{
+  color-scheme:dark;
+  --paper:#101a18;--white:#1b2925;--ink:#ecf3ef;--muted:#a9bfb6;
+  --line:#344b41;--teal:#3b9377;--teal-dark:#6fc4a6;
+  --light:#253b32;--warning:#3c301f;--danger:#ff9b94;--success:#1e4430;
+  --shadow:0 14px 45px rgba(0,0,0,.26)
+}
+html[data-theme="dark"] body{background:var(--paper);color:var(--ink)}
+html[data-theme="dark"] .topbar{background:#17251f;border-color:var(--line)}
+html[data-theme="dark"] .brand{color:var(--ink)}
+html[data-theme="dark"] .brand-soft{color:var(--muted)}
+html[data-theme="dark"] .panel,
+html[data-theme="dark"] #adminApp .panel,
+html[data-theme="dark"] .stat-card,
+html[data-theme="dark"] #adminApp .settings-page .panel,
+html[data-theme="dark"] .login-panel{background:var(--white);border-color:var(--line);color:var(--ink)}
+html[data-theme="dark"] .muted,html[data-theme="dark"] .micro,html[data-theme="dark"] .small{color:var(--muted)}
+html[data-theme="dark"] input,html[data-theme="dark"] select,html[data-theme="dark"] textarea{
+ background:#13231e;color:var(--ink);border-color:var(--line);color-scheme:dark
+}
+html[data-theme="dark"] input::placeholder,html[data-theme="dark"] textarea::placeholder{color:#91a89d}
+html[data-theme="dark"] button:not(.btn),html[data-theme="dark"] .quiet-link{color:inherit}
+html[data-theme="dark"] .btn.secondary,
+html[data-theme="dark"] .text-button,
+html[data-theme="dark"] .small-tool,
+html[data-theme="dark"] .admin-row-icon,
+html[data-theme="dark"] #adminApp .settings-back{background:#23352e;color:var(--ink);border-color:var(--line)}
+html[data-theme="dark"] #adminApp .admin-main-tabs{border-color:var(--line)}
+html[data-theme="dark"] #adminApp .admin-main-tabs button{color:#a2b9ac}
+html[data-theme="dark"] #adminApp .admin-main-tabs button.active{color:#8bdfba}
+html[data-theme="dark"] #adminApp .admin-main-tabs button.active::after{background:#8bdfba}
+html[data-theme="dark"] #adminApp .tree-side{background:#24443a;color:var(--ink)}
+html[data-theme="dark"] #adminApp .tree-group,
+html[data-theme="dark"] #adminApp .food-category-heading{background:#2a4037;color:var(--ink)}
+html[data-theme="dark"] #adminApp .tree-side .tree-count,
+html[data-theme="dark"] #adminApp .tree-count{color:#c5d6cc}
+html[data-theme="dark"] #adminApp .household-node,
+html[data-theme="dark"] #adminApp .household-guest-entry,
+html[data-theme="dark"] #adminApp .food-category,
+html[data-theme="dark"] #adminApp .food-manage-item,
+html[data-theme="dark"] #adminApp .admin-management,
+html[data-theme="dark"] #adminApp .guest-edit-form,
+html[data-theme="dark"] #adminApp .food-edit-form,
+html[data-theme="dark"] #adminApp .household-inline-editor{
+ background:#1d2d27;color:var(--ink);border-color:var(--line)
+}
+html[data-theme="dark"] #adminApp .household-tree-node[open]>.household-node{border-color:#4e7765}
+html[data-theme="dark"] #adminApp .household-guest-row{background:transparent}
+html[data-theme="dark"] #adminApp .settings-tabs{border-color:var(--line)}
+html[data-theme="dark"] #adminApp .settings-tabs button{background:#22362d;color:var(--ink);border-color:var(--line)}
+html[data-theme="dark"] #adminApp .settings-tabs button.active{background:var(--teal);color:white}
+html[data-theme="dark"] #adminApp .admin-management>summary{color:var(--ink)}
+html[data-theme="dark"] #adminApp .check-list li,
+html[data-theme="dark"] .admin-member,
+html[data-theme="dark"] #adminApp .food-manage-item{border-color:var(--line)}
+html[data-theme="dark"] .notice{background:#263f32;color:var(--ink);border-color:var(--line)}
+html[data-theme="dark"] .notice.warning{background:#3b3320}
+html[data-theme="dark"] .notice.error{background:#4a2928}
+html[data-theme="dark"] .notice.success{background:#1e4430}
+html[data-theme="dark"] #adminApp[data-mode="view"] #eventSettingsForm input,
+html[data-theme="dark"] #adminApp[data-mode="view"] #eventSettingsForm select,
+html[data-theme="dark"] #adminApp[data-mode="view"] #welcomeForm textarea{
+ background:#23352e;color:var(--ink);opacity:1
+}
+html[data-theme="dark"] .tag{background:#293e34;color:#cae5d7}
+html[data-theme="dark"] .eyebrow{color:#8cd5b2}

@@ -4,6 +4,7 @@ on:
     paths:
       - 'js/**'
       - 'admin/**'
+      - 'css/**'
       - 'index.html'
       - 'supabase/**'
       - '.github/workflows/rsvp-security-smoke.yml'
@@ -27,5 +28,9 @@ jobs:
         run: |
           npm install --no-save --no-package-lock playwright@1.56.1
           npx playwright install --with-deps chromium
+      - name: Validate admin JavaScript
+        run: node --check js/admin.js && node --check tests/admin-layout.cjs
+      - name: Test compact admin layout with mocked data
+        run: node tests/admin-layout.cjs
       - name: Check deployed site and guest gateway
         run: node tests/rsvp-smoke.cjs

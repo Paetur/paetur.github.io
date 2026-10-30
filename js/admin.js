@@ -227,12 +227,11 @@
          visited.add(h.id);
          const children=ordered(members.filter(m=>m.parent_id===h.id&&m.id!==h.id),'household_name');
          const nested=children.some(c=>visible.has(c.id));
-         const node=R.dom(nested?'details':'div',{class:'household-tree-node'});
-         if(nested){
-           node.dataset.treeKey='household:'+h.id;
-           setDisclosure(node,node.dataset.treeKey,true,!!search);
-         }
-         const card=R.dom(nested?'summary':'div',{class:'household-node'});
+         // Every household can expand to show and edit its individual guests.
+         const node=R.dom('details',{class:'household-tree-node'});
+         node.dataset.treeKey='household:'+h.id;
+         setDisclosure(node,node.dataset.treeKey,false,!!search);
+         const card=R.dom('summary',{class:'household-node'});
          const primary=R.dom('div',{class:'household-node-main'});
          const info=R.dom('div',{class:'household-node-name'});
          info.append(R.dom('strong',{},h.household_name||'Unnamed household'));
@@ -269,14 +268,15 @@
          });
          label.append(select);editor.append(label);
          primary.append(actions);card.append(primary);
-         node.append(card,editor);
-         if(guests.length)node.append(R.dom('small',{class:'household-guests muted'},
-           guests.map(g=>[g.first_name,g.last_name].filter(Boolean).join(' ')).join(' · ')));
+         const expanded=R.dom('div',{class:'household-expanded'});
+         expanded.append(buildGuestList(guests));
          if(nested){
            const childList=R.dom('div',{class:'tree-children'});
+           childList.append(R.dom('div',{class:'guest-list-heading'},'Child households'));
            children.forEach(child=>draw(child,childList,depth+1));
-           node.append(childList);
+           expanded.append(childList);
          }
+         node.append(card,editor,expanded);
          container.append(node);
        }
        ordered(members.filter(h=>!h.parent_id||!members.some(p=>p.id===h.parent_id)),'household_name').forEach(h=>draw(h,groupBody,0));

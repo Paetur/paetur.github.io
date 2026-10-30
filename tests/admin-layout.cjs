@@ -27,13 +27,13 @@ const mock = [
 " event_sessions:[{id:s1,session_key:'dinner',name:'Dinner',sort_order:1,is_active:true,requires_rsvp:true}],",
 " event_locations:[],",
 " households:[{id:h1,household_name:'Example parent',invite_code:'ABCDEFGH',side:'paetur',relation_group_id:cat1,parent_id:null,sort_order:1,rsvp_state:'open',language:'fo'},{id:h2,household_name:'Example child',invite_code:'EFGHJKLM',side:'paetur',relation_group_id:cat1,parent_id:h1,sort_order:2,rsvp_state:'open',language:'fo'},{id:h3,household_name:'Example Maria family',invite_code:'HJKLMNPQ',side:'maria',relation_group_id:cat2,parent_id:null,sort_order:1,rsvp_state:'open',language:'de'}],",
-" guests:[{id:'55555555-5555-4555-8555-555555555555',household_id:h1,first_name:'Example',last_name:'Guest',language:'fo',is_child:false}],",
+" guests:[{id:'55555555-5555-4555-8555-555555555555',household_id:h1,first_name:'Example',last_name:'Guest',language:'fo',is_child:false,relation:'Cousin',notes:'Invitation note',rsvp_status:'pending'},{id:'77777777-7777-4777-8777-777777777777',household_id:h2,first_name:'Nested',last_name:'Guest',language:'en',is_child:true,rsvp_status:'pending'}],",
 " food_categories:[{id:cat1,name:'Main dishes',sort_order:1},{id:cat2,name:'Desserts',sort_order:2}],",
 " food_items:[{id:'66666666-6666-4666-8666-666666666666',category:'Main dishes',name_fo:'Sample dish',name_en:'Sample dish',name_de:'Sample dish',sort_order:1,quantity_needed:4,active:true}],",
 " relation_groups:[{id:cat1,name:'Family',sort_order:1},{id:cat2,name:'Family',sort_order:1}],",
 " food_claims:[],rsvp_submissions:[],household_session_defaults:[{household_id:h1,session_id:s1,is_invited:true}],event_content:[]",
 "};",
-"const client={auth:{getUser:async()=>({data:{user:{email:'test-admin@example.invalid'}}}),signOut:async()=>({error:null})},rpc:async(name)=>name==='is_admin'?{data:true}:name==='admin_list_members'?{data:[{name:'Example admin',email:'test-admin@example.invalid',user_id:h1}]}:{data:null,error:null},from(name){return {select(){if(name==='event_settings')window.__fetchCount++;return Promise.resolve({data:fixtures[name]||[],error:null});}}}};",
+"const client={auth:{getUser:async()=>({data:{user:{email:'test-admin@example.invalid'}}}),signOut:async()=>({error:null})},rpc:async(name,args)=>{if(name==='admin_update_guest'){window.__lastGuestUpdate=args;const guest=fixtures.guests.find(g=>g.id===args.p_guest_id);if(!guest)return {data:null,error:{message:'No guest'}};Object.assign(guest,{first_name:args.p_first_name,last_name:args.p_last_name,courtesy_title:args.p_courtesy_title,relation:args.p_relation,language:args.p_language,is_child:args.p_is_child,dietary_requirements:args.p_dietary_requirements,notes:args.p_notes});return {data:null,error:null};}return name==='is_admin'?{data:true}:name==='admin_list_members'?{data:[{name:'Example admin',email:'test-admin@example.invalid',user_id:h1}]}:{data:null,error:null};},from(name){return {select(){if(name==='event_settings')window.__fetchCount++;return Promise.resolve({data:fixtures[name]||[],error:null});}}}};",
 "window.supabase={createClient:()=>client};"
 ].join('\n');
 async function run(){
@@ -60,7 +60,7 @@ async function run(){
    await page.locator('[data-tab="households"]').click();
    assert.equal(await page.locator('#householdRows details.hierarchy-section').count(),2,'two sides');
    assert.equal(await page.locator('#householdRows details.hierarchy-group').count(),2,'relationship groups');
-   assert.equal(await page.locator('#householdRows details.household-tree-node').count(),1,'nested parent household');
+   assert.equal(await page.locator('#householdRows details.household-tree-node').count(),3,'every household is expandable');
    await page.locator('#collapseHouseholds').click();
    assert.equal(await page.locator('#householdRows details[open]').count(),0,'all groups collapsed');
    await page.locator('#expandHouseholds').click();
@@ -70,6 +70,21 @@ async function run(){
    assert.equal(await page.locator('#adminApp').getAttribute('data-mode'),'edit');
    await page.locator('.household-actions button[title^="Edit household hierarchy"]').first().click();
    assert.equal(await page.locator('.household-inline-editor').first().isVisible(),true,'inline edit expands');
+   assert.equal(await page.locator('.household-guest-row').count(),2,'guest rows appear inside parent and child households');
+   const guestEditorButton=page.locator('.household-guest-row button[title^="Edit guest"]').first();
+   await guestEditorButton.click();
+   const guestForm=page.locator('.guest-edit-form').first();
+   assert.equal(await guestForm.isVisible(),true,'individual guest editor is visible');
+   await guestForm.locator('input[type="text"]').first().fill('Edited');
+   await guestForm.locator('textarea').last().fill('New example note');
+   await guestForm.locator('button[type="submit"]').click();
+   await page.waitForFunction(() => document.querySelector('.household-guest-row strong')?.textContent.includes('Edited'));
+   const saved=await page.evaluate(()=>window.__lastGuestUpdate);
+   assert.equal(saved.p_first_name,'Edited','guest first name submitted');
+   assert.equal(saved.p_notes,'New example note','guest notes submitted');
+   assert.equal(saved.p_relation,'Cousin','existing guest relation retained');
+   assert.equal(await page.locator('.household-guest-row').count(),2,'guests remain visible after saving');
+
    await page.locator('[data-tab="food"]').click();
    assert.equal(await page.locator('.food-category').count(),2,'food grouped by category');
    await page.locator('.food-category').last().locator('summary').click();
@@ -82,7 +97,7 @@ async function run(){
    const dims=await page.evaluate(()=>({scroll:document.documentElement.scrollWidth,client:document.documentElement.clientWidth}));
    if(dims.scroll>dims.client+3)throw Error('Horizontal overflow on mobile: '+JSON.stringify(dims));
    if(errors.length)throw Error('Admin browser script errors: '+errors.join(' | '));
-   console.log('PASS: admin layout text tabs, top icon order, settings, expandable trees, Edit, Food and Refresh');
+   console.log('PASS: admin tabs, expandable households and guests, guest editing/saving, settings and refresh');
  }finally{
    await browser.close();
    await new Promise(resolve=>server.close(resolve));

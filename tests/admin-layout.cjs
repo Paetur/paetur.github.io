@@ -50,13 +50,34 @@ async function run(){
    await page.locator('#householdRows .hierarchy-section').first().waitFor({state:'attached'});
    assert.equal(await page.locator('[data-tab]').count(),3,'only three main text tabs');
    assert.deepEqual(await page.locator('[data-tab]').evaluateAll(nodes=>nodes.map(n=>n.textContent.trim())),['Overview','Households','Food']);
-   assert.deepEqual(await page.locator('.admin-heading-actions>button').evaluateAll(nodes=>nodes.map(n=>n.id)),['settingsToggle','editModeButton','refreshButton','logout'],'toolbar icon order');
-   assert.equal(await page.locator('#settingsDrawer').isVisible(),false,'settings initially closed');
+   assert.deepEqual(await page.locator('.admin-top-actions>button').evaluateAll(nodes=>nodes.map(n=>n.id)),
+     ['settingsToggle','editModeButton','refreshButton','themeToggle','logout'],'topbar action icon order');
+   assert.equal(await page.locator('#viewWebsite').getAttribute('target'),'_blank','website link opens a new tab');
+   assert.equal(await page.locator('#viewWebsite').getAttribute('rel'),'noopener noreferrer','website link is isolated');
+   assert.equal(await page.locator('#settingsPage').isVisible(),false,'settings initially closed');
    await page.locator('#settingsToggle').click();
-   assert.equal(await page.locator('#settingsDrawer').isVisible(),true,'settings opens');
+   assert.equal(await page.locator('#settingsPage').isVisible(),true,'full Settings page opens');
+   assert.equal(await page.locator('.admin-main-tabs').isVisible(),false,'main tab row hidden on Settings');
+   assert.equal(new URL(page.url()).hash,'#settings','Settings has its own browser URL state');
    await page.locator('[data-settings-tab="administrators"]').click();
-   assert.equal(await page.locator('#adminList').isVisible(),true,'administrators nested in settings');
+   assert.equal(await page.locator('#adminList').isVisible(),true,'administrators nested in Settings page');
    await page.locator('#closeSettings').click();
+   assert.equal(await page.locator('#settingsPage').isVisible(),false,'Back returns to dashboard');
+   assert.equal(await page.locator('.admin-main-tabs').isVisible(),true,'main tabs restored');
+   const previewDir=path.join(root,'artifacts');fs.mkdirSync(previewDir,{recursive:true});
+   await page.screenshot({path:path.join(previewDir,'admin-overview-light.png'),fullPage:true});
+   await page.locator('#themeToggle').click();
+   assert.equal(await page.locator('html').getAttribute('data-theme'),'dark','dark mode enabled');
+   assert.equal(await page.evaluate(()=>localStorage.getItem('rsvp-admin-theme')),'dark','theme preference saved');
+   await page.locator('#settingsToggle').click();
+   await page.screenshot({path:path.join(previewDir,'admin-settings-dark.png'),fullPage:true});
+   assert.equal(await page.locator('#settingName').isVisible(),true,'event settings visible in dark mode');
+   await page.locator('#closeSettings').click();
+   await page.reload({waitUntil:'load'});
+   await page.locator('#adminApp:not(.hidden)').waitFor();
+   assert.equal(await page.locator('html').getAttribute('data-theme'),'dark','dark mode persisted across reloads');
+   await page.locator('#themeToggle').click();
+   assert.equal(await page.locator('html').getAttribute('data-theme'),'light','light mode restored');
    await page.locator('[data-tab="households"]').click();
    assert.equal(await page.locator('#householdRows details.hierarchy-section').count(),2,'two sides');
    assert.equal(await page.locator('#householdRows details.hierarchy-group').count(),2,'relationship groups');
@@ -84,6 +105,9 @@ async function run(){
    assert.equal(saved.p_notes,'New example note','guest notes submitted');
    assert.equal(saved.p_relation,'Cousin','existing guest relation retained');
    assert.equal(await page.locator('.household-guest-row').count(),2,'guests remain visible after saving');
+   await page.screenshot({path:path.join(root,'artifacts','admin-households-light.png'),fullPage:true});
+   await page.locator('#themeToggle').click();
+   await page.screenshot({path:path.join(root,'artifacts','admin-households-dark.png'),fullPage:true});
 
    await page.locator('[data-tab="food"]').click();
    assert.equal(await page.locator('.food-category').count(),2,'food grouped by category');
@@ -96,8 +120,9 @@ async function run(){
    await page.setViewportSize({width:390,height:844});
    const dims=await page.evaluate(()=>({scroll:document.documentElement.scrollWidth,client:document.documentElement.clientWidth}));
    if(dims.scroll>dims.client+3)throw Error('Horizontal overflow on mobile: '+JSON.stringify(dims));
+   await page.screenshot({path:path.join(root,'artifacts','admin-mobile-dark.png'),fullPage:true});
    if(errors.length)throw Error('Admin browser script errors: '+errors.join(' | '));
-   console.log('PASS: admin tabs, expandable households and guests, guest editing/saving, settings and refresh');
+   console.log('PASS: topbar, dark mode persistence, Settings page, expandable households, guest editing, refresh and mobile screenshots');
  }finally{
    await browser.close();
    await new Promise(resolve=>server.close(resolve));

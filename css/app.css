@@ -340,3 +340,15 @@ html[data-theme="dark"] .eyebrow{color:#8cd5b2}
 #adminApp .household-tree-node>summary.household-node{list-style:none;display:block}
 #adminApp .household-tree-node>summary.household-node::-webkit-details-marker{display:none}
 #adminApp .household-tree-node>summary.household-node::marker{content:''}
+
+/* Admin-specific dark controls override the original ID-scoped light button styles. */
+html[data-theme="dark"] #adminApp .admin-row-icon,
+html[data-theme="dark"] #adminApp .small-tool,
+html[data-theme="dark"] #adminApp .tool-btn,
+html[data-theme="dark"] #adminApp .text-button{
+ background:#253c32;color:#e3f2e8;border-color:#486357
+}
+html[data-theme="dark"] #adminApp .admin-row-icon:disabled{background:#24312b;color:#aebcb0;opacity:.5}
+html[data-theme="dark"] #adminApp .admin-row-icon.danger{color:#ff9b94}
+html[data-theme="dark"] #adminApp .admin-row-icon:hover:not(:disabled),
+html[data-theme="dark"] #adminApp .small-tool:hover{background:#345043;border-color:#5d947a}

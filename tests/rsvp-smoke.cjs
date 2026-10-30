@@ -48,12 +48,29 @@ async function run() {
       data: { action: 'get_invitation_v2', args: { p_code: 'INVALID!' } }
     });
     if (invalid.status() !== 400) throw Error('Invalid code should be rejected as 400; got ' + invalid.status());
+    // Exercise actual gateway throttling with a fresh, fabricated code (never a real invitation).
+    const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+    const entropy = require('node:crypto').randomBytes(8);
+    const rateCode = [...entropy].map(n => alphabet[n % alphabet.length]).join('');
+    for (let i = 0; i < 20; i++) {
+      const response = await api.post(gateway, {
+        headers: { ...corsOrigin, apikey: publishable },
+        data: { action: 'get_invitation_v2', args: { p_code: rateCode } }
+      });
+      if (response.status() !== 200) throw Error('Live gateway rate limit triggered early at request ' + (i + 1) + ': ' + response.status());
+      if (await response.json() !== null) throw Error('Unknown code unexpectedly returned an invitation');
+    }
+    const throttled = await api.post(gateway, {
+      headers: { ...corsOrigin, apikey: publishable },
+      data: { action: 'get_invitation_v2', args: { p_code: rateCode } }
+    });
+    if (throttled.status() !== 429) throw Error('21st request should be throttled, got ' + throttled.status());
     const direct = await api.post(projectUrl + '/rest/v1/rpc/get_invitation_v2', {
       headers: { apikey: publishable, 'Content-Type': 'application/json' },
       data: { p_code: fake }
     });
     if (![401, 403, 404].includes(direct.status())) throw Error('Direct guest RPC must be denied; got ' + direct.status());
   } finally { await api.dispose(); }
-  process.stdout.write('PASS: live guest page, mobile viewport, query scrubbing, login screen, gateway and direct-RPC denial\n');
+  process.stdout.write('PASS: live guest page, mobile viewport, query scrubbing, login screen, gateway, live throttling and direct-RPC denial\n');
 }
 run().catch(e => { console.error(e); process.exitCode = 1; });

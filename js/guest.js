@@ -132,6 +132,9 @@
     await loadFood();status(t('foodDone'),'success');
   }
   async function init(){
+    const rawCode=R.getInviteCode();
+    // Clean the query before any network calls, even when the event is unpublished.
+    if(window.location.search)history.replaceState(history.state,'',window.location.pathname+window.location.hash);
     document.querySelectorAll('[data-language]').forEach(b=>b.addEventListener('click',()=>setLanguage(b.dataset.language)));
     $('codeForm').addEventListener('submit',e=>{e.preventDefault();const candidate=$('inviteCode').value.toUpperCase().trim();if(!R.codePattern.test(candidate)){status('Invalid invitation code','warning');return;}window.location.assign(R.invitationURL(candidate));});
     $('rsvpForm').addEventListener('submit',submitRsvp);$('confirmFood').addEventListener('click',confirmFood);
@@ -143,9 +146,7 @@
       else if(error)throw error;else eventData=data;
     }catch(e){status(t('offline')+' '+R.safeError(e),'error');return;}
     if(!eventData){$('unpublishedMessage').textContent=t('notPublished');$('unpublishedMessage').classList.remove('hidden');return;}
-    renderEvent();$('codeCard').classList.remove('hidden');const rawCode=R.getInviteCode();
-    // Remove invitation codes from the address bar and browser history.
-    if(window.location.search)history.replaceState(history.state,'',window.location.pathname+window.location.hash);
+    renderEvent();$('codeCard').classList.remove('hidden');
     if(rawCode){$('inviteCode').value=rawCode;await loadInvitation(rawCode);}
   }
   document.addEventListener('DOMContentLoaded',()=>{init().catch(e=>status(R.safeError(e),'error'));});

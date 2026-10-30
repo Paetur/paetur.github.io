@@ -1,5 +1,5 @@
 // Public-release smoke checks. No real guest invite codes or admin credentials.
-const { test, expect, chromium, request } = require('playwright');
+const { chromium, request } = require('playwright');
 const fs = require('node:fs');
 const cfg = fs.readFileSync('js/config.js', 'utf8');
 const projectUrl = cfg.match(/"supabaseUrl"\s*:\s*"([^"]+)"/)?.[1];
@@ -14,8 +14,8 @@ async function run() {
   page.on('pageerror', e => issues.push(e.message));
   try {
     await page.goto(site, { waitUntil: 'domcontentloaded', timeout: 45000 });
-    await expect(page.locator('#unpublishedMessage')).toBeVisible({ timeout: 20000 });
-    await expect(page.locator('#invitationCard')).toBeHidden();
+    await page.locator('#unpublishedMessage').waitFor({ state: 'visible', timeout: 20000 });
+    if (await page.locator('#invitationCard').isVisible()) throw Error('Invitation should be hidden while unpublished');
     const meta = await page.locator('meta[name=referrer]').getAttribute('content');
     if (meta !== 'no-referrer') throw Error('Guest referrer policy must be no-referrer');
     const width = await page.evaluate(() => ({
@@ -24,11 +24,11 @@ async function run() {
     }));
     if (width.scroll > width.screen + 3) throw Error('Horizontal overflow on mobile: ' + JSON.stringify(width));
     await page.goto(site + '?=AAAAAAAA', { waitUntil: 'domcontentloaded', timeout: 45000 });
-    await expect(page.locator('#unpublishedMessage')).toBeVisible({ timeout: 20000 });
-    await expect.poll(() => page.url()).not.toContain('AAAAAAAA');
+    await page.locator('#unpublishedMessage').waitFor({ state: 'visible', timeout: 20000 });
+    await page.waitForFunction(() => !location.search.includes('AAAAAAAA'), { timeout: 20000 });
     await page.goto(site + 'admin/', { waitUntil: 'domcontentloaded', timeout: 45000 });
-    await expect(page.locator('#loginForm')).toBeVisible();
-    await expect(page.locator('#adminApp')).toBeHidden();
+    await page.locator('#loginForm').waitFor({ state: 'visible', timeout: 20000 });
+    if (await page.locator('#adminApp').isVisible()) throw Error('Anonymous admin panel should be hidden');
     if (issues.length) throw Error('Browser script errors: ' + issues.join('; '));
   } finally { await browser.close(); }
   const api = await request.newContext({ timeout: 25000 });

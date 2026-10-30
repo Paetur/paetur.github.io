@@ -96,50 +96,81 @@
    const byId=new Map(all.map(h=>[h.id,h]));
    const matched=new Set(all.filter(h=>{
      const guests=store.guests.filter(g=>g.household_id===h.id);
-     return [h.household_name,h.language,...guests.map(g=>[g.first_name,g.last_name].join(' '))].join(' ').toLowerCase().includes(search);
+     return [h.household_name,h.language,...guests.map(g=>[g.first_name,g.last_name].join(' '))]
+       .join(' ').toLowerCase().includes(search);
    }).map(h=>h.id));
    const visible=new Set(matched);
    if(search)for(const id of matched){
-     let h=byId.get(id);const visited=new Set();
-     while(h?.parent_id&&!visited.has(h.id)){visited.add(h.id);visible.add(h.parent_id);h=byId.get(h.parent_id);}
+     let h=byId.get(id);const seen=new Set();
+     while(h?.parent_id&&!seen.has(h.id)){seen.add(h.id);visible.add(h.parent_id);h=byId.get(h.parent_id);}
    }
-   const sides=[...new Set(all.map(h=>h.side))].sort();
-   for(const side of sides){
-     const sideBox=R.dom('section',{class:'hierarchy-section'});
-     sideBox.append(R.dom('h3',{},side.split('_').map(w=>w[0]?.toUpperCase()+w.slice(1)).join(' ')));
-     const groups=[...new Set(all.filter(h=>h.side===side).map(h=>h.relation_group_id||''))];
+   for(const side of [...new Set(all.map(h=>h.side||'unassigned'))].sort()){
+     const sideMembers=all.filter(h=>(h.side||'unassigned')===side);
+     if(!sideMembers.some(h=>visible.has(h.id)))continue;
+     const label=side.split('_').map(w=>w[0]?.toUpperCase()+w.slice(1)).join(' ');
+     const sideBox=R.dom('details',{class:'hierarchy-section tree-disclosure'});
+     sideBox.dataset.treeKey='side:'+side;
+     setDisclosure(sideBox,sideBox.dataset.treeKey,true,!!search);
+     const heading=R.dom('summary',{class:'tree-side'});
+     heading.append(R.dom('span',{},label),R.dom('small',{class:'tree-count'},sideMembers.length+' households'));
+     sideBox.append(heading);
+     const sideBody=R.dom('div',{class:'tree-children'});
+     const groups=[...new Set(sideMembers.map(h=>h.relation_group_id||''))];
      groups.sort((a,b)=>{
        const ar=store.relationGroups.find(r=>r.id===a),br=store.relationGroups.find(r=>r.id===b);
        return (ar?.sort_order||0)-(br?.sort_order||0)||(ar?.name||'').localeCompare(br?.name||'');
      });
      for(const groupId of groups){
-       const members=all.filter(h=>h.side===side&&(h.relation_group_id||'')===groupId);
+       const members=sideMembers.filter(h=>(h.relation_group_id||'')===groupId);
        const visibleMembers=members.filter(h=>visible.has(h.id));
        if(!visibleMembers.length)continue;
-       const groupBox=R.dom('div',{class:'hierarchy-group'});
-       groupBox.append(R.dom('h4',{},`${householdGroupName(members[0])} · ${members.length}`));
+       const groupBox=R.dom('details',{class:'hierarchy-group tree-disclosure'});
+       groupBox.dataset.treeKey='group:'+side+':'+groupId;
+       setDisclosure(groupBox,groupBox.dataset.treeKey,true,!!search);
+       const groupTitle=R.dom('summary',{class:'tree-group'});
+       groupTitle.append(R.dom('span',{},householdGroupName(members[0])),
+         R.dom('small',{class:'tree-count'},members.length+' households'));
+       groupBox.append(groupTitle);
+       const groupBody=R.dom('div',{class:'tree-children'});
        const visited=new Set();
-       function draw(h,depth){
+       function draw(h,container,depth){
          if(visited.has(h.id)||!visible.has(h.id))return;
          visited.add(h.id);
+         const children=ordered(members.filter(m=>m.parent_id===h.id&&m.id!==h.id),'household_name');
+         const nested=children.some(c=>visible.has(c.id));
+         const node=R.dom(nested?'details':'div',{class:'household-tree-node'});
+         if(nested){
+           node.dataset.treeKey='household:'+h.id;
+           setDisclosure(node,node.dataset.treeKey,true,!!search);
+         }
+         const card=R.dom(nested?'summary':'div',{class:'household-node'});
+         const primary=R.dom('div',{class:'household-node-main'});
+         const info=R.dom('div',{class:'household-node-name'});
+         info.append(R.dom('strong',{},h.household_name||'Unnamed household'));
+         const guests=store.guests.filter(g=>g.household_id===h.id);
+         info.append(R.dom('small',{class:'muted'},`${guests.length} guest${guests.length===1?'':'s'} · ${h.language?.toUpperCase()||'—'} · RSVP ${h.rsvp_state||'open'}`));
+         primary.append(info);
+         const actions=R.dom('div',{class:'household-actions'});
+         actions.append(iconAction('copy','Copy private invitation link',async()=>{
+           await navigator.clipboard.writeText(R.invitationURL(h.invite_code));
+           show('Private invitation link copied.','success');
+         }));
+         const editor=R.dom('div',{class:'household-inline-editor hidden edit-only'});
+         actions.append(iconAction('edit','Edit household hierarchy: '+(h.household_name||'household'),()=>{
+           editor.classList.toggle('hidden');
+         },false,'edit-only'));
+         actions.append(iconAction('delete','Deletion is unavailable to protect guest and RSVP records',null,true,'edit-only'));
          const siblings=ordered(members.filter(m=>m.parent_id===h.parent_id),'household_name');
          const pos=siblings.findIndex(m=>m.id===h.id);
-         const card=R.dom('div',{class:'household-node'});
-         card.style.marginLeft=`${Math.min(depth,8)*19}px`;
-         const primary=R.dom('div',{class:'household-node-main'});
-         const name=R.dom('div',{class:'household-node-name'});
-         name.append(R.dom('strong',{},h.household_name||'Unnamed household'));
-         if(h.parent_id)name.append(R.dom('span',{class:'tag'},'Child'));
-         const guests=store.guests.filter(g=>g.household_id===h.id);
-         name.append(R.dom('small',{class:'muted'},`${guests.length} guest${guests.length===1?'':'s'} · ${h.language?.toUpperCase()||'—'} · RSVP ${h.rsvp_state||'open'}`));
-         primary.append(name);
-         const actions=R.dom('div',{class:'household-actions'});
-         actions.append(btn('↑',`Move ${h.household_name} up`,()=>rpcAction('admin_move_household',{p_household_id:h.id,p_direction:-1},'Household order saved.'),pos<=0));
-         actions.append(btn('↓',`Move ${h.household_name} down`,()=>rpcAction('admin_move_household',{p_household_id:h.id,p_direction:1},'Household order saved.'),pos===siblings.length-1));
-         const label=R.dom('label',{class:'parent-picker edit-only'});label.append(R.dom('span',{},'Parent'));
+         editor.append(btn('↑','Move household up',()=>rpcAction('admin_move_household',{p_household_id:h.id,p_direction:-1},'Household order saved.'),pos<=0));
+         editor.append(btn('↓','Move household down',()=>rpcAction('admin_move_household',{p_household_id:h.id,p_direction:1},'Household order saved.'),pos>=siblings.length-1));
+         const label=R.dom('label',{class:'parent-picker'});
+         label.append(R.dom('span',{},'Parent'));
          const select=R.dom('select');
+         select.setAttribute('aria-label','Parent for '+(h.household_name||'household'));
          select.append(R.dom('option',{value:''},'None (top level)'));
-         ordered(members.filter(m=>m.id!==h.id&&!isDescendantOf(m.id,h.id)),'household_name').forEach(parent=>select.append(R.dom('option',{value:parent.id},parent.household_name||'Unnamed')));
+         ordered(members.filter(m=>m.id!==h.id&&!isDescendantOf(m.id,h.id)),'household_name').forEach(parent=>
+           select.append(R.dom('option',{value:parent.id},parent.household_name||'Unnamed')));
          select.value=h.parent_id||'';
          select.addEventListener('change',async()=>{
            const next=select.value||null;select.disabled=true;
@@ -147,25 +178,27 @@
            catch(error){select.value=h.parent_id||'';show(R.safeError(error),'error');}
            finally{select.disabled=false;}
          });
-         label.append(select);actions.append(label);
-         actions.append(btn('Copy link','Copy private invitation link',async()=>{
-           await navigator.clipboard.writeText(R.invitationURL(h.invite_code));show('Private invitation link copied.','success');
-         }));
+         label.append(select);editor.append(label);
          primary.append(actions);card.append(primary);
-         if(guests.length){const guestNames=R.dom('small',{class:'household-guests muted'},guests.map(g=>[g.first_name,g.last_name].filter(Boolean).join(' ')).join(' · '));card.append(guestNames);}
-         groupBox.append(card);
-         ordered(members.filter(m=>m.parent_id===h.id),'household_name').forEach(ch=>draw(ch,depth+1));
+         node.append(card,editor);
+         if(guests.length)node.append(R.dom('small',{class:'household-guests muted'},
+           guests.map(g=>[g.first_name,g.last_name].filter(Boolean).join(' ')).join(' · ')));
+         if(nested){
+           const childList=R.dom('div',{class:'tree-children'});
+           children.forEach(child=>draw(child,childList,depth+1));
+           node.append(childList);
+         }
+         container.append(node);
        }
-       ordered(members.filter(h=>!h.parent_id||!members.some(p=>p.id===h.parent_id)),'household_name').forEach(h=>draw(h,0));
-       // If imported data has a bad/cross-group parent, show it instead of hiding it.
-       visibleMembers.filter(h=>!visited.has(h.id)).forEach(h=>draw(h,0));
-       sideBox.append(groupBox);
+       ordered(members.filter(h=>!h.parent_id||!members.some(p=>p.id===h.parent_id)),'household_name').forEach(h=>draw(h,groupBody,0));
+       visibleMembers.filter(h=>!visited.has(h.id)).forEach(h=>draw(h,groupBody,0));
+       groupBox.append(groupBody);sideBody.append(groupBox);
      }
-     if(sideBox.children.length>1)box.append(sideBox);
+     sideBox.append(sideBody);box.append(sideBox);
    }
    if(!box.children.length)box.append(R.dom('p',{class:'muted'},'No matching households.'));
  }
- function claimedQuantity(item){return store.claims.filter(c=>c.food_item_id===item.id).reduce((n,c)=>n+c.quantity,0);}
+  function claimedQuantity(item){return store.claims.filter(c=>c.food_item_id===item.id).reduce((n,c)=>n+c.quantity,0);}
  function foodCategoriesSorted(){return ordered(store.foodCategories,'name');}
  function foodItemName(item){return item.name_en||item.name_fo||item.name_de||'Unnamed item';}
  function foodCategoryOptions(select,current){

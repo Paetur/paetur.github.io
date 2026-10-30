@@ -48,6 +48,11 @@ async function run() {
       data: { action: 'get_invitation_v2', args: { p_code: 'INVALID!' } }
     });
     if (invalid.status() !== 400) throw Error('Invalid code should be rejected as 400; got ' + invalid.status());
+    // Keep all requests inside a single server minute window; limits intentionally reset each minute.
+    const currentSecond = new Date().getUTCSeconds();
+    if (currentSecond > 12) {
+      await new Promise(resolve => setTimeout(resolve, (61 - currentSecond) * 1000));
+    }
     // Exercise actual gateway throttling with a fresh, fabricated code (never a real invitation).
     const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
     const entropy = require('node:crypto').randomBytes(8);

@@ -329,11 +329,11 @@ async function run(){
    await page.locator('#logSearch').fill('Example child');await page.locator('#logFrom').fill('2026-10-31');await page.locator('#logTo').fill('2026-10-31');await page.locator('#logApply').click();await waitForApp(page,()=>!document.querySelector('#logApply').disabled);
    assert.equal(await page.evaluate(()=>window.__lastLogQuery.p_from),'2026-10-30T23:00:00.000Z');assert.equal(await page.evaluate(()=>window.__lastLogQuery.p_to),'2026-10-31T23:00:00.000Z');
    await page.locator('#logAction').selectOption('update');await waitForApp(page,()=>!document.querySelector('#logApply').disabled);await page.locator('#logRows .log-entry summary').first().click();assert.ok((await page.locator('#logRows').innerText()).includes('+298 654321'));
-   await page.screenshot({path:path.join(root,'artifacts','settings-logs-desktop.png'),fullPage:true});
+   await page.setViewportSize({width:1250,height:1150});await page.screenshot({path:path.join(root,'artifacts','settings-logs-desktop.png')});
    await page.locator('#logSearch').fill('no matching record');await page.locator('#logApply').click();await waitForApp(page,()=>!document.querySelector('#logApply').disabled);assert.ok((await page.locator('#logRows').innerText()).includes('No log entries'));
    await page.locator('#logReset').click();await waitForApp(page,()=>!document.querySelector('#logApply').disabled);assert.equal(await page.locator('#logRows .log-entry').count(),50);
    await page.setViewportSize({width:390,height:844});await page.locator('#logCategory').selectOption('invitations');await waitForApp(page,()=>!document.querySelector('#logApply').disabled);const logDims=await page.evaluate(()=>({scroll:document.documentElement.scrollWidth,client:document.documentElement.clientWidth}));assert.ok(logDims.scroll<=logDims.client+3,'log filters and entries fit mobile');
-   await page.screenshot({path:path.join(root,'artifacts','settings-logs-mobile.png'),fullPage:true});
+   await page.setViewportSize({width:390,height:1100});await page.screenshot({path:path.join(root,'artifacts','settings-logs-mobile.png')});
 
    await page.goto(url.replace('/admin/','/'),{waitUntil:'load'});
    assert.equal(await page.locator('footer').count(),0);assert.equal(await page.locator('#unpublishedMessage').count(),0);

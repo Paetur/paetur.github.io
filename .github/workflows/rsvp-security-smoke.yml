@@ -42,6 +42,7 @@ jobs:
         env:
           DATABASE_URL: postgres://postgres:test-only@localhost:5432/rsvp_test
         run: |
+          node tests/admin-auth.cjs
           node tests/timezones.cjs
           node tests/household-management-db.cjs
   browser-smoke:
@@ -55,9 +56,11 @@ jobs:
       - name: Install pinned Playwright and Chromium
         run: |
           npm ci
-          npx playwright install --with-deps chromium
+          npx playwright install --with-deps chromium webkit
       - name: Validate admin JavaScript
         run: node --check js/admin.js && node --check tests/admin-layout.cjs
+      - name: Test administrator credentials with real SDK in Chromium and WebKit
+        run: node tests/admin-auth-browser.cjs
       - name: Test compact admin layout with mocked data
         run: node tests/admin-layout.cjs
       - name: Upload light and dark browser previews

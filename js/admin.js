@@ -5,7 +5,14 @@
  let activeTab='dashboard',lastMainTab='dashboard',activeSettingsTab='event',editMode=false;
  const expandedGroups=new Map();
  const qs=(s)=>document.querySelector(s);
- const show=(msg,type='info')=>R.showStatus('adminMessage',msg,type);
+ let statusTimer=null;
+ function show(msg,type='info'){
+   clearTimeout(statusTimer);R.showStatus('adminMessage',msg,type);if(!msg)return;
+   const now=new Date();const time=R.dom('time',{class:'status-time',title:now.toISOString()},new Intl.DateTimeFormat('en-GB',{hour:'2-digit',minute:'2-digit',second:'2-digit',hourCycle:'h23'}).format(now));time.dateTime=now.toISOString();
+   $('adminMessage').prepend(time,document.createTextNode(' · '));
+   statusTimer=setTimeout(()=>R.showStatus('adminMessage',''),5000);
+ }
+
  const fmt=(value)=>value?new Intl.DateTimeFormat('en-GB',{dateStyle:'medium'}).format(new Date(value)):'—';
  function stamp(datetime){if(!datetime)return '';const d=new Date(datetime),parts=new Date(d.getTime()-d.getTimezoneOffset()*60000).toISOString().slice(0,16);return parts;}
  function row(parent,tag,attrs={},text){const n=R.dom(tag,attrs,text);parent.append(n);return n;}
@@ -40,7 +47,7 @@
      const keys=['settings','sessions','locations','households','guests','food','claims','submissions','defaults','content','relationGroups','foodCategories','contacts','overrides','responses','queue','deliveries'];
      const jobs=[fetchTable('event_settings'),fetchTable('event_sessions'),fetchTable('event_locations'),fetchTable('households','id,household_name,invite_code,language,side,relation_group_id,email,phone,food,food_confirmed,rsvp_state,rsvp_submitted_at,late_submission_until,sort_order,parent_id,notes,archived_at,whatsapp,postal_address,preferred_contact_method'),fetchTable('guests','id,household_id,first_name,last_name,courtesy_title,relation,language,is_child,rsvp_status,dietary_requirements,notes,archived_at'),fetchTable('food_items'),fetchTable('food_claims'),fetchTable('rsvp_submissions','id,household_id,submitted_at'),fetchTable('household_session_defaults'),fetchTable('event_content'),fetchTable('relation_groups'),fetchTable('food_categories'),fetchTable('household_contacts'),fetchTable('guest_session_overrides'),fetchTable('guest_session_responses'),fetchTable('invitation_send_queue'),fetchTable('invitation_deliveries')];
      const values=await Promise.all(jobs);keys.forEach((key,i)=>store[key]=values[i]);store.settings=store.settings[0]||null;
-     const {data:admins,error:adminsError}=await db.rpc('admin_list_members');
+     const {data:admins,error:adminsError}=await R.adminRpc('admin_list_members');
      store.admins=adminsError?[]:(admins||[]);
      if(adminsError)show('Admin management API unavailable: '+R.safeError(adminsError),'warning');else show('');
      renderAll();return true;
@@ -106,7 +113,7 @@
    });
  }
   async function rpcAction(name,params,success){
-   const {error}=await db.rpc(name,params);
+   const {error}=await R.adminRpc(name,params);
    if(error)throw error;
    await reload();
    if(success)show(success,'success');
@@ -167,15 +174,15 @@
        p_language:language.value||null,p_is_child:child.checked,
        p_dietary_requirements:dietary.value.trim()||null,p_notes:notes.value.trim()||null
      };
-     save.disabled=true;
+     save.disabled=true;form.setAttribute('aria-busy','true');
      try{
        const fields=Object.fromEntries(Object.entries(payload).filter(([k])=>k!=='p_guest_id').map(([k,v])=>[k.slice(2),v]));
-       const {error}=guest.id?await db.rpc('admin_update_guest',payload):await db.rpc('admin_create_guest',{p_household_id:guest.household_id,p_values:fields});
+       const {error}=guest.id?await R.adminRpc('admin_update_guest',payload):await R.adminRpc('admin_create_guest',{p_household_id:guest.household_id,p_values:fields});
        if(error)throw error;
        const refreshed=await reload();
        if(refreshed)show('Guest details saved.','success');
      }catch(error){show(R.safeError(error),'error');}
-     finally{save.disabled=false;}
+     finally{save.disabled=false;form.removeAttribute('aria-busy');}
    });
    return form;
  }
@@ -218,24 +225,13 @@
    const button=R.dom('button',{class:'btn',type:'submit'},label);form.append(button);
    form.addEventListener('submit',async e=>{
      e.preventDefault();e.stopPropagation();if(!editMode)return;
-     button.disabled=true;
+     button.disabled=true;form.setAttribute('aria-busy','true');
      try{if(await save()===false)return;if(await reload())show('Changes saved.','success');}
      catch(error){show(R.safeError(error),'error');}
-     finally{button.disabled=false;}
+     finally{button.disabled=false;form.removeAttribute('aria-busy');}
    });return form;
  }
- async function managementRpc(name,args){
-   const current=await db.auth.getUser();if(current.error||!current.data?.user)throw new Error('Your sign-in has expired. Sign in again, then retry; your form has been kept.');
-   let result=await db.rpc(name,args);
-   if(result.error?.code==='42501'&&/permission denied for function/i.test(result.error.message)&&db.auth.refreshSession){
-     const refreshed=await db.auth.refreshSession();
-     if(refreshed.error||!refreshed.data?.session)throw new Error('Your sign-in has expired. Sign in again, then retry; your form has been kept.');
-     const access=await db.rpc('is_admin');if(access.error||access.data!==true)throw new Error('Your signed-in account does not currently have administrator access.');
-     result=await db.rpc(name,args);
-   }
-   if(result.error)throw result.error;return result.data;
- }
-
+ async function managementRpc(name,args){const {data,error}=await R.adminRpc(name,args);if(error)throw error;return data;}
  const languages=[['fo','Faroese'],['en','English'],['de','German']];
  function householdForm(h){
    const f=managementForm();
@@ -545,9 +541,9 @@
      const record={quantity_needed:required,active:active.checked};
      for(const [,key] of fields)record[key]=form.elements.namedItem(key).value.trim()||null;
      if(!record.name_fo){show('Faroese name is required.','error');return;}
-     save.disabled=true;
+     save.disabled=true;form.setAttribute('aria-busy','true');
      try{const {error}=await db.from('food_items').update(record).eq('id',item.id);if(error)throw error;await reload();show('Food item updated.','success');}
-     catch(error){show(R.safeError(error),'error');}finally{save.disabled=false;}
+     catch(error){show(R.safeError(error),'error');}finally{save.disabled=false;form.removeAttribute('aria-busy');}
    });
    return form;
  }
@@ -642,7 +638,7 @@
      remove.title=store.admins.length<=1?'You cannot remove the last administrator.':'Revoke administrator access';remove.setAttribute('aria-label',remove.title);
      remove.addEventListener('click',async()=>{
        if(!confirm(`Revoke administrator access for ${a.email}?`))return;
-       remove.disabled=true;const {error}=await db.rpc('admin_remove_member',{p_user_id:a.user_id});
+       remove.disabled=true;const {error}=await R.adminRpc('admin_remove_member',{p_user_id:a.user_id});
        if(error)show(R.safeError(error),'error');else {show('Administrator access revoked.','success');await reload();}
        remove.disabled=false;
      });
@@ -719,7 +715,7 @@
    $('newSessionEditor').replaceChildren(sessionForm({sort_order:store.sessions.length+1}));
  }
  async function checkAccess(){
-   const {data:access,error}=await db.rpc('is_admin');
+   const {data:access,error}=await R.adminRpc('is_admin');
    if(error)throw error;
    if(access!==true)throw new Error('Your account does not have administrator access. Ask an existing administrator to grant it first.');
    $('loginPanel').classList.add('hidden');$('adminApp').classList.remove('hidden');$('adminTopActions').classList.remove('hidden');$('loggedInAs').textContent=user.email||'';
@@ -775,7 +771,7 @@
    });
    $('addAdminForm').addEventListener('submit',async e=>{
      e.preventDefault();const button=e.target.querySelector('button');button.disabled=true;
-     const {error}=await db.rpc('admin_add_existing_user',{p_email:$('newAdminEmail').value.trim(),p_name:$('newAdminName').value.trim()});
+     const {error}=await R.adminRpc('admin_add_existing_user',{p_email:$('newAdminEmail').value.trim(),p_name:$('newAdminName').value.trim()});
      if(error)show(R.safeError(error),'error');else{e.target.reset();show('Administrator added.','success');await reload();}
      button.disabled=false;
    });

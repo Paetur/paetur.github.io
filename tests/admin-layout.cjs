@@ -354,7 +354,7 @@ async function run(){
    assert.equal(await page.locator('html').getAttribute('data-theme'),'light');
    if(errors.length)throw Error('Admin browser script errors: '+errors.join(' | '));
    console.log('PASS: topbar, dark mode persistence, Settings page, expandable households, guest editing, refresh and mobile screenshots');
- }finally{
+ }catch(error){console.error(await page.evaluate(()=>({notice:document.querySelector('#adminMessage')?.textContent,calls:window.__calls?.slice(-3)})));throw error;}finally{
    await browser.close();
    await new Promise(resolve=>server.close(resolve));
  }

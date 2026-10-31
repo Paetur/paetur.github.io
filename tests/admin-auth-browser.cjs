@@ -10,7 +10,7 @@ function jwt(tag){return [Buffer.from(JSON.stringify({alg:'HS256',typ:'JWT'})).t
    const browser=await engine.launch({headless:true});try{
      const page=await browser.newPage();let rpcCount=0,refreshCount=0,rejectNext=false;const original=jwt('original'),renewed=jwt('renewed'),headers=[];
      await page.route('https://admin-auth-test.supabase.co/**',async route=>{
-       const request=route.request(),url=new URL(request.url());const cors={'Access-Control-Allow-Origin':'*','Access-Control-Allow-Headers':'*','Access-Control-Allow-Methods':'POST,GET,OPTIONS','Content-Type':'application/json'};
+       const request=route.request(),url=new URL(request.url());const cors={'Access-Control-Allow-Origin':'*','Access-Control-Allow-Headers':'authorization,apikey,content-type,x-client-info,x-supabase-api-version','Access-Control-Allow-Methods':'POST,GET,OPTIONS','Content-Type':'application/json'};
        if(request.method()==='OPTIONS')return route.fulfill({status:200,headers:cors,body:'{}'});
        if(url.pathname==='/auth/v1/token'){const refresh=url.searchParams.get('grant_type')==='refresh_token';if(refresh)refreshCount++;return route.fulfill({status:200,headers:cors,body:JSON.stringify({access_token:refresh?renewed:original,refresh_token:'synthetic-refresh',token_type:'bearer',expires_in:3600,user})});}
        if(url.pathname==='/auth/v1/user')return route.fulfill({status:200,headers:cors,body:JSON.stringify(user)});

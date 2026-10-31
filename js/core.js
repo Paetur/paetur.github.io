@@ -48,6 +48,28 @@
     });
     return client;
   }
+  async function adminRpc(name,args={}) {
+    if(!/^(admin_[a-z_]+|is_admin)$/.test(name))return {data:null,error:{message:'Invalid administrator action'}};
+    const db=getClient();if(!db)return {data:null,error:{message:'Database not configured'}};
+    const expired=()=>({data:null,error:{code:'AUTH_SESSION_MISSING',message:'Your sign-in has expired. Sign in again before saving. Your edits have not been submitted.'}});
+    let sessionResult=await db.auth.getSession();
+    let session=sessionResult.data?.session;
+    if(sessionResult.error||!session?.access_token){sessionResult=await db.auth.refreshSession();session=sessionResult.data?.session;}
+    if(sessionResult.error||!session?.access_token||session.access_token.startsWith('sb_'))return expired();
+    const cfg=config();
+    async function send(token){
+      const response=await fetch(normalizeUrl(cfg.supabaseUrl)+'/rest/v1/rpc/'+name,{method:'POST',headers:{apikey:validateKey(cfg.supabaseKey),Authorization:'Bearer '+token,'Content-Type':'application/json'},body:JSON.stringify(args)});
+      const body=await response.text();let value=null;try{value=body?JSON.parse(body):null;}catch(_){return {data:null,error:{message:'The server returned an unreadable response.'},status:response.status};}
+      return response.ok?{data:value,error:null,status:response.status}:{data:null,error:typeof value==='object'&&value?value:{message:'Administrator request failed.'},status:response.status};
+    }
+    let result=await send(session.access_token);
+    if(result.status===401||(result.error?.code==='42501'&&/permission denied for function/i.test(result.error.message||''))){
+      const refreshed=await db.auth.refreshSession();const token=refreshed.data?.session?.access_token;
+      if(refreshed.error||!token||token.startsWith('sb_'))return expired();
+      result=await send(token);
+    }
+    return {data:result.data,error:result.error};
+  }
   async function guestRpc(action,args) {
     const client=getClient();
     if(!client)return {data:null,error:new Error('Database not configured')};
@@ -116,6 +138,6 @@
     return '// Event Invitation public browser configuration. NEVER add a secret/service_role key.\n'+
       'window.RSVP_CONFIG = Object.freeze('+JSON.stringify({supabaseUrl:cfg.supabaseUrl,supabaseKey:cfg.supabaseKey},null,2)+');\n';
   }
-  window.RSVP={config,getClient,guestRpc,normalizeUrl,validateKey,savePreview,invitationURL,getInviteCode,codePattern,siteRoot,dom,byId,showStatus,formatDate,zonedInput,zonedInstant,safeError,dl,configSource};
+  window.RSVP={config,getClient,adminRpc,guestRpc,normalizeUrl,validateKey,savePreview,invitationURL,getInviteCode,codePattern,siteRoot,dom,byId,showStatus,formatDate,zonedInput,zonedInstant,safeError,dl,configSource};
 }());
 

@@ -543,7 +543,7 @@
      if(!record.name_fo){show('Faroese name is required.','error');return;}
      save.disabled=true;form.setAttribute('aria-busy','true');
      try{const {error}=await db.from('food_items').update(record).eq('id',item.id);if(error)throw error;await reload();show('Food item updated.','success');}
-     catch(error){show(R.safeError(error),'error');}finally{save.disabled=false;}
+     catch(error){show(R.safeError(error),'error');}finally{save.disabled=false;form.removeAttribute('aria-busy');}
    });
    return form;
  }

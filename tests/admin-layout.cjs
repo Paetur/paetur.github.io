@@ -242,7 +242,7 @@ async function run(){
    await page.waitForFunction(()=>!!window.__lastAssignments);
    assert.ok(await page.evaluate(()=>window.__lastAssignments.p_assignments.some(a=>a.guest_id&&a.is_invited===true)));
    await page.setViewportSize({width:1250,height:950});
-   await page.locator('#inviteRows details').evaluateAll(nodes=>nodes.forEach(n=>n.open=true));
+   await page.locator('#inviteRows details').evaluateAll(nodes=>nodes.forEach(n=>n.open=!n.classList.contains('admin-management')));
    await page.screenshot({path:path.join(root,'artifacts','manage-invites-venues.png'),fullPage:true});
    await page.locator('[data-tab="food"]').click();
    assert.equal(await page.locator('.food-category').count(),2,'food grouped by category');
@@ -263,6 +263,9 @@ async function run(){
    await page.locator('[data-tab="households"]').click();await page.locator('#expandHouseholds').click();
    assert.ok((await page.locator('[data-tree-key="household:11111111-1111-4111-8111-111111111111"] > summary').innerText()).includes('1 guest · 1 sub-household'));
    assert.equal(await page.locator('.admin-heading .eyebrow').count(),0);assert.equal(await page.locator('footer').count(),0);
+   await page.locator('#newHousehold').evaluate(el=>el.closest('details').open=false);
+   await page.locator('[data-tree-key="side:maria_haass"]').evaluate(el=>el.open=false);
+   await page.locator('[data-tree-key="group:paetur_hentze:"]').evaluate(el=>el.open=false);
    await page.locator('#themeToggle').click();
    await page.screenshot({path:path.join(root,'artifacts','households-preview-dark.png'),fullPage:true});await page.locator('#themeToggle').click();
    await page.goto(url.replace('/admin/','/'),{waitUntil:'load'});

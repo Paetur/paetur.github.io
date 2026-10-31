@@ -46,6 +46,7 @@
         const zone=venue?.timezone||eventData?.event?.timezone||'UTC';
         const details=[venue?.name,venue?.address,session.starts_at?R.formatDate(session.starts_at,language,zone):null,session.ends_at?'– '+R.formatDate(session.ends_at,language,zone):null,session.starts_at?zone:null].filter(Boolean);
         entry.append(R.dom('p',{class:'micro session-venue'},details.join(' · ')));
+        const welcome=venue?.['welcome_'+language]||venue?.['welcome_'+(eventData?.event?.default_language||'en')];if(welcome)entry.append(R.dom('p',{class:'venue-welcome'},welcome));
         if(venue?.notes)entry.append(R.dom('p',{class:'micro'},venue.notes));
         if(venue?.map_url){try{const url=new URL(venue.map_url);if(url.protocol==='https:'){const a=R.dom('a',{class:'quiet-link'},'↗ '+venue.name);a.href=url.href;a.target='_blank';a.rel='noopener noreferrer';entry.append(a);}}catch(_){} }
         if(!link.requires_rsvp)return;
@@ -140,6 +141,7 @@
   async function init(){
     const rawCode=R.getInviteCode();
     // Clean the query before any network calls, even when the event is unpublished.
+    $('languageSwitcher').classList.toggle('hidden',!rawCode);$('adminLink').classList.toggle('hidden',!!rawCode);
     if(window.location.search)history.replaceState(history.state,'',window.location.pathname+window.location.hash);
     document.querySelectorAll('[data-language]').forEach(b=>b.addEventListener('click',()=>setLanguage(b.dataset.language)));
     $('codeForm').addEventListener('submit',e=>{e.preventDefault();const candidate=$('inviteCode').value.toUpperCase().trim();if(!R.codePattern.test(candidate)){status('Invalid invitation code','warning');return;}window.location.assign(R.invitationURL(candidate));});
@@ -151,6 +153,7 @@
       if(error&&error.code==='PGRST202'){const old=await db.rpc('get_public_event');if(old.error)throw old.error;eventData=old.data;}
       else if(error)throw error;else eventData=data;
     }catch(e){status(t('offline')+' '+R.safeError(e),'error');return;}
+    $('languageSwitcher').classList.toggle('hidden',!eventData&&!rawCode);$('adminLink').classList.toggle('hidden',!!eventData||!!rawCode);
     if(!eventData)return;
     renderEvent();$('codeCard').classList.remove('hidden');
     if(rawCode){$('inviteCode').value=rawCode;await loadInvitation(rawCode);}

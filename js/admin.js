@@ -1,7 +1,7 @@
 (function(){
  'use strict';
  const R=window.RSVP,$=R.byId;
- let db=null,user=null,store={settings:null,sessions:[],locations:[],households:[],guests:[],food:[],claims:[],submissions:[],defaults:[],content:[],admins:[],relationGroups:[],foodCategories:[],contacts:[],overrides:[]};
+ let db=null,user=null,store={settings:null,sessions:[],locations:[],households:[],guests:[],food:[],claims:[],submissions:[],defaults:[],content:[],admins:[],relationGroups:[],foodCategories:[],contacts:[],overrides:[],responses:[],queue:[],deliveries:[]};
  let activeTab='dashboard',lastMainTab='dashboard',activeSettingsTab='event',editMode=false;
  const expandedGroups=new Map();
  const qs=(s)=>document.querySelector(s);
@@ -32,13 +32,13 @@
    }
  }
  function toggleSettings(){tab(activeTab==='settings'?lastMainTab:'settings');}
- function mode(isEditing){editMode=isEditing;$('adminApp').dataset.mode=isEditing?'edit':'view';const b=$('editModeButton');b.classList.toggle('active',isEditing);b.setAttribute('aria-pressed',String(isEditing));b.title=isEditing?'Switch to View mode':'Switch to Edit mode';b.setAttribute('aria-label',b.title);$('adminModeLabel').textContent=isEditing?'Edit mode · Changes are saved to the event database':'View mode · Manage invitations, food and event details';for(const id of ['eventSettingsForm','welcomeForm']){const form=$(id);for(const field of form.querySelectorAll('input,select,textarea'))field.disabled=!isEditing;}}
+ function mode(isEditing){editMode=isEditing;$('adminApp').dataset.mode=isEditing?'edit':'view';const b=$('editModeButton');b.classList.toggle('active',isEditing);b.setAttribute('aria-pressed',String(isEditing));b.title=isEditing?'Switch to View mode':'Switch to Edit mode';b.setAttribute('aria-label',b.title);$('adminModeLabel').textContent=isEditing?'Edit mode · Changes are saved to the event database':'View mode · Manage invitations, food and event details';for(const id of ['eventSettingsForm']){const form=$(id);for(const field of form.querySelectorAll('input,select,textarea'))field.disabled=!isEditing;}}
  async function fetchTable(name,columns='*',order){let q=db.from(name).select(columns);if(order)q=q.order(order);const {data,error}=await q;if(error)throw new Error(`${name}: ${R.safeError(error)}`);return data||[];}
  async function reload(){
    show('Loading event data…');
    try{
-     const keys=['settings','sessions','locations','households','guests','food','claims','submissions','defaults','content','relationGroups','foodCategories','contacts','overrides'];
-     const jobs=[fetchTable('event_settings'),fetchTable('event_sessions'),fetchTable('event_locations'),fetchTable('households','id,household_name,invite_code,language,side,relation_group_id,email,phone,food,food_confirmed,rsvp_state,sort_order,parent_id,notes,archived_at,whatsapp,postal_address,preferred_contact_method'),fetchTable('guests','id,household_id,first_name,last_name,courtesy_title,relation,language,is_child,rsvp_status,dietary_requirements,notes,archived_at'),fetchTable('food_items'),fetchTable('food_claims'),fetchTable('rsvp_submissions','id,household_id,submitted_at'),fetchTable('household_session_defaults'),fetchTable('event_content'),fetchTable('relation_groups'),fetchTable('food_categories'),fetchTable('household_contacts'),fetchTable('guest_session_overrides')];
+     const keys=['settings','sessions','locations','households','guests','food','claims','submissions','defaults','content','relationGroups','foodCategories','contacts','overrides','responses','queue','deliveries'];
+     const jobs=[fetchTable('event_settings'),fetchTable('event_sessions'),fetchTable('event_locations'),fetchTable('households','id,household_name,invite_code,language,side,relation_group_id,email,phone,food,food_confirmed,rsvp_state,rsvp_submitted_at,late_submission_until,sort_order,parent_id,notes,archived_at,whatsapp,postal_address,preferred_contact_method'),fetchTable('guests','id,household_id,first_name,last_name,courtesy_title,relation,language,is_child,rsvp_status,dietary_requirements,notes,archived_at'),fetchTable('food_items'),fetchTable('food_claims'),fetchTable('rsvp_submissions','id,household_id,submitted_at'),fetchTable('household_session_defaults'),fetchTable('event_content'),fetchTable('relation_groups'),fetchTable('food_categories'),fetchTable('household_contacts'),fetchTable('guest_session_overrides'),fetchTable('guest_session_responses'),fetchTable('invitation_send_queue'),fetchTable('invitation_deliveries')];
      const values=await Promise.all(jobs);keys.forEach((key,i)=>store[key]=values[i]);store.settings=store.settings[0]||null;
      const {data:admins,error:adminsError}=await db.rpc('admin_list_members');
      store.admins=adminsError?[]:(admins||[]);
@@ -55,7 +55,7 @@
    try{websiteConfigured=Boolean(deployed.supabaseUrl&&deployed.supabaseKey&&R.normalizeUrl(deployed.supabaseUrl)===R.normalizeUrl(R.config().supabaseUrl)&&R.validateKey(deployed.supabaseKey));}catch(_){websiteConfigured=false;}
    const checks=[['Admin account connected',true],['Event name and date entered',!!(store.settings?.event_name&&store.settings?.event_date)],['At least one session created',store.sessions.some(s=>s.is_active)],['Invitations assigned',store.defaults.some(d=>d.is_invited)],['Website connection in deployed config.js',websiteConfigured],['Website address saved in event settings',!!store.settings?.website_url],['Event published',!!store.settings?.is_published]];
    $('launchChecklist').replaceChildren(...checks.map(([label,yes])=>{const li=R.dom('li');li.append(R.dom('span',{class:yes?'yes':'no'},yes?'✓':'○'),document.createTextNode(label));return li;}));
-   $('newHousehold').replaceChildren(householdForm({language:'fo',side:'paetur_hentze'}));renderHouseholds();renderInvites();renderFood();renderAdmins();renderSettings();renderSessions();renderContent();
+   $('newHousehold').replaceChildren(householdForm({language:'fo',side:'paetur_hentze'}));renderHouseholds();renderInvites();renderDeliveryLog();renderFood();renderAdmins();renderSettings();renderSessions();
  }
  function ordered(list, label){
    return [...list].sort((a,b)=>(a.sort_order||0)-(b.sort_order||0)||
@@ -190,7 +190,8 @@
      const info=R.dom('div',{class:'household-guest-info'});
      const name=[g.courtesy_title,g.first_name,g.last_name].filter(Boolean).join(' ');
      info.append(R.dom('strong',{},name||'Unnamed guest'));
-     const meta=[g.archived_at?'Archived':null,g.is_child?'Child':null,g.relation,'RSVP '+(g.rsvp_status||'pending')].filter(Boolean).join(' · ');
+     const responses=store.responses.filter(r=>r.guest_id===g.id);const responseSummary=responses.length?responses.filter(r=>r.rsvp_status==='attending').length+' attending · '+responses.filter(r=>r.rsvp_status==='declined').length+' declined':'pending';
+     const meta=[g.archived_at?'Archived':null,g.is_child?'Child':null,g.relation,'RSVP '+responseSummary].filter(Boolean).join(' · ');
      info.append(R.dom('small',{class:'muted'},meta));header.append(info);
      const editor=buildGuestEditor(g);
      header.append(iconAction('edit','Edit guest: '+name,()=>editor.classList.toggle('hidden'),!!g.archived_at||!!store.households.find(h=>h.id===g.household_id)?.archived_at,'edit-only'));
@@ -223,7 +224,18 @@
      finally{button.disabled=false;}
    });return form;
  }
- async function managementRpc(name,args){const {data,error}=await db.rpc(name,args);if(error)throw error;return data;}
+ async function managementRpc(name,args){
+   const current=await db.auth.getUser();if(current.error||!current.data?.user)throw new Error('Your sign-in has expired. Sign in again, then retry; your form has been kept.');
+   let result=await db.rpc(name,args);
+   if(result.error?.code==='42501'&&/permission denied for function/i.test(result.error.message)&&db.auth.refreshSession){
+     const refreshed=await db.auth.refreshSession();
+     if(refreshed.error||!refreshed.data?.session)throw new Error('Your sign-in has expired. Sign in again, then retry; your form has been kept.');
+     const access=await db.rpc('is_admin');if(access.error||access.data!==true)throw new Error('Your signed-in account does not currently have administrator access.');
+     result=await db.rpc(name,args);
+   }
+   if(result.error)throw result.error;return result.data;
+ }
+
  const languages=[['fo','Faroese'],['en','English'],['de','German']];
  function householdForm(h){
    const f=managementForm();
@@ -304,6 +316,77 @@
  }
 
 
+ function adminTime(value){return value?R.formatDate(value,'en',store.settings?.timezone||'Atlantic/Faroe'):'—';}
+ function actorName(id){return store.admins.find(a=>a.user_id===id)?.name||'Administrator';}
+ function foodAccessSection(h){
+   const d=disclosure('Food access','feature-section');const claims=store.claims.filter(c=>c.household_id===h.id);
+   d.append(R.dom('p',{class:'small'},`${h.food?'Enabled':'Disabled'} · ${claims.length} food commitment${claims.length===1?'':'s'}${h.food_confirmed?' · Confirmed':''}`));
+   if(h.archived_at)return d;
+   const f=managementForm();const enabled=field(f,'Allow this household to contribute food',!!h.food,null,'checkbox');
+   const reason=field(f,'Reason for food-access change','',null,'textarea',true,2000);
+   f.append(R.dom('p',{class:'micro span-2'},'Disabling access is blocked while food commitments or a confirmed selection exist. Existing selections are never removed by this control.'));
+   d.append(saveForm(f,'Save food access',()=>managementRpc('admin_set_food_access',{p_household_id:h.id,p_enabled:enabled.checked,p_expected:!!h.food,p_reason:reason.value.trim()})));return d;
+ }
+ function rsvpSection(h){
+   const d=disclosure('RSVP management','feature-section');const zone=store.settings?.timezone||'Atlantic/Faroe';
+   d.append(R.dom('p',{class:'small'},`${h.rsvp_state==='locked'?'Locked after submission':'Open for responses'}${h.rsvp_submitted_at?' · Last submission '+adminTime(h.rsvp_submitted_at):''}`));
+   d.append(R.dom('p',{class:'micro'},`Event deadline: ${adminTime(store.settings?.rsvp_deadline)} · Late-response permission: ${adminTime(h.late_submission_until)} · ${zone}`));
+   const rows=[];
+   for(const g of store.guests.filter(g=>g.household_id===h.id&&!g.archived_at))for(const s of ordered(store.sessions,'name').filter(s=>s.is_active&&s.requires_rsvp)){
+     const override=store.overrides.find(o=>o.guest_id===g.id&&o.session_id===s.id);const invited=override?override.is_invited:store.defaults.find(x=>x.household_id===h.id&&x.session_id===s.id)?.is_invited;if(!invited)continue;
+     const current=store.responses.find(r=>r.guest_id===g.id&&r.session_id===s.id)?.rsvp_status||'pending';
+     const name=[g.first_name,g.last_name].filter(Boolean).join(' ');rows.push([name,s.name,({attending:'Attending',declined:'Not attending',pending:'Pending'}[current]||current)]);
+     if(!h.archived_at){const editor=disclosure('Correct response: '+name+' · '+s.name,'edit-only');const f=managementForm();const status=field(f,'Corrected response',current==='pending'?'':current,[['','Choose response'],['attending','Attending'],['declined','Not attending']], 'text',true);const reason=field(f,'Reason for RSVP correction','',null,'textarea',true,2000);
+       f.append(R.dom('p',{class:'micro span-2'},'This updates the current response and records the reason. The original submission and household lock are preserved.'));
+       editor.append(saveForm(f,'Save correction',()=>managementRpc('admin_correct_rsvp',{p_guest_id:g.id,p_session_id:s.id,p_status:status.value,p_reason:reason.value.trim()})));d.append(editor);}
+   }
+   const table=makeTable(['Guest','Session','Current response'],rows);table.classList.add('rsvp-current-responses');d.insertBefore(table,d.children[2]||null);
+   if(!rows.length)d.append(R.dom('p',{class:'micro'},'No active RSVP sessions are assigned to this household.'));
+   if(!h.archived_at){
+     if(h.rsvp_state==='locked'){const f=managementForm();const reason=field(f,'Reason for reopening','',null,'textarea',true,2000);f.append(R.dom('p',{class:'micro span-2'},'Reopening lets the household submit again. Previous submissions remain in history. If the event deadline has passed, grant a late-response window after reopening.'));d.append(saveForm(f,'Reopen RSVP',async()=>{if(!confirm('Reopen this household’s RSVP while preserving its submission history?'))return false;return managementRpc('admin_reopen_household_rsvp',{p_household_id:h.id,p_reason:reason.value.trim()});}));}
+     else{const late=disclosure('Allow a late response','edit-only');const f=managementForm();const until=field(f,'Allow responses until ('+zone+')',R.zonedInput(h.late_submission_until,zone),null,'datetime-local',true);const reason=field(f,'Reason for late response','',null,'textarea',true,2000);late.append(saveForm(f,'Allow late response',()=>managementRpc('admin_authorize_late_rsvp',{p_household_id:h.id,p_until:R.zonedInstant(until.value,zone),p_reason:reason.value.trim()})));d.append(late);}
+   }
+   const history=disclosure('RSVP history');let loaded=false;history.addEventListener('toggle',async()=>{if(!history.open||loaded)return;loaded=true;const content=R.dom('div',{class:'management-history'},'Loading…');history.append(content);try{
+     const results=await Promise.all(['rsvp_household_audit','rsvp_response_audit'].map(table=>db.from(table).select('*').eq('household_id',h.id).order('created_at',{ascending:false}).limit(100)));for(const r of results)if(r.error)throw r.error;
+     const entries=results.flatMap(r=>r.data||[]).filter(x=>x.household_id===h.id).sort((a,b)=>b.created_at.localeCompare(a.created_at));content.replaceChildren();
+     for(const x of entries){const g=store.guests.find(g=>g.id===x.guest_id);content.append(R.dom('p',{class:'small'},[adminTime(x.created_at),x.action.replaceAll('_',' '),g?[g.first_name,g.last_name].filter(Boolean).join(' '):null,x.session_id?sessionName(x.session_id):null,x.new_status?`${x.previous_status||'pending'} → ${x.new_status}`:null,x.actor_user_id?actorName(x.actor_user_id):'Guest',x.reason].filter(Boolean).join(' · ')));}
+     if(!entries.length)content.textContent='No RSVP history recorded.';
+   }catch(error){loaded=false;content.textContent=R.safeError(error);}});d.append(history);return d;
+ }
+ function deliveryEditor(h,q={}){
+   const f=managementForm();const channel=field(f,'Delivery channel',q.channel||h.preferred_contact_method||'manual',[['manual','Manual / in person'],['email','Email'],['whatsapp','WhatsApp'],['sms','SMS'],['postal','Postal']]);
+   const contact=field(f,'Delivery recipient',q.contact_id||'',[['','Household contact details'],...store.contacts.filter(c=>c.household_id===h.id&&!c.archived_at).map(c=>[c.id,(c.contact_name||c.contact_type)+' · '+c.contact_value])]);
+   const recipient=R.dom('p',{class:'micro span-2'});function showRecipient(){const c=store.contacts.find(c=>c.id===contact.value);const value=c?.contact_value||({email:h.email,sms:h.phone,whatsapp:h.whatsapp,postal:h.postal_address,manual:h.household_name}[channel.value]);recipient.textContent='Recipient: '+(value||'Missing — add contact details before marking ready.');}showRecipient();channel.addEventListener('change',showRecipient);contact.addEventListener('change',showRecipient);f.append(recipient);
+   const subject=field(f,'Message subject',q.message_subject||store.settings?.event_name,null,'text',false,300);
+   const body=field(f,'Message text',q.message_body||R.invitationURL(h.invite_code),null,'textarea',true,10000);body.closest('label').classList.add('span-2');
+   const status=field(f,'Delivery status',q.status||'draft',[['draft','Draft'],['ready','Ready to send'],...(q.id?[['failed','Failed attempt'],['cancelled','Cancelled']]:[])]);
+   const reason=field(f,'Delivery change note','',null,'textarea',false,2000);status.addEventListener('change',()=>reason.required=['failed','cancelled'].includes(status.value));
+   f.append(R.dom('p',{class:'micro span-2'},'Saving a draft or marking it ready does not send a message. Review the recipient and text, send it yourself, then record it as sent.'));
+   return saveForm(f,q.id?'Save delivery changes':'Create delivery draft',()=>managementRpc('admin_save_delivery',{p_id:q.id||null,p_household_id:h.id,p_expected_revision:q.revision??null,p_values:{channel:channel.value,contact_id:contact.value||null,message_subject:subject.value.trim(),message_body:body.value,status:status.value,reason:reason.value.trim()}}));
+ }
+ function deliveryRecord(h,q,editable=true){
+   const d=disclosure(q.channel.toUpperCase()+' · '+q.status+' · '+adminTime(q.updated_at));d.dataset.deliveryId=q.id;
+   const recipient=q.recipient_snapshot||{};d.append(R.dom('p',{class:'small'},'To: '+[recipient.contact_name,recipient.contact_value].filter(Boolean).join(' · ')),R.dom('p',{class:'micro'},q.message_subject||''),R.dom('pre',{class:'delivery-message'},q.message_body));
+   const copy=R.dom('button',{type:'button',class:'small-tool'},'Copy message');copy.addEventListener('click',async()=>{try{await navigator.clipboard.writeText(q.message_body);show('Message copied.','success');}catch(error){show(R.safeError(error),'error');}});d.append(copy);
+   const sent=store.deliveries.find(x=>x.queue_id===q.id);if(sent)d.append(R.dom('p',{class:'notice success'},'Manually recorded as sent · '+adminTime(sent.confirmed_at)+' · '+actorName(sent.confirmed_by)+(sent.delivery_note?' · '+sent.delivery_note:'')));
+   if(editable&&!['sent','cancelled'].includes(q.status)){
+     const edit=disclosure('Edit delivery','edit-only');edit.append(deliveryEditor(h,q));d.append(edit);
+     if(q.status==='ready'){const f=managementForm();const note=field(f,'Sent note','',null,'textarea',false,2000);const ack=field(f,'I sent this message to the displayed recipient',false,null,'checkbox',true);d.append(saveForm(f,'Record as sent',async()=>{if(!ack.checked)return false;return managementRpc('admin_record_delivery_sent',{p_queue_id:q.id,p_expected_revision:q.revision,p_note:note.value.trim()});}));}
+   }
+   const audit=disclosure('Delivery history');let loaded=false;audit.addEventListener('toggle',async()=>{if(!audit.open||loaded)return;loaded=true;const body=R.dom('div',{class:'management-history'},'Loading…');audit.append(body);try{const r=await db.from('invitation_delivery_audit').select('*').eq('queue_id',q.id).order('created_at',{ascending:false}).limit(100);if(r.error)throw r.error;body.replaceChildren();for(const x of (r.data||[]).filter(x=>x.queue_id===q.id))body.append(R.dom('p',{class:'small'},[adminTime(x.created_at),actorName(x.actor_user_id),x.action.replaceAll('_',' '),x.reason].filter(Boolean).join(' · ')));if(!body.children.length)body.textContent='No delivery history recorded.';}catch(error){loaded=false;body.textContent=R.safeError(error);}});d.append(audit);return d;
+ }
+ function deliverySection(h){
+   const d=disclosure('Invitation delivery','feature-section');const records=store.queue.filter(q=>q.household_id===h.id).sort((a,b)=>b.created_at.localeCompare(a.created_at));
+   d.append(R.dom('p',{class:'micro'},records.length?records.filter(q=>q.status==='sent').length+' recorded sent · '+records.filter(q=>['draft','ready','failed'].includes(q.status)).length+' pending':'No delivery recorded yet.'));
+   const create=disclosure('Prepare delivery','edit-only');create.append(deliveryEditor(h));d.append(create);records.forEach(q=>d.append(deliveryRecord(h,q)));return d;
+ }
+ function renderDeliveryLog(){
+   const box=$('deliveryLog');box.replaceChildren();const filter=$('deliveryStatusFilter').value;
+   const records=store.queue.filter(q=>!filter||q.status===filter).sort((a,b)=>b.created_at.localeCompare(a.created_at));
+   $('deliveryCounts').textContent=store.queue.filter(q=>q.status==='ready').length+' ready · '+store.queue.filter(q=>q.status==='sent').length+' recorded sent · '+store.queue.filter(q=>q.status==='failed').length+' failed';
+   for(const q of records){const h=store.households.find(h=>h.id===q.household_id);if(!h)continue;const wrapper=disclosure(h.household_name+(h.archived_at?' · Archived':''));wrapper.append(deliveryRecord(h,q,false));box.append(wrapper);}if(!records.length)box.append(R.dom('p',{class:'micro'},'No deliveries match this status.'));
+ }
+
  function householdSummary(h,guests){
    const active=guests.filter(g=>!g.archived_at).length;
    const descendants=store.households.filter(x=>!x.archived_at&&isDescendantOf(x.id,h.id));
@@ -331,7 +414,7 @@
          if(eligible.has(h.id)){
            const item=R.dom('div',{class:'invite-item'});const row=R.dom('div',{class:'invite-row'});row.append(R.dom('code',{},h.invite_code));const actions=R.dom('div',{class:'invite-actions'});
            for(const [label,value] of [['Copy invite code',h.invite_code],['Copy invitation link',R.invitationURL(h.invite_code)]]){const button=R.dom('button',{type:'button',class:'small-tool'},label);button.addEventListener('click',async()=>{try{await navigator.clipboard.writeText(value);show(label==='Copy invite code'?'Invitation code copied.':'Invitation link copied.','success');}catch(error){show(R.safeError(error),'error');}});actions.append(button);}
-           row.append(actions);item.append(row,sessionAssignmentForm(h));body.append(item);
+           row.append(actions);item.append(row,sessionAssignmentForm(h),deliverySection(h));body.append(item);
          }
          const children=households.filter(x=>x.parent_id===h.id);if(children.length){const nested=R.dom('div',{class:'tree-children'});body.append(nested);children.forEach(child=>draw(child,nested));}
        }
@@ -418,7 +501,7 @@
          const expanded=R.dom('div',{class:'household-expanded'});
          expanded.append(editor,buildGuestList(guests));
          if(!h.archived_at){const add=disclosure('Add guest','edit-only');const form=buildGuestEditor({household_id:h.id});form.classList.remove('hidden');add.append(form);expanded.append(add);}
-         expanded.append(contactSection(h),historySection(h));
+         expanded.append(rsvpSection(h),foodAccessSection(h),contactSection(h),historySection(h));
          if(nested){
            const childList=R.dom('div',{class:'tree-children'});
            childList.append(R.dom('div',{class:'guest-list-heading'},'Child households'));
@@ -584,8 +667,11 @@
    timezone.placeholder='Atlantic/Faroe or Europe/Berlin';
    const map=field(f,'Map link (HTTPS)',v.map_url,null,'url',false,2000);
    const notes=field(f,'Guest venue notes',v.notes,null,'textarea');
+   const welcome=Object.fromEntries(['fo','en','de'].map(lang=>[lang,field(f,'Welcome message — '+({fo:'Faroese',en:'English',de:'German'}[lang]),v['welcome_'+lang],null,'textarea',false,4000)]));
+   const welcomeBox=R.dom('fieldset',{class:'span-2 venue-welcome-editor'});welcomeBox.append(R.dom('legend',{},'Welcome messages for this venue'));
+   for(const control of Object.values(welcome))welcomeBox.append(control.closest('label'));f.append(welcomeBox);
    const archived=field(f,'Archived venue',!!v.archived_at,null,'checkbox');
-   return saveForm(f,v.id?'Save venue':'Create venue',()=>managementRpc('admin_save_venue',{p_id:v.id||null,p_values:{name:name.value.trim(),country_code:country.value.trim().toUpperCase()||null,address:address.value.trim(),timezone:timezone.value.trim(),map_url:map.value.trim(),notes:notes.value.trim(),archived:archived.checked}}));
+   return saveForm(f,v.id?'Save venue':'Create venue',()=>managementRpc('admin_save_venue',{p_id:v.id||null,p_values:{name:name.value.trim(),country_code:country.value.trim().toUpperCase()||null,address:address.value.trim(),timezone:timezone.value.trim(),map_url:map.value.trim(),notes:notes.value.trim(),...Object.fromEntries(Object.entries(welcome).map(([lang,control])=>['welcome_'+lang,control.value.trim()])),archived:archived.checked}}));
  }
  function sessionForm(s){
    const f=managementForm();const name=field(f,'Session name',s.name,null,'text',true,140);
@@ -632,11 +718,6 @@
    }
    $('newSessionEditor').replaceChildren(sessionForm({sort_order:store.sessions.length+1}));
  }
- function renderContent(){
-   for(const lang of ['fo','en','de']){
-     $("welcome"+lang[0].toUpperCase()+lang.slice(1)).value=store.content.find(c=>c.content_key==='welcome'&&c.language_code===lang)?.content_value||'';
-   }
- }
  async function checkAccess(){
    const {data:access,error}=await db.rpc('is_admin');
    if(error)throw error;
@@ -675,7 +756,7 @@
    $('expandHouseholds').addEventListener('click',()=>expandHouseholdTree(true));
    $('collapseHouseholds').addEventListener('click',()=>expandHouseholdTree(false));
    $('householdSearch').addEventListener('input',renderHouseholds);
-   $('inviteSearch').addEventListener('input',renderInvites);
+   $('inviteSearch').addEventListener('input',renderInvites);$('deliveryStatusFilter').addEventListener('change',renderDeliveryLog);
    $('showArchived').addEventListener('change',renderHouseholds);
    $('foodSearch').addEventListener('input',renderFood);
    $('addCategoryForm').addEventListener('submit',async e=>{
@@ -724,11 +805,7 @@
      if(error)show(R.safeError(error),'error');else{show('Event unpublished.','success');await reload();}
      button.disabled=false;
    });
-   $('welcomeForm').addEventListener('submit',async e=>{
-     e.preventDefault();const values=['fo','en','de'].map(lang=>({content_key:'welcome',language_code:lang,content_value:$("welcome"+lang[0].toUpperCase()+lang.slice(1)).value.trim()})).filter(r=>r.content_value);
-     const {error}=await db.from('event_content').upsert(values,{onConflict:'content_key,language_code'});
-     if(error)show(R.safeError(error),'error');else{show('Translations saved.','success');await reload();}
-   });
+
  }
  document.addEventListener('DOMContentLoaded',()=>{init().catch(e=>show(R.safeError(e),'error'));});
 }());

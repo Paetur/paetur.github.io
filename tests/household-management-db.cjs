@@ -1,0 +1,102 @@
+// Disposable PostgreSQL (PGlite). No network, production data or credentials.
+const {PGlite}=require('@electric-sql/pglite');
+const fs=require('node:fs');const assert=require('node:assert/strict');
+(async()=>{
+ let db;
+ if(process.env.DATABASE_URL){const {Client}=require('pg');const client=new Client({connectionString:process.env.DATABASE_URL});await client.connect();db={query:(s,p)=>client.query(s,p),exec:s=>client.query(s),close:()=>client.end()};}else db=new PGlite();
+ let checks=0;
+ const q=(s,p=[])=>db.query(s,p);
+ const scalar=async(s,p)=>(await q(s,p)).rows[0].value;
+ async function reject(s,p,pattern){await assert.rejects(()=>q(s,p),pattern);checks++;}
+ await db.exec(`CREATE ROLE anon; CREATE ROLE authenticated; CREATE ROLE service_role BYPASSRLS; CREATE SCHEMA auth; CREATE TABLE auth.users(id uuid PRIMARY KEY,email text); CREATE FUNCTION auth.uid() RETURNS uuid LANGUAGE sql AS $$ SELECT nullif(current_setting('request.jwt.claim.sub',true),'')::uuid $$; GRANT USAGE ON SCHEMA auth TO authenticated,anon; GRANT EXECUTE ON FUNCTION auth.uid() TO authenticated,anon;`);
+ for(const file of fs.readdirSync('supabase/migrations').filter(f=>f.endsWith('.sql')).sort())await db.exec(fs.readFileSync('supabase/migrations/'+file,'utf8'));
+ await db.exec(`INSERT INTO auth.users VALUES('11111111-1111-4111-8111-111111111111','test@example.invalid'),('22222222-2222-4222-8222-222222222222','other@example.invalid');INSERT INTO public.admins(user_id,name) VALUES('11111111-1111-4111-8111-111111111111','Test');SET request.jwt.claim.sub='11111111-1111-4111-8111-111111111111'; SET ROLE authenticated;`);
+ const values={household_name:'Test household',side:'paetur_hentze',language:'fo'};
+ const create=async(v={})=>scalar('select public.admin_save_household(null,$1) value',[{...values,...v}]);
+ const h1=await create();const h2=await create({household_name:'Destination'});checks+=2;
+ const code=await scalar('select invite_code value from public.households where id=$1',[h1]);assert.match(code,/^[A-HJ-NP-Z2-9]{8}$/);checks++;
+ const g=await scalar('select public.admin_create_guest($1,$2) value',[h1,{first_name:'Test',last_name:'Guest',is_child:true,notes:'Initial'}]);checks++;
+ await reject('select public.admin_create_guest($1,$2)',[h1,{first_name:''}],/first name/);
+ assert.equal(await scalar('select count(*)::int value from public.guests'),1);checks++;
+ await q('select public.admin_save_household($1,$2)',[h1,{...values,email:'test@example.invalid',phone:'+298 123456',notes:'Note'}]);
+ assert.equal(await scalar('select invite_code value from public.households where id=$1',[h1]),code);checks++;
+ const child=await create({household_name:'Child',parent_id:h1});
+ await reject('select public.admin_set_household_parent($1,$2)',[h1,child],/cycle/);
+ await reject('select public.admin_save_household($1,$2)',[h1,{...values,side:'maria_haass'}],/child households/);
+ await q('select public.admin_set_household_parent($1,null)',[child]);
+ const s1=await scalar("insert into public.event_sessions(session_key,name) values('test-dinner','Dinner') returning id value");
+ const s2=await scalar("insert into public.event_sessions(session_key,name) values('test-party','Party') returning id value");
+ await q('insert into public.household_session_defaults values($1,$2,true),($3,$4,true)',[h1,s1,h2,s2]);
+ await q('select public.admin_move_guest($1,$2)',[g,h2]);
+ assert.equal(await scalar('select household_id value from public.guests where id=$1',[g]),h2);
+ await db.exec('RESET ROLE');
+ const invites=(await q('select session_id from public.effective_session_invitations where guest_id=$1',[g])).rows.map(x=>x.session_id);assert.deepEqual(invites,[s1]);checks+=2;await db.exec('SET ROLE authenticated');
+ const c=await scalar('select public.admin_save_contact(null,$1,$2) value',[h2,{contact_name:'First',contact_type:'email',contact_value:'first@example.invalid',is_primary:true,preferred_method:'email'}]);
+ const c2=await scalar('select public.admin_save_contact(null,$1,$2) value',[h2,{contact_name:'Second',contact_type:'email',contact_value:'second@example.invalid',is_primary:true}]);
+ assert.equal(await scalar('select is_primary value from public.household_contacts where id=$1',[c]),false);checks++;
+ await reject('select public.admin_save_contact($1,$2,$3)',[c,h1,{contact_type:'email',contact_value:'x'}],/not found/);
+ await q("select public.admin_set_archived('household_contacts',$1,true)",[c2]);
+ assert.equal(await scalar('select is_primary value from public.household_contacts where id=$1',[c2]),false);checks++;
+ await q("select public.admin_set_archived('household_contacts',$1,false)",[c2]);checks++;
+ await q("select public.admin_set_archived('guests',$1,true)",[g]);
+ await db.exec('RESET ROLE');assert.equal(await scalar('select count(*)::int value from public.effective_session_invitations where guest_id=$1',[g]),0);checks++;await db.exec('SET ROLE authenticated');
+ await q("select public.admin_set_archived('guests',$1,false)",[g]);checks++;
+ // Publish only this disposable database to exercise gateway functions.
+ await q('update public.event_settings set is_published=true where id=1');
+ await db.exec('RESET ROLE');
+ const code2=await scalar('select invite_code value from public.households where id=$1',[h2]);
+ await q("select public.admin_set_archived('households',$1,true)",[h2]);
+ assert.equal(await scalar('select public.get_invitation_v2($1) value',[code2]),null);checks++;
+ await reject('select public.submit_household_rsvp($1,gen_random_uuid(),$2)',[code2,[]],/Invalid invitation/);
+ await reject('select public.set_household_food_claim($1,gen_random_uuid(),1)',[code2],/unavailable/);
+ await reject('select public.confirm_household_food($1)',[code2],/Invalid food/);
+ assert.equal(await scalar('select public.get_household_food($1) value',[code2]),null);checks++;
+ await q("select public.admin_set_archived('households',$1,false)",[h2]);
+ const request='33333333-3333-4333-8333-333333333333';
+ await q('select public.submit_household_rsvp($1,$2,$3)',[code2,request,[{guest_id:g,session_id:s1,status:'attending'}]]);checks++;
+ await reject('select public.admin_move_guest($1,$2)',[g,h1],/RSVP history/);
+ await reject("select public.admin_set_archived('guests',$1,true)",[g],/submitted RSVPs/);
+ await reject('select public.admin_create_guest($1,$2)',[h2,{first_name:'Late'}],/submitted RSVPs/);
+ await q("select public.admin_reopen_household_rsvp($1,'Test reopen')",[h2]);
+ await reject('select public.admin_move_guest($1,$2)',[g,h1],/RSVP history/);
+ await q("select public.admin_update_guest($1,'Edited','Guest',null,null,null,false,null,'Updated')",[g]);checks++;
+ assert.equal(await scalar("select count(*)::int value from public.management_audit where household_id=$1 and entity_type='guests'",[h1])>0,true);checks++;
+ assert.equal(await scalar("select count(*)::int value from public.management_audit where before_value ? 'invite_code' or after_value ? 'invite_code'"),0);checks++;
+ await reject("update public.management_audit set action='tamper'",[],/immutable/);
+ await db.exec("SET ROLE authenticated;SET request.jwt.claim.sub='22222222-2222-4222-8222-222222222222'");
+ for(const [sql,args] of [ ['select public.admin_save_household(null,$1)',[values]],['select public.admin_create_guest($1,$2)',[h1,{first_name:'No'}]],['select public.admin_move_guest($1,$2)',[g,h1]],["select public.admin_set_archived('guests',$1,true)",[g]],['select public.admin_save_contact(null,$1,$2)',[h1,{contact_type:'email',contact_value:'x'}]]])await reject(sql,args,/Administrator access/);
+ assert.equal(await scalar('select count(*)::int value from public.management_audit'),0);checks++;
+ await db.exec("SET ROLE anon;SET request.jwt.claim.sub=''");
+ await reject('select public.admin_save_household(null,$1)',[values],/permission denied/);
+ await reject('select * from public.management_audit',[],/permission denied/);
+
+ if(process.env.DATABASE_URL){
+   await db.exec("RESET ROLE;SET request.jwt.claim.sub='11111111-1111-4111-8111-111111111111'");
+   const {Client}=require('pg');
+   const clients=[new Client({connectionString:process.env.DATABASE_URL}),new Client({connectionString:process.env.DATABASE_URL})];
+   await Promise.all(clients.map(async c=>{await c.connect();await c.query("SET request.jwt.claim.sub='11111111-1111-4111-8111-111111111111'");}));
+   try{
+     const race=await create({household_name:'Concurrent RSVP'});
+     const raceCode=await scalar('select invite_code value from public.households where id=$1',[race]);
+     const results=await Promise.allSettled(clients.map(c=>c.query('select public.submit_household_rsvp($1,gen_random_uuid(),$2)',[raceCode,'[]'])));
+     assert.equal(results.filter(x=>x.status==='fulfilled').length,1);assert.match(results.find(x=>x.status==='rejected').reason.message,/locked/);checks++;
+     const retryHousehold=await create({household_name:'Concurrent retries'});
+     const retryCode=await scalar('select invite_code value from public.households where id=$1',[retryHousehold]);
+     const retryResults=await Promise.all(clients.map(c=>c.query('select public.submit_household_rsvp($1,$2,$3) result',[retryCode,'44444444-4444-4444-8444-444444444444','[]'])));
+     assert.equal(retryResults.filter(r=>r.rows[0].result.already_processed).length,1);checks++;
+     const foodHouseholds=await Promise.all([create({household_name:'Food A'}),create({household_name:'Food B'})]);
+     await q('update public.households set food=true where id=any($1::uuid[])',[foodHouseholds]);
+     const codes=await Promise.all(foodHouseholds.map(id=>scalar('select invite_code value from public.households where id=$1',[id])));
+     const food=await scalar("insert into public.food_items(name_fo,quantity_needed) values('Test food',1) returning id value");
+     const claims=await Promise.allSettled(clients.map((c,i)=>c.query('select public.set_household_food_claim($1,$2,1)',[codes[i],food])));
+     assert.equal(claims.filter(r=>r.status==='fulfilled').length,1);assert.equal(await scalar('select sum(quantity)::int value from public.food_claims where food_item_id=$1',[food]),1);checks++;
+     const archiveRace=await create({household_name:'Archive race'});
+     await q('update public.households set food=true where id=$1',[archiveRace]);
+     const archiveCode=await scalar('select invite_code value from public.households where id=$1',[archiveRace]);
+     const food2=await scalar("insert into public.food_items(name_fo,quantity_needed) values('Archive food',1) returning id value");
+     const archiveResults=await Promise.allSettled([clients[0].query("select public.admin_set_archived('households',$1,true)",[archiveRace]),clients[1].query('select public.set_household_food_claim($1,$2,1)',[archiveCode,food2])]);
+     assert.equal(archiveResults.filter(r=>r.status==='fulfilled').length,1);checks++;
+   }finally{await Promise.all(clients.map(c=>c.end()));}
+ }
+ await db.close();console.log(`PASS: ${checks} household lifecycle, history, guest API and permission assertions on disposable PostgreSQL`);
+})().catch(e=>{console.error(e);process.exit(1);});

@@ -352,3 +352,7 @@ html[data-theme="dark"] #adminApp .admin-row-icon:disabled{background:#24312b;co
 html[data-theme="dark"] #adminApp .admin-row-icon.danger{color:#ff9b94}
 html[data-theme="dark"] #adminApp .admin-row-icon:hover:not(:disabled),
 html[data-theme="dark"] #adminApp .small-tool:hover{background:#345043;border-color:#5d947a}
+
+
+/* Household lifecycle editors retain compact, theme-aware native controls. */
+.management-form{padding:12px 0;max-width:760px}.management-form input,.management-form select,.management-form textarea{min-width:0;width:100%}.management-form input[type=checkbox]{width:auto}.management-form>button{justify-self:start;align-self:end}.guest-management{display:flex;align-items:start;gap:10px;margin:4px 0 10px}.guest-management>details{flex:1}.management-history{max-width:100%;overflow:auto}.management-history td{white-space:pre-wrap;overflow-wrap:anywhere;max-width:240px}.household-expanded>.admin-management{margin:8px 0}.management-form .micro{margin:0}.household-inline-editor:has(.management-form){flex-wrap:wrap}.household-inline-editor>.management-form{flex-basis:100%}@media(max-width:600px){.management-form{grid-template-columns:1fr}.management-form .span-2{grid-column:auto}.guest-management{flex-wrap:wrap}}

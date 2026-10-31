@@ -1,7 +1,7 @@
 (function(){
  'use strict';
  const R=window.RSVP,$=R.byId;
- let db=null,user=null,store={settings:null,sessions:[],locations:[],households:[],guests:[],food:[],claims:[],submissions:[],defaults:[],content:[],admins:[],relationGroups:[],foodCategories:[]};
+ let db=null,user=null,store={settings:null,sessions:[],locations:[],households:[],guests:[],food:[],claims:[],submissions:[],defaults:[],content:[],admins:[],relationGroups:[],foodCategories:[],contacts:[]};
  let activeTab='dashboard',lastMainTab='dashboard',activeSettingsTab='event',editMode=false;
  const expandedGroups=new Map();
  const qs=(s)=>document.querySelector(s);
@@ -47,8 +47,8 @@
  async function reload(){
    show('Loading event data…');
    try{
-     const keys=['settings','sessions','locations','households','guests','food','claims','submissions','defaults','content','relationGroups','foodCategories'];
-     const jobs=[fetchTable('event_settings'),fetchTable('event_sessions'),fetchTable('event_locations'),fetchTable('households','id,household_name,invite_code,language,side,relation_group_id,email,phone,food,food_confirmed,rsvp_state,sort_order,parent_id'),fetchTable('guests','id,household_id,first_name,last_name,courtesy_title,relation,language,is_child,rsvp_status,dietary_requirements,notes'),fetchTable('food_items'),fetchTable('food_claims'),fetchTable('rsvp_submissions','id,household_id,submitted_at'),fetchTable('household_session_defaults'),fetchTable('event_content'),fetchTable('relation_groups'),fetchTable('food_categories')];
+     const keys=['settings','sessions','locations','households','guests','food','claims','submissions','defaults','content','relationGroups','foodCategories','contacts'];
+     const jobs=[fetchTable('event_settings'),fetchTable('event_sessions'),fetchTable('event_locations'),fetchTable('households','id,household_name,invite_code,language,side,relation_group_id,email,phone,food,food_confirmed,rsvp_state,sort_order,parent_id,notes,archived_at'),fetchTable('guests','id,household_id,first_name,last_name,courtesy_title,relation,language,is_child,rsvp_status,dietary_requirements,notes,archived_at'),fetchTable('food_items'),fetchTable('food_claims'),fetchTable('rsvp_submissions','id,household_id,submitted_at'),fetchTable('household_session_defaults'),fetchTable('event_content'),fetchTable('relation_groups'),fetchTable('food_categories'),fetchTable('household_contacts')];
      const values=await Promise.all(jobs);keys.forEach((key,i)=>store[key]=values[i]);store.settings=store.settings[0]||null;
      const {data:admins,error:adminsError}=await db.rpc('admin_list_members');
      store.admins=adminsError?[]:(admins||[]);
@@ -58,14 +58,14 @@
  }
  function renderAll(){
    $('adminEventTitle').textContent=store.settings?.event_name||'Event dashboard';
-   const invitedCount=store.guests.length;
-   $('statsGrid').replaceChildren(stat('Households',store.households.length),stat('Guests',invitedCount),stat('New RSVP submissions',store.submissions.length),stat('Food items',store.food.length));
+   const invitedCount=store.guests.filter(g=>!g.archived_at&&!store.households.find(h=>h.id===g.household_id)?.archived_at).length;
+   $('statsGrid').replaceChildren(stat('Households',store.households.filter(h=>!h.archived_at).length),stat('Guests',invitedCount),stat('New RSVP submissions',store.submissions.length),stat('Food items',store.food.length));
    const deployed=window.RSVP_CONFIG||{};
    let websiteConfigured=false;
    try{websiteConfigured=Boolean(deployed.supabaseUrl&&deployed.supabaseKey&&R.normalizeUrl(deployed.supabaseUrl)===R.normalizeUrl(R.config().supabaseUrl)&&R.validateKey(deployed.supabaseKey));}catch(_){websiteConfigured=false;}
    const checks=[['Admin account connected',true],['Event name and date entered',!!(store.settings?.event_name&&store.settings?.event_date)],['At least one session created',store.sessions.some(s=>s.is_active)],['Invitations assigned',store.defaults.some(d=>d.is_invited)],['Website connection in deployed config.js',websiteConfigured],['Website address saved in event settings',!!store.settings?.website_url],['Event published',!!store.settings?.is_published]];
    $('launchChecklist').replaceChildren(...checks.map(([label,yes])=>{const li=R.dom('li');li.append(R.dom('span',{class:yes?'yes':'no'},yes?'✓':'○'),document.createTextNode(label));return li;}));
-   renderHouseholds();renderFood();renderAdmins();renderSettings();renderSessions();renderContent();
+   $('newHousehold').replaceChildren(householdForm({language:'fo',side:'paetur_hentze'}));renderHouseholds();renderFood();renderAdmins();renderSettings();renderSessions();renderContent();
  }
  function ordered(list, label){
    return [...list].sort((a,b)=>(a.sort_order||0)-(b.sort_order||0)||
@@ -78,7 +78,9 @@
      edit:['m16 5 3 3','M4 20l4-1 12-12a2.1 2.1 0 0 0-3-3L5 16l-1 4Z'],
      delete:['M3 6h18','M8 6V4h8v2','M5 6l1 14h12l1-14','M10 10v6','M14 10v6'],
      copy:['M8 3h11a2 2 0 0 1 2 2v11','M16 8H5a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h11a2 2 0 0 0 2-2v-9a2 2 0 0 0-2-2Z'],
-     add:['M12 5v14','M5 12h14']
+     add:['M12 5v14','M5 12h14'],
+     archive:['M3 3h18v4H3z','M5 7v14h14V7','M10 11h4'],
+     restore:['M4 10a8 8 0 1 1 1 8','M4 4v6h6']
    };
    const key=kind==='rename'?'edit':kind;
    if(drawings[key]){
@@ -158,7 +160,7 @@
    childWrap.append(child,R.dom('span',{},'Child guest'));fields.append(childWrap);
    const dietary=labeledInput('Dietary requirements',guest.dietary_requirements,1000,false,true);
    const notes=labeledInput('Notes',guest.notes,2000,false,true);
-   form.append(fields,R.dom('p',{class:'micro'},'RSVP status and household assignment are not changed by editing guest details.'));
+   form.append(fields,R.dom('p',{class:'micro'},guest.id?'RSVP status and household assignment are not changed by editing guest details.':'New guests inherit this household’s session invitations.'));
    const buttons=R.dom('div',{class:'guest-edit-actions'});
    const save=R.dom('button',{type:'submit',class:'btn'},'Save guest');
    const cancel=R.dom('button',{type:'button',class:'btn secondary'},'Cancel');
@@ -176,7 +178,8 @@
      };
      save.disabled=true;
      try{
-       const {error}=await db.rpc('admin_update_guest',payload);
+       const fields=Object.fromEntries(Object.entries(payload).filter(([k])=>k!=='p_guest_id').map(([k,v])=>[k.slice(2),v]));
+       const {error}=guest.id?await db.rpc('admin_update_guest',payload):await db.rpc('admin_create_guest',{p_household_id:guest.household_id,p_values:fields});
        if(error)throw error;
        const refreshed=await reload();
        if(refreshed)show('Guest details saved.','success');
@@ -190,25 +193,126 @@
    list.append(R.dom('div',{class:'guest-list-heading'},'Individual guests'));
    const sorted=[...guests].sort((a,b)=>String(a.first_name||'').localeCompare(String(b.first_name||''))||
      String(a.last_name||'').localeCompare(String(b.last_name||'')));
-   for(const g of sorted){
+   for(const g of sorted.filter(g=>$('showArchived').checked||!g.archived_at)){
      const entry=R.dom('div',{class:'household-guest-entry'});
      const header=R.dom('div',{class:'household-guest-row'});
      const info=R.dom('div',{class:'household-guest-info'});
      const name=[g.courtesy_title,g.first_name,g.last_name].filter(Boolean).join(' ');
      info.append(R.dom('strong',{},name||'Unnamed guest'));
-     const meta=[g.is_child?'Child':null,g.relation,'RSVP '+(g.rsvp_status||'pending')].filter(Boolean).join(' · ');
+     const meta=[g.archived_at?'Archived':null,g.is_child?'Child':null,g.relation,'RSVP '+(g.rsvp_status||'pending')].filter(Boolean).join(' · ');
      info.append(R.dom('small',{class:'muted'},meta));header.append(info);
      const editor=buildGuestEditor(g);
-     header.append(iconAction('edit','Edit guest: '+name,()=>editor.classList.toggle('hidden'),false,'edit-only'));
-     entry.append(header,editor);list.append(entry);
+     header.append(iconAction('edit','Edit guest: '+name,()=>editor.classList.toggle('hidden'),!!g.archived_at||!!store.households.find(h=>h.id===g.household_id)?.archived_at,'edit-only'));
+     entry.append(header,editor);
+     entry.append(guestManagement(g));list.append(entry);
    }
    if(!sorted.length)list.append(R.dom('p',{class:'micro'},'No guests assigned to this household.'));
    return list;
  }
+
+ function disclosure(title,extra=''){
+   const d=R.dom('details',{class:'admin-management '+extra});d.append(R.dom('summary',{},title));return d;
+ }
+ function managementForm(){return R.dom('form',{class:'form-grid management-form edit-only'});}
+ function field(form,label,value,options=null,type='text',required=false,max=2000){
+   const wrap=R.dom('label');wrap.append(R.dom('span',{},label));
+   const input=R.dom(options?'select':type==='textarea'?'textarea':'input',options||type==='textarea'?{}:{type});
+   if(options)for(const [v,t] of options)input.append(R.dom('option',{value:v},t));
+   if(type==='checkbox')input.checked=!!value;else input.value=value??'';
+   input.required=required;if(!options)input.maxLength=max;
+   wrap.append(input);form.append(wrap);return input;
+ }
+ function saveForm(form,label,save){
+   const button=R.dom('button',{class:'btn',type:'submit'},label);form.append(button);
+   form.addEventListener('submit',async e=>{
+     e.preventDefault();e.stopPropagation();if(!editMode)return;
+     button.disabled=true;
+     try{await save();if(await reload())show('Changes saved.','success');}
+     catch(error){show(R.safeError(error),'error');}
+     finally{button.disabled=false;}
+   });return form;
+ }
+ async function managementRpc(name,args){const {data,error}=await db.rpc(name,args);if(error)throw error;return data;}
+ const languages=[['fo','Faroese'],['en','English'],['de','German']];
+ function householdForm(h){
+   const f=managementForm();
+   const name=field(f,'Household name',h.household_name,null,'text',true,140);
+   const side=field(f,'Side',h.side,[['paetur_hentze','Pætur Hentze'],['maria_haass','Maria Haass']]);
+   const group=field(f,'Relation group',h.relation_group_id,[['','Ungrouped'],...ordered(store.relationGroups,'name').map(g=>[g.id,g.name])]);
+   const lang=field(f,'Household language',h.language||'fo',languages);
+   const parent=field(f,'Parent household',h.parent_id,[['','None (top level)']]);
+   function parents(){
+     const selected=parent.value||h.parent_id||'';parent.replaceChildren(R.dom('option',{value:''},'None (top level)'));
+     for(const x of ordered(store.households,'household_name').filter(x=>x.id!==h.id&&!x.archived_at&&x.side===side.value&&(x.relation_group_id||'')===group.value&&!isDescendantOf(x.id,h.id)))parent.append(R.dom('option',{value:x.id},x.household_name));
+     parent.value=[...parent.options].some(o=>o.value===selected)?selected:'';
+   }
+   parents();side.addEventListener('change',parents);group.addEventListener('change',parents);
+   const email=field(f,'Household email',h.email,null,'email',false,320);
+   const phone=field(f,'Household phone',h.phone,null,'tel',false,80);
+   const notes=field(f,'Household notes',h.notes,null,'textarea');
+   f.append(R.dom('p',{class:'micro span-2'},h.id?'Grouping changes with child households require moving the children first.':'A private invitation code is generated automatically. Assign sessions in Settings after creating the household.'));
+   return saveForm(f,h.id?'Save household':'Create household',()=>managementRpc('admin_save_household',{p_id:h.id||null,p_values:{household_name:name.value.trim(),side:side.value,relation_group_id:group.value||null,language:lang.value,parent_id:parent.value||null,email:email.value.trim(),phone:phone.value.trim(),notes:notes.value.trim()}}));
+ }
+ function archiveButton(entity,record){
+   const restoring=!!record.archived_at;
+   return iconAction(restoring?'restore':'archive',(restoring?'Restore ':'Archive ')+(entity==='households'?'household':entity==='guests'?'guest':'contact'),async()=>{
+     if(!editMode)return;
+     const message=restoring?'Restore this record?':entity==='households'?'Archive this household and disable its invitation link? Records and history are preserved.':'Archive this record? It can be restored later.';
+     if(!confirm(message))return;
+     await managementRpc('admin_set_archived',{p_entity:entity,p_id:record.id,p_archived:!restoring});await reload();show(restoring?'Record restored.':'Record archived.','success');
+   },false,'edit-only');
+ }
+ function guestManagement(g){
+   const box=R.dom('div',{class:'guest-management edit-only'});box.append(archiveButton('guests',g));
+   if(!g.archived_at){
+     const d=disclosure('Move guest');const f=managementForm();
+     const target=field(f,'Destination household','',[['','Choose household'],...ordered(store.households,'household_name').filter(h=>h.id!==g.household_id&&!h.archived_at&&h.rsvp_state==='open').map(h=>[h.id,h.household_name])], 'text',true);
+     f.append(R.dom('p',{class:'micro span-2'},'Current session invitations are preserved as individual overrides. Moves involving RSVP history are blocked.'));
+     saveForm(f,'Move guest',async()=>{if(!confirm('Move this guest and preserve their current session invitations?'))return;await managementRpc('admin_move_guest',{p_guest_id:g.id,p_household_id:target.value});});d.append(f);box.append(d);
+   }return box;
+ }
+ function contactSection(h){
+   const section=disclosure('Contacts');
+   for(const c of store.contacts.filter(c=>c.household_id===h.id&&($('showArchived').checked||!c.archived_at))){
+     const d=disclosure((c.contact_name||c.contact_type)+(c.archived_at?' · Archived':'')+(c.is_primary?' · Primary':''));
+     d.append(R.dom('p',{},c.contact_value),R.dom('p',{class:'micro'},[c.language_code,c.preferred_method].filter(Boolean).join(' · ')));
+     if(!h.archived_at){d.append(archiveButton('household_contacts',c));if(!c.archived_at)d.append(contactForm(h,c));}section.append(d);
+   }
+   if(!h.archived_at){const add=disclosure('Add contact','edit-only');add.append(contactForm(h,{}));section.append(add);}return section;
+ }
+ function contactForm(h,c){
+   const f=managementForm();const name=field(f,'Contact name',c.contact_name,null,'text',false,140);
+   const type=field(f,'Contact type',c.contact_type||'email',[['email','Email'],['phone','Phone'],['postal','Postal'],['other','Other']]);
+   const value=field(f,'Contact details',c.contact_value,null,'text',true,1000);
+   const lang=field(f,'Contact language',c.language_code,[['','Household default'],...languages]);
+   const method=field(f,'Preferred delivery method',c.preferred_method,[['','Unspecified'],['whatsapp','WhatsApp'],['sms','SMS'],['email','Email'],['postal','Postal'],['manual','Manual']]);
+   const primary=field(f,'Primary contact for this type',c.is_primary,null,'checkbox');
+   return saveForm(f,c.id?'Save contact':'Create contact',()=>managementRpc('admin_save_contact',{p_id:c.id||null,p_household_id:h.id,p_values:{contact_name:name.value.trim(),contact_type:type.value,contact_value:value.value.trim(),language_code:lang.value||null,preferred_method:method.value||null,is_primary:primary.checked}}));
+ }
+ function historySection(h){
+   const d=disclosure('Change history');const body=R.dom('div',{class:'management-history'});d.append(body);
+   let loaded=false;
+   d.addEventListener('toggle',async()=>{
+     if(!d.open||loaded)return;loaded=true;body.textContent='Loading history…';
+     try{
+       const {data,error}=await db.from('management_audit').select('*').eq('household_id',h.id).order('created_at',{ascending:false}).order('id',{ascending:false}).limit(100);if(error)throw error;
+       body.replaceChildren();
+       for(const item of data||[]){
+         const entry=disclosure(`${new Date(item.created_at).toLocaleString()} · ${item.entity_type} · ${item.action}`);
+         entry.append(R.dom('p',{class:'micro'},'Administrator: '+(store.admins.find(a=>a.user_id===item.actor_user_id)?.name||item.actor_user_id)));
+         const keys=[...new Set([...Object.keys(item.before_value||{}),...Object.keys(item.after_value||{})])].filter(k=>JSON.stringify(item.before_value?.[k])!==JSON.stringify(item.after_value?.[k]));
+         entry.append(makeTable(['Field','Before','After'],keys.map(k=>[k,String(item.before_value?.[k]??'—'),String(item.after_value?.[k]??'—')])));body.append(entry);
+       }
+       if(!data?.length)body.textContent='No recorded changes. History starts when management auditing is installed.';
+       else body.append(R.dom('p',{class:'micro'},'Showing the latest 100 changes.'));
+     }catch(error){loaded=false;body.textContent=R.safeError(error);}
+   });return d;
+ }
+
  function renderHouseholds(){
    const box=$('householdRows');box.replaceChildren();
    const search=$('householdSearch').value.trim().toLowerCase();
-   const all=store.households;
+   const all=store.households.filter(h=>$('showArchived').checked||!h.archived_at);
    const byId=new Map(all.map(h=>[h.id,h]));
    const matched=new Set(all.filter(h=>{
      const guests=store.guests.filter(g=>g.household_id===h.id);
@@ -263,18 +367,18 @@
          const info=R.dom('div',{class:'household-node-name'});
          info.append(R.dom('strong',{},h.household_name||'Unnamed household'));
          const guests=store.guests.filter(g=>g.household_id===h.id);
-         info.append(R.dom('small',{class:'muted'},`${guests.length} guest${guests.length===1?'':'s'} · ${h.language?.toUpperCase()||'—'} · RSVP ${h.rsvp_state||'open'}`));
+         info.append(R.dom('small',{class:'muted'},`${guests.filter(g=>!g.archived_at).length} active guests · ${h.language?.toUpperCase()||'—'} · ${h.archived_at?'Archived':'RSVP '+(h.rsvp_state||'open')}`));
          primary.append(info);
          const actions=R.dom('div',{class:'household-actions'});
          actions.append(iconAction('copy','Copy private invitation link',async()=>{
            await navigator.clipboard.writeText(R.invitationURL(h.invite_code));
            show('Private invitation link copied.','success');
-         }));
+         },!!h.archived_at));
          const editor=R.dom('div',{class:'household-inline-editor hidden edit-only'});
          actions.append(iconAction('edit','Edit household hierarchy: '+(h.household_name||'household'),()=>{
            editor.classList.toggle('hidden');
-         },false,'edit-only'));
-         actions.append(iconAction('delete','Deletion is unavailable to protect guest and RSVP records',null,true,'edit-only'));
+         },!!h.archived_at,'edit-only'));
+         actions.append(archiveButton('households',h));
          const siblings=ordered(members.filter(m=>m.parent_id===h.parent_id),'household_name');
          const pos=siblings.findIndex(m=>m.id===h.id);
          editor.append(btn('↑','Move household up',()=>rpcAction('admin_move_household',{p_household_id:h.id,p_direction:-1},'Household order saved.'),pos<=0));
@@ -284,7 +388,7 @@
          const select=R.dom('select');
          select.setAttribute('aria-label','Parent for '+(h.household_name||'household'));
          select.append(R.dom('option',{value:''},'None (top level)'));
-         ordered(members.filter(m=>m.id!==h.id&&!isDescendantOf(m.id,h.id)),'household_name').forEach(parent=>
+         ordered(members.filter(m=>m.id!==h.id&&!m.archived_at&&!isDescendantOf(m.id,h.id)),'household_name').forEach(parent=>
            select.append(R.dom('option',{value:parent.id},parent.household_name||'Unnamed')));
          select.value=h.parent_id||'';
          select.addEventListener('change',async()=>{
@@ -294,9 +398,12 @@
            finally{select.disabled=false;}
          });
          label.append(select);editor.append(label);
+         editor.append(householdForm(h));
          primary.append(actions);card.append(primary);
          const expanded=R.dom('div',{class:'household-expanded'});
          expanded.append(buildGuestList(guests));
+         if(!h.archived_at){const add=disclosure('Add guest','edit-only');const form=buildGuestEditor({household_id:h.id});form.classList.remove('hidden');add.append(form);expanded.append(add);}
+         expanded.append(contactSection(h),historySection(h));
          if(nested){
            const childList=R.dom('div',{class:'tree-children'});
            childList.append(R.dom('div',{class:'guest-list-heading'},'Child households'));
@@ -520,6 +627,8 @@
    $('expandHouseholds').addEventListener('click',()=>expandHouseholdTree(true));
    $('collapseHouseholds').addEventListener('click',()=>expandHouseholdTree(false));
    $('householdSearch').addEventListener('input',renderHouseholds);
+   $('showArchived').addEventListener('change',renderHouseholds);
+   $('newHousehold').append(householdForm({language:'fo',side:'paetur_hentze'}));
    $('foodSearch').addEventListener('input',renderFood);
    $('addCategoryForm').addEventListener('submit',async e=>{
      e.preventDefault();const input=$('categoryName'),name=input.value.trim();if(!name)return;const button=e.target.querySelector('button');button.disabled=true;

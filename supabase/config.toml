@@ -2,3 +2,8 @@
 # Use server-side secrets only; never commit them.
 [functions.guest-gateway]
 verify_jwt = false
+
+# Authenticated by getUser + guarded database membership/session checks.
+[functions.admin-invitations]
+verify_jwt = false
+

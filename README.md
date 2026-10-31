@@ -24,6 +24,8 @@ The source files in this archive do **not** contain guest data, invitation codes
 
 **Administration workflows:** manual invitation delivery tracking, reasoned RSVP corrections/reopening and household food-access controls. See [workflow guide](docs/DELIVERY_RSVP_FOOD_CONTROLS.md).
 
+**Logs:** Settings → Logs provides searchable, filtered history across households, guests, RSVP, invitations, venues, food permissions and administrator sessions. See [Administration logs](docs/ADMINISTRATION_LOGS.md).
+
 **Still incomplete:** automatic message sending, administrator email invitations, broader language customization, and full launch acceptance testing.
 
 ## Install without terminal or Python

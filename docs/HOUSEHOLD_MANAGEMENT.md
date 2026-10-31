@@ -3,7 +3,7 @@
 The Households tab supports creation, profile editing, guest creation and moves,
 multiple contacts, reversible archival, and an administrator-only change history.
 Use the top-header pencil to enter Edit mode. Add household is above the tree;
-Add guest, Contacts and Change history are inside expanded households.
+Add guest and Contacts are inside expanded households. Change history is under Settings → Logs.
 
 ## Behaviour
 
@@ -32,7 +32,7 @@ Add guest, Contacts and Change history are inside expanded households.
 - Change history is append-only and administrator-only. It shows actor UUID/name,
   timestamp, entity, and before/after fields. Invitation codes are excluded.
   Guest moves appear in both households. History begins at migration installation;
-  historical changes cannot be reconstructed. The interface shows the latest 100.
+  historical changes cannot be reconstructed. Settings → Logs provides search, category/action/date filters and pagination.
 - Household-row locks serialize membership changes with guest submissions and food
   claims. An advisory lock serializes hierarchy/lifecycle changes. No hard delete
   action is provided.

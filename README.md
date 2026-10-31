@@ -22,7 +22,9 @@ The source files in this archive do **not** contain guest data, invitation codes
 
 **Venues and schedules:** edit multiple venues, timezone-aware session start/end times, and individual invitation exceptions. See [Venues and sessions](docs/VENUES_AND_SESSIONS.md).
 
-**Still incomplete:** manual communication queues, administrator email invitations, broader language customization, and full launch acceptance testing.
+**Administration workflows:** manual invitation delivery tracking, reasoned RSVP corrections/reopening and household food-access controls. See [workflow guide](docs/DELIVERY_RSVP_FOOD_CONTROLS.md).
+
+**Still incomplete:** automatic message sending, administrator email invitations, broader language customization, and full launch acceptance testing.
 
 ## Install without terminal or Python
 

@@ -381,3 +381,9 @@ html[data-theme="dark"] .food-item input:disabled,html[data-theme="dark"] .choic
 #adminApp #inviteRows .invite-item{border:0;padding:8px 0}
 html[data-theme="dark"] code{background:#253b32;color:var(--ink)}
 @media(max-width:600px){.topbar .admin-topbar-actions{gap:5px}.topbar .admin-top-actions{gap:5px}.topbar .admin-icon-btn{width:29px;height:29px;min-width:29px}.topbar .brand-symbol{width:28px;height:28px}.topbar .brand{gap:5px}.theme-menu{right:auto;left:0}#adminApp .admin-main-tabs{gap:5px}}
+
+.delivery-message{font:inherit;font-size:.82rem;white-space:pre-wrap;overflow-wrap:anywhere;padding:12px;background:var(--light);border-radius:8px}.delivery-log-section{margin-top:24px}.rsvp-current-responses{margin:12px 0}.household-expanded .management-history p{border-bottom:1px solid var(--line);padding:8px 0}
+
+#adminApp .admin-main-tabs button{font-size:clamp(1rem,1.75vw,1.4rem)}
+@media(max-width:700px){#adminApp .admin-main-tabs button{font-size:1rem}}
+.venue-welcome{font-size:.9rem;margin:8px 0;white-space:pre-wrap}

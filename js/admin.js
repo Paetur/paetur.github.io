@@ -174,7 +174,7 @@
        p_language:language.value||null,p_is_child:child.checked,
        p_dietary_requirements:dietary.value.trim()||null,p_notes:notes.value.trim()||null
      };
-     save.disabled=true;
+     save.disabled=true;form.setAttribute('aria-busy','true');
      try{
        const fields=Object.fromEntries(Object.entries(payload).filter(([k])=>k!=='p_guest_id').map(([k,v])=>[k.slice(2),v]));
        const {error}=guest.id?await R.adminRpc('admin_update_guest',payload):await R.adminRpc('admin_create_guest',{p_household_id:guest.household_id,p_values:fields});
@@ -182,7 +182,7 @@
        const refreshed=await reload();
        if(refreshed)show('Guest details saved.','success');
      }catch(error){show(R.safeError(error),'error');}
-     finally{save.disabled=false;}
+     finally{save.disabled=false;form.removeAttribute('aria-busy');}
    });
    return form;
  }
@@ -225,10 +225,10 @@
    const button=R.dom('button',{class:'btn',type:'submit'},label);form.append(button);
    form.addEventListener('submit',async e=>{
      e.preventDefault();e.stopPropagation();if(!editMode)return;
-     button.disabled=true;
+     button.disabled=true;form.setAttribute('aria-busy','true');
      try{if(await save()===false)return;if(await reload())show('Changes saved.','success');}
      catch(error){show(R.safeError(error),'error');}
-     finally{button.disabled=false;}
+     finally{button.disabled=false;form.removeAttribute('aria-busy');}
    });return form;
  }
  async function managementRpc(name,args){const {data,error}=await R.adminRpc(name,args);if(error)throw error;return data;}
@@ -541,7 +541,7 @@
      const record={quantity_needed:required,active:active.checked};
      for(const [,key] of fields)record[key]=form.elements.namedItem(key).value.trim()||null;
      if(!record.name_fo){show('Faroese name is required.','error');return;}
-     save.disabled=true;
+     save.disabled=true;form.setAttribute('aria-busy','true');
      try{const {error}=await db.from('food_items').update(record).eq('id',item.id);if(error)throw error;await reload();show('Food item updated.','success');}
      catch(error){show(R.safeError(error),'error');}finally{save.disabled=false;}
    });

@@ -207,6 +207,7 @@ async function run(){
    await newVenue.getByLabel('Welcome message — English',{exact:true}).fill('Welcome to our Faroese celebration.');
    await newVenue.getByRole('button',{name:'Create venue'}).click();
    await page.waitForFunction(()=>window.__fixtures.event_locations.length===1);
+   await page.waitForFunction(()=>document.querySelector('#newVenueForm [aria-label="Venue name"]').value==='');
    assert.equal(await page.evaluate(()=>window.__fixtures.event_locations[0].welcome_en),'Welcome to our Faroese celebration.');
    assert.equal(await page.getByText('Welcome messages',{exact:true}).count(),0,'global welcome editor removed');
    await newVenue.getByLabel('Venue name',{exact:true}).fill('Germany test venue');
@@ -214,6 +215,7 @@ async function run(){
    await newVenue.getByLabel('Venue timezone').fill('Europe/Berlin');
    await newVenue.getByRole('button',{name:'Create venue'}).click();
    await page.waitForFunction(()=>window.__fixtures.event_locations.length===2);
+   await page.waitForFunction(()=>document.querySelector('#newVenueForm [aria-label="Venue name"]').value==='');
    const venueIds=await page.evaluate(()=>window.__fixtures.event_locations.map(v=>v.id));
    const savedVenue=page.locator('#venueList > details').first();await savedVenue.locator('summary').first().click();
    await savedVenue.locator('.venue-welcome-editor').screenshot({path:path.join(root,'artifacts','venue-welcome-preview.png')});
@@ -227,6 +229,7 @@ async function run(){
      await newSession.getByLabel('Ends (venue local time)').fill('2027-02-20T23:00');
      await newSession.getByRole('button',{name:'Create session'}).click();
      await page.waitForFunction(key=>window.__fixtures.event_sessions.some(s=>s.session_key===key),key);
+     await page.waitForFunction(()=>document.querySelector('#newSessionEditor [aria-label="Session name"]').value==='');
    }
    assert.equal(await page.evaluate(()=>window.__fixtures.event_sessions.find(s=>s.session_key==='german-celebration').starts_at),'2027-02-20T17:00:00.000Z');
    await page.locator('#closeSettings').click();

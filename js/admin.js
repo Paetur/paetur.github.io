@@ -668,7 +668,8 @@
    const map=field(f,'Map link (HTTPS)',v.map_url,null,'url',false,2000);
    const notes=field(f,'Guest venue notes',v.notes,null,'textarea');
    const welcome=Object.fromEntries(['fo','en','de'].map(lang=>[lang,field(f,'Welcome message — '+({fo:'Faroese',en:'English',de:'German'}[lang]),v['welcome_'+lang],null,'textarea',false,4000)]));
-   for(const control of Object.values(welcome))control.closest('label').classList.add('span-2');
+   const welcomeBox=R.dom('fieldset',{class:'span-2 venue-welcome-editor'});welcomeBox.append(R.dom('legend',{},'Welcome messages for this venue'));
+   for(const control of Object.values(welcome))welcomeBox.append(control.closest('label'));f.append(welcomeBox);
    const archived=field(f,'Archived venue',!!v.archived_at,null,'checkbox');
    return saveForm(f,v.id?'Save venue':'Create venue',()=>managementRpc('admin_save_venue',{p_id:v.id||null,p_values:{name:name.value.trim(),country_code:country.value.trim().toUpperCase()||null,address:address.value.trim(),timezone:timezone.value.trim(),map_url:map.value.trim(),notes:notes.value.trim(),...Object.fromEntries(Object.entries(welcome).map(([lang,control])=>['welcome_'+lang,control.value.trim()])),archived:archived.checked}}));
  }

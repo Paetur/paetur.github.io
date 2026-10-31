@@ -215,6 +215,8 @@ async function run(){
    await newVenue.getByRole('button',{name:'Create venue'}).click();
    await page.waitForFunction(()=>window.__fixtures.event_locations.length===2);
    const venueIds=await page.evaluate(()=>window.__fixtures.event_locations.map(v=>v.id));
+   const savedVenue=page.locator('#venueList > details').first();await savedVenue.locator('summary').first().click();
+   await savedVenue.locator('.venue-welcome-editor').screenshot({path:path.join(root,'artifacts','venue-welcome-preview.png')});
    await openSection(page,'Sessions & scheduling');await openSection(page,'Add session');
    const newSession=page.locator('#newSessionEditor form');
    for(const [name,key,id] of [['Faroe celebration','faroe-celebration',venueIds[0]],['German celebration','german-celebration',venueIds[1]]]){

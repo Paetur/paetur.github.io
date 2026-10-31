@@ -387,3 +387,5 @@ html[data-theme="dark"] code{background:#253b32;color:var(--ink)}
 #adminApp .admin-main-tabs button{font-size:clamp(1rem,1.75vw,1.4rem)}
 @media(max-width:700px){#adminApp .admin-main-tabs button{font-size:1rem}}
 .venue-welcome{font-size:.9rem;margin:8px 0;white-space:pre-wrap}
+
+.venue-welcome-editor{display:grid;gap:14px;min-width:0;border:1px solid var(--line);border-radius:10px;padding:16px}.venue-welcome-editor legend{font-size:.85rem;font-weight:700;padding:0 6px}.venue-welcome-editor textarea{width:100%}

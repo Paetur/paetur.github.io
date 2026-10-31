@@ -41,7 +41,9 @@ jobs:
       - name: Test household lifecycle and concurrent operations in disposable PostgreSQL
         env:
           DATABASE_URL: postgres://postgres:test-only@localhost:5432/rsvp_test
-        run: node tests/household-management-db.cjs
+        run: |
+          node tests/timezones.cjs
+          node tests/household-management-db.cjs
   browser-smoke:
     runs-on: ubuntu-latest
     timeout-minutes: 12

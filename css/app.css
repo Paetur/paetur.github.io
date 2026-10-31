@@ -369,3 +369,5 @@ html[data-theme="dark"] .food-item input:disabled,html[data-theme="dark"] .choic
 #adminApp[data-mode="edit"] .view-only{display:none}
 .invite-row{display:flex;justify-content:space-between;gap:16px;align-items:center;padding:12px 0;border-bottom:1px solid var(--line)}.invite-row code{display:block;font-size:.9rem;letter-spacing:.12em;color:var(--muted);margin-top:4px}.invite-actions{display:flex;gap:8px;flex-wrap:wrap}
 @media(max-width:600px){.invite-row{align-items:start;flex-direction:column}.topbar-inner{gap:8px}.topbar .brand{font-size:.8rem}.topbar-actions{gap:8px}.admin-main-tabs button{font-size:.9rem!important}}
+
+.invite-item{padding-bottom:10px;border-bottom:1px solid var(--line)}.invite-item>.admin-management{margin-top:4px}.session-venue{white-space:normal;overflow-wrap:anywhere}#venueList>.admin-management,#sessionsList>.admin-management{margin:8px 0}

@@ -1,11 +1,11 @@
 <!doctype html>
 <html lang="en">
-<head>
+<head><script src="js/theme.js"></script><meta name="color-scheme" content="light dark">
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="description" content="A private invitation and RSVP experience.">
   <meta name="referrer" content="no-referrer">
-  <title>RSVP Manager | Invitation</title>
+  <title>Event Invitation</title>
   <link rel="stylesheet" href="css/app.css">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.10/dist/umd/supabase.min.js" defer></script>
   <script src="js/config.js" defer></script>
@@ -14,7 +14,7 @@
 </head>
 <body>
   <header class="topbar"><div class="site-width topbar-inner">
-    <a class="brand" href="./"><span class="brand-symbol">✳</span> <span>RSVP<span class="brand-soft"> Manager</span></span></a>
+    <a class="brand" href="./"><span class="brand-symbol">✳</span> <span>Event Invitation</span></a>
     <div class="topbar-actions"><div id="languageSwitcher" class="language-switch" aria-label="Language"><button data-language="fo">FO</button><button data-language="en" class="selected">EN</button><button data-language="de">DE</button></div><a class="nav-link" href="admin/">Admin</a></div>
   </div></header>
   <main class="site-width guest-layout">
@@ -34,6 +34,7 @@
       <section id="foodCard" class="panel hidden"><span class="eyebrow">FOOD COORDINATION</span><h2>What can you bring?</h2><p class="muted">Choose items only if you want to contribute. Quantities cannot exceed what is needed.</p><div id="foodList" class="food-list"></div><div class="form-footer"><button id="confirmFood" class="btn secondary hidden" type="button">Confirm my selections</button><span id="foodHint" class="muted small"></span></div></section>
     </div>
   </main>
-  <footer class="site-width footer"><span>RSVP Manager</span><span>Powered by your own Supabase project</span></footer>
+  <footer class="site-width footer"><span>Event Invitation</span><span>Powered by your own Supabase project</span></footer>
 </body>
 </html>
+

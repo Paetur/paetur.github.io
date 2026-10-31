@@ -1,4 +1,4 @@
-# RSVP Manager — Fresh GitHub starter
+# Event Invitation — Fresh GitHub starter
 
 A standalone, mobile-friendly **single-event** invitation and RSVP website for GitHub Pages and Supabase. One GitHub repository and one Supabase project per event. This is a **working starter/prototype**, **not yet approved for public launch**: see `docs/SECURITY_AND_RELEASE.md`.
 

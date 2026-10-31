@@ -8,8 +8,8 @@ Add guest, Contacts and Change history are inside expanded households.
 ## Behaviour
 
 - Household profile: name, side, relation group, parent, language, email, phone,
-  and notes. Codes and UUIDs are preserved during edits. Creation generates an
-  eight-character private code with the existing alphabet and collision checks.
+  WhatsApp, postal address, preferred contact method, and notes. Codes and UUIDs are preserved during edits. Empty households have no code. Adding the first active guest generates a code;
+  removing/archiving the last withdraws it. Retired codes are reserved and never reused.
 - A new household starts without session invitations. Assign them in Settings.
   A new guest inherits the household defaults.
 - Parent choices stay within the same side and relation group. Cycles are rejected.
@@ -70,3 +70,16 @@ Live authenticated acceptance and Safari testing remain separate release checks.
 - Security advisor reviewed: existing public-event/authentication advisories remain.
   New management functions require authenticated administrator authorization;
   anonymous execution is denied. Audit data has admin-only RLS and immutable history.
+
+## Invitation navigation and appearance
+
+Manage Invites is a separate main menu. Copy code/link actions are available only
+there, and only for active households with active guests. Empty parents show the
+number of descendant households and their active guests. Household details has a
+read-only view and a full Edit-mode form; the row pencil opens it directly.
+
+The application uses Administration on administrator/setup pages and Event
+Invitation on the guest page. All pages follow `prefers-color-scheme` at first paint
+and when the operating-system preference changes. Old manual theme preferences
+are ignored. Archiving a household withdraws its code; restoring a populated one
+creates a new code, so copy a fresh link in Manage Invites after restoration.

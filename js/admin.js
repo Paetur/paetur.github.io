@@ -14,7 +14,7 @@
  function sessionName(id){return store.sessions.find(s=>s.id===id)?.name||'Session';}
  function settingsTab(name){activeSettingsTab=name;document.querySelectorAll('[data-settings-tab]').forEach(b=>{const active=b.dataset.settingsTab===name;b.classList.toggle('active',active);b.setAttribute('aria-pressed',String(active));});document.querySelectorAll('[data-settings-panel]').forEach(n=>n.classList.toggle('hidden',n.dataset.settingsPanel!==name));}
  function tab(name,updateUrl=true){
-   if(!['dashboard','households','food','settings'].includes(name))name='dashboard';
+   if(!['dashboard','households','invites','food','settings'].includes(name))name='dashboard';
    activeTab=name;if(name!=='settings')lastMainTab=name;
    document.querySelectorAll('[data-tab]').forEach(b=>{
      const active=b.dataset.tab===name;b.classList.toggle('active',active);
@@ -32,23 +32,13 @@
    }
  }
  function toggleSettings(){tab(activeTab==='settings'?lastMainTab:'settings');}
- function setTheme(value,persist=true){
-   const dark=value==='dark';
-   document.documentElement.dataset.theme=dark?'dark':'light';
-   const button=$('themeToggle');
-   button.classList.toggle('active',dark);
-   button.setAttribute('aria-pressed',String(dark));
-   const label=dark?'Switch to light mode':'Switch to dark mode';
-   button.title=label;button.setAttribute('aria-label',label);
-   if(persist)try{localStorage.setItem('rsvp-admin-theme',dark?'dark':'light');}catch(_){}
- }
  function mode(isEditing){editMode=isEditing;$('adminApp').dataset.mode=isEditing?'edit':'view';const b=$('editModeButton');b.classList.toggle('active',isEditing);b.setAttribute('aria-pressed',String(isEditing));b.title=isEditing?'Switch to View mode':'Switch to Edit mode';b.setAttribute('aria-label',b.title);$('adminModeLabel').textContent=isEditing?'Edit mode · Changes are saved to the event database':'View mode · Manage invitations, food and event details';for(const id of ['eventSettingsForm','welcomeForm']){const form=$(id);for(const field of form.querySelectorAll('input,select,textarea'))field.disabled=!isEditing;}}
  async function fetchTable(name,columns='*',order){let q=db.from(name).select(columns);if(order)q=q.order(order);const {data,error}=await q;if(error)throw new Error(`${name}: ${R.safeError(error)}`);return data||[];}
  async function reload(){
    show('Loading event data…');
    try{
      const keys=['settings','sessions','locations','households','guests','food','claims','submissions','defaults','content','relationGroups','foodCategories','contacts'];
-     const jobs=[fetchTable('event_settings'),fetchTable('event_sessions'),fetchTable('event_locations'),fetchTable('households','id,household_name,invite_code,language,side,relation_group_id,email,phone,food,food_confirmed,rsvp_state,sort_order,parent_id,notes,archived_at'),fetchTable('guests','id,household_id,first_name,last_name,courtesy_title,relation,language,is_child,rsvp_status,dietary_requirements,notes,archived_at'),fetchTable('food_items'),fetchTable('food_claims'),fetchTable('rsvp_submissions','id,household_id,submitted_at'),fetchTable('household_session_defaults'),fetchTable('event_content'),fetchTable('relation_groups'),fetchTable('food_categories'),fetchTable('household_contacts')];
+     const jobs=[fetchTable('event_settings'),fetchTable('event_sessions'),fetchTable('event_locations'),fetchTable('households','id,household_name,invite_code,language,side,relation_group_id,email,phone,food,food_confirmed,rsvp_state,sort_order,parent_id,notes,archived_at,whatsapp,postal_address,preferred_contact_method'),fetchTable('guests','id,household_id,first_name,last_name,courtesy_title,relation,language,is_child,rsvp_status,dietary_requirements,notes,archived_at'),fetchTable('food_items'),fetchTable('food_claims'),fetchTable('rsvp_submissions','id,household_id,submitted_at'),fetchTable('household_session_defaults'),fetchTable('event_content'),fetchTable('relation_groups'),fetchTable('food_categories'),fetchTable('household_contacts')];
      const values=await Promise.all(jobs);keys.forEach((key,i)=>store[key]=values[i]);store.settings=store.settings[0]||null;
      const {data:admins,error:adminsError}=await db.rpc('admin_list_members');
      store.admins=adminsError?[]:(admins||[]);
@@ -65,7 +55,7 @@
    try{websiteConfigured=Boolean(deployed.supabaseUrl&&deployed.supabaseKey&&R.normalizeUrl(deployed.supabaseUrl)===R.normalizeUrl(R.config().supabaseUrl)&&R.validateKey(deployed.supabaseKey));}catch(_){websiteConfigured=false;}
    const checks=[['Admin account connected',true],['Event name and date entered',!!(store.settings?.event_name&&store.settings?.event_date)],['At least one session created',store.sessions.some(s=>s.is_active)],['Invitations assigned',store.defaults.some(d=>d.is_invited)],['Website connection in deployed config.js',websiteConfigured],['Website address saved in event settings',!!store.settings?.website_url],['Event published',!!store.settings?.is_published]];
    $('launchChecklist').replaceChildren(...checks.map(([label,yes])=>{const li=R.dom('li');li.append(R.dom('span',{class:yes?'yes':'no'},yes?'✓':'○'),document.createTextNode(label));return li;}));
-   $('newHousehold').replaceChildren(householdForm({language:'fo',side:'paetur_hentze'}));renderHouseholds();renderFood();renderAdmins();renderSettings();renderSessions();renderContent();
+   $('newHousehold').replaceChildren(householdForm({language:'fo',side:'paetur_hentze'}));renderHouseholds();renderInvites();renderFood();renderAdmins();renderSettings();renderSessions();renderContent();
  }
  function ordered(list, label){
    return [...list].sort((a,b)=>(a.sort_order||0)-(b.sort_order||0)||
@@ -249,9 +239,12 @@
    parents();side.addEventListener('change',parents);group.addEventListener('change',parents);
    const email=field(f,'Household email',h.email,null,'email',false,320);
    const phone=field(f,'Household phone',h.phone,null,'tel',false,80);
+   const whatsapp=field(f,'WhatsApp',h.whatsapp,null,'tel',false,80);
+   const address=field(f,'Postal address',h.postal_address,null,'textarea',false,1000);
+   const method=field(f,'Preferred contact method',h.preferred_contact_method,[['','Unspecified'],['whatsapp','WhatsApp'],['sms','SMS'],['email','Email'],['postal','Postal'],['manual','Manual']]);
    const notes=field(f,'Household notes',h.notes,null,'textarea');
-   f.append(R.dom('p',{class:'micro span-2'},h.id?'Grouping changes with child households require moving the children first.':'A private invitation code is generated automatically. Assign sessions in Settings after creating the household.'));
-   return saveForm(f,h.id?'Save household':'Create household',()=>managementRpc('admin_save_household',{p_id:h.id||null,p_values:{household_name:name.value.trim(),side:side.value,relation_group_id:group.value||null,language:lang.value,parent_id:parent.value||null,email:email.value.trim(),phone:phone.value.trim(),notes:notes.value.trim()}}));
+   f.append(R.dom('p',{class:'micro span-2'},h.id?'Grouping changes with child households require moving the children first.':'Empty households have no invitation code. Add a guest, then use Manage Invites. Assign sessions in Settings.'));
+   return saveForm(f,h.id?'Save household':'Create household',()=>managementRpc('admin_save_household',{p_id:h.id||null,p_values:{household_name:name.value.trim(),side:side.value,relation_group_id:group.value||null,language:lang.value,parent_id:parent.value||null,email:email.value.trim(),phone:phone.value.trim(),whatsapp:whatsapp.value.trim(),postal_address:address.value.trim(),preferred_contact_method:method.value||null,notes:notes.value.trim()}}));
  }
  function archiveButton(entity,record){
    const restoring=!!record.archived_at;
@@ -307,6 +300,28 @@
        else body.append(R.dom('p',{class:'micro'},'Showing the latest 100 changes.'));
      }catch(error){loaded=false;body.textContent=R.safeError(error);}
    });return d;
+ }
+
+
+ function householdSummary(h,guests){
+   const active=guests.filter(g=>!g.archived_at).length;
+   const descendants=store.households.filter(x=>!x.archived_at&&isDescendantOf(x.id,h.id));
+   const nestedGuests=store.guests.filter(g=>!g.archived_at&&descendants.some(x=>x.id===g.household_id)).length;
+   return [active?`${active} guest${active===1?'':'s'}`:`${descendants.length} sub-household${descendants.length===1?'':'s'} · ${nestedGuests} guests in sub-households`,h.language?.toUpperCase(),h.archived_at?'Archived':active?'RSVP '+h.rsvp_state:'Grouping household'].filter(Boolean).join(' · ');
+ }
+ function renderInvites(){
+   const box=$('inviteRows');box.replaceChildren();const search=$('inviteSearch').value.trim().toLowerCase();
+   const eligible=ordered(store.households,'household_name').filter(h=>!h.archived_at&&h.invite_code&&store.guests.some(g=>g.household_id===h.id&&!g.archived_at));
+   for(const h of eligible.filter(h=>h.household_name.toLowerCase().includes(search))){
+     const row=R.dom('div',{class:'invite-row'});const text=R.dom('div');
+     text.append(R.dom('strong',{},h.household_name),R.dom('code',{},h.invite_code));row.append(text);
+     const actions=R.dom('div',{class:'invite-actions'});
+     for(const [label,value] of [['Copy invite code',h.invite_code],['Copy invitation link',R.invitationURL(h.invite_code)]]){
+       const button=R.dom('button',{type:'button',class:'small-tool'},label);
+       button.addEventListener('click',async()=>{try{await navigator.clipboard.writeText(value);show(label==='Copy invite code'?'Invitation code copied.':'Invitation link copied.','success');}catch(error){show(R.safeError(error),'error');}});actions.append(button);
+     }row.append(actions);box.append(row);
+   }
+   if(!box.children.length)box.append(R.dom('p',{class:'muted'},'No matching invitations. Empty and archived households have no active invitation.'));
  }
 
  function renderHouseholds(){
@@ -367,16 +382,14 @@
          const info=R.dom('div',{class:'household-node-name'});
          info.append(R.dom('strong',{},h.household_name||'Unnamed household'));
          const guests=store.guests.filter(g=>g.household_id===h.id);
-         info.append(R.dom('small',{class:'muted'},`${guests.filter(g=>!g.archived_at).length} active guests · ${h.language?.toUpperCase()||'—'} · ${h.archived_at?'Archived':'RSVP '+(h.rsvp_state||'open')}`));
+         info.append(R.dom('small',{class:'muted'},householdSummary(h,guests)));
          primary.append(info);
          const actions=R.dom('div',{class:'household-actions'});
-         actions.append(iconAction('copy','Copy private invitation link',async()=>{
-           await navigator.clipboard.writeText(R.invitationURL(h.invite_code));
-           show('Private invitation link copied.','success');
-         },!!h.archived_at));
-         const editor=R.dom('div',{class:'household-inline-editor hidden edit-only'});
+         const editor=disclosure('Household details');editor.classList.add('household-inline-editor');
+         const summary=R.dom('dl',{class:'household-profile-summary view-only'});
+         for(const [label,value] of [['Language',h.language],['Email',h.email],['Phone',h.phone],['WhatsApp',h.whatsapp],['Postal address',h.postal_address],['Preferred contact',h.preferred_contact_method],['Notes',h.notes]]){summary.append(R.dom('dt',{},label),R.dom('dd',{},value||'—'));}editor.append(summary);
          actions.append(iconAction('edit','Edit household: '+(h.household_name||'household'),()=>{
-           editor.classList.toggle('hidden');
+           node.open=true;editor.open=!editor.open;if(editor.open)editor.querySelector('input')?.focus();
          },!!h.archived_at,'edit-only'));
          actions.append(archiveButton('households',h));
          const siblings=ordered(members.filter(m=>m.parent_id===h.parent_id),'household_name');
@@ -386,7 +399,7 @@
          editor.append(householdForm(h));
          primary.append(actions);card.append(primary);
          const expanded=R.dom('div',{class:'household-expanded'});
-         expanded.append(buildGuestList(guests));
+         expanded.append(editor,buildGuestList(guests));
          if(!h.archived_at){const add=disclosure('Add guest','edit-only');const form=buildGuestEditor({household_id:h.id});form.classList.remove('hidden');add.append(form);expanded.append(add);}
          expanded.append(contactSection(h),historySection(h));
          if(nested){
@@ -395,7 +408,7 @@
            children.forEach(child=>draw(child,childList,depth+1));
            expanded.append(childList);
          }
-         node.append(card,editor,expanded);
+         node.append(card,expanded);
          container.append(node);
        }
        ordered(members.filter(h=>!h.parent_id||!members.some(p=>p.id===h.parent_id)),'household_name').forEach(h=>draw(h,groupBody,0));
@@ -576,16 +589,13 @@
    if(error)throw error;
    if(access!==true)throw new Error('Your account does not have administrator access. Ask an existing administrator to grant it first.');
    $('loginPanel').classList.add('hidden');$('adminApp').classList.remove('hidden');$('adminTopActions').classList.remove('hidden');$('loggedInAs').textContent=user.email||'';
-   const fragment=location.hash.slice(1);activeTab=['dashboard','households','food','settings'].includes(fragment)?fragment:'dashboard';
+   const fragment=location.hash.slice(1);activeTab=['dashboard','households','invites','food','settings'].includes(fragment)?fragment:'dashboard';
    tab(activeTab,false);mode(false);await reload();
  }
  async function init(){
-   let savedTheme='light';try{savedTheme=localStorage.getItem('rsvp-admin-theme')||'light';}catch(_){}
-   setTheme(savedTheme,false);
-   $('themeToggle').addEventListener('click',()=>setTheme(document.documentElement.dataset.theme==='dark'?'light':'dark'));
    window.addEventListener('popstate',()=>{
      const fragment=location.hash.slice(1);
-     tab(['dashboard','households','food','settings'].includes(fragment)?fragment:'dashboard',false);
+     tab(['dashboard','households','invites','food','settings'].includes(fragment)?fragment:'dashboard',false);
    });
    db=R.getClient();
    if(!db){$('loginPanel').classList.remove('hidden');show('Database not connected. Complete the setup wizard first.','warning');$('loginForm').querySelector('button').disabled=true;return;}
@@ -612,6 +622,7 @@
    $('expandHouseholds').addEventListener('click',()=>expandHouseholdTree(true));
    $('collapseHouseholds').addEventListener('click',()=>expandHouseholdTree(false));
    $('householdSearch').addEventListener('input',renderHouseholds);
+   $('inviteSearch').addEventListener('input',renderInvites);
    $('showArchived').addEventListener('change',renderHouseholds);
    $('foodSearch').addEventListener('input',renderFood);
    $('addCategoryForm').addEventListener('submit',async e=>{

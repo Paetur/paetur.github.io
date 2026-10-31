@@ -26,8 +26,8 @@ const mock = [
 " event_settings:[{id:1,event_name:'Pætur & Maria Hentze',event_type:'wedding',event_date:'2027-02-20',default_language:'fo',timezone:'Europe/Berlin',website_url:'https://paetur.github.io/',rsvp_deadline:null,is_published:false}],",
 " event_sessions:[{id:s1,session_key:'dinner',name:'Dinner',sort_order:1,is_active:true,requires_rsvp:true}],",
 " event_locations:[],",
-" households:[{id:h1,household_name:'Example parent',invite_code:'ABCDEFGH',side:'paetur_hentze',relation_group_id:cat1,parent_id:null,sort_order:1,rsvp_state:'open',language:'fo'},{id:h2,household_name:'Example child',invite_code:'EFGHJKLM',side:'paetur_hentze',relation_group_id:cat1,parent_id:h1,sort_order:2,rsvp_state:'open',language:'fo'},{id:h3,household_name:'Example Maria family',invite_code:'HJKLMNPQ',side:'maria_haass',relation_group_id:cat2,parent_id:null,sort_order:1,rsvp_state:'open',language:'de'}],",
-" guests:[{id:'55555555-5555-4555-8555-555555555555',household_id:h1,first_name:'Example',last_name:'Guest',language:'fo',is_child:false,relation:'Cousin',notes:'Invitation note',rsvp_status:'pending'},{id:'77777777-7777-4777-8777-777777777777',household_id:h2,first_name:'Nested',last_name:'Guest',language:'en',is_child:true,rsvp_status:'pending'}],",
+" households:[{id:h1,household_name:'Example parent',invite_code:null,side:'paetur_hentze',relation_group_id:cat1,parent_id:null,sort_order:1,rsvp_state:'open',language:'fo'},{id:h2,household_name:'Example child',invite_code:'EFGHJKLM',side:'paetur_hentze',relation_group_id:cat1,parent_id:h1,sort_order:2,rsvp_state:'open',language:'fo'},{id:h3,household_name:'Example Maria family',invite_code:'HJKLMNPQ',side:'maria_haass',relation_group_id:cat2,parent_id:null,sort_order:1,rsvp_state:'open',language:'de'}],",
+" guests:[{id:'55555555-5555-4555-8555-555555555555',household_id:h2,first_name:'Example',last_name:'Guest',language:'fo',is_child:false,relation:'Cousin',notes:'Invitation note',rsvp_status:'pending'},{id:'77777777-7777-4777-8777-777777777777',household_id:h2,first_name:'Nested',last_name:'Guest',language:'en',is_child:true,rsvp_status:'pending'}],",
 " food_categories:[{id:cat1,name:'Main dishes',sort_order:1},{id:cat2,name:'Desserts',sort_order:2}],",
 " food_items:[{id:'66666666-6666-4666-8666-666666666666',category:'Main dishes',name_fo:'Sample dish',name_en:'Sample dish',name_de:'Sample dish',sort_order:1,quantity_needed:4,active:true}],",
 " relation_groups:[{id:cat1,name:'Family',sort_order:1},{id:cat2,name:'Family',sort_order:1}],",
@@ -51,10 +51,10 @@ async function run(){
    await page.goto(url,{waitUntil:'load'});
    await page.locator('#adminApp:not(.hidden)').waitFor({timeout:12000});
    await page.locator('#householdRows .hierarchy-section').first().waitFor({state:'attached'});
-   assert.equal(await page.locator('[data-tab]').count(),3,'only three main text tabs');
-   assert.deepEqual(await page.locator('[data-tab]').evaluateAll(nodes=>nodes.map(n=>n.textContent.trim())),['Overview','Households','Food']);
+   assert.equal(await page.locator('[data-tab]').count(),4,'four main text tabs');
+   assert.deepEqual(await page.locator('[data-tab]').evaluateAll(nodes=>nodes.map(n=>n.textContent.trim())),['Overview','Households','Manage Invites','Food']);
    assert.deepEqual(await page.locator('.admin-top-actions>button').evaluateAll(nodes=>nodes.map(n=>n.id)),
-     ['settingsToggle','editModeButton','refreshButton','themeToggle','logout'],'topbar action icon order');
+     ['settingsToggle','editModeButton','refreshButton','logout'],'topbar action icon order');
    assert.equal(await page.locator('#viewWebsite').getAttribute('target'),'_blank','website link opens a new tab');
    assert.equal(await page.locator('#viewWebsite').getAttribute('rel'),'noopener noreferrer','website link is isolated');
    assert.equal(await page.locator('#settingsPage').isVisible(),false,'settings initially closed');
@@ -69,10 +69,11 @@ async function run(){
    assert.equal(await page.locator('.admin-main-tabs').isVisible(),true,'main tabs restored');
    const previewDir=path.join(root,'artifacts');fs.mkdirSync(previewDir,{recursive:true});
    await page.screenshot({path:path.join(previewDir,'admin-overview-light.png'),fullPage:true});
-   await page.locator('#themeToggle').click();
+   await page.emulateMedia({colorScheme:await page.locator('html').getAttribute('data-theme')==='dark'?'light':'dark'});
+   await page.waitForTimeout(100);
    await page.waitForTimeout(220);
    assert.equal(await page.locator('html').getAttribute('data-theme'),'dark','dark mode enabled');
-   assert.equal(await page.evaluate(()=>localStorage.getItem('rsvp-admin-theme')),'dark','theme preference saved');
+   assert.equal(await page.locator('#themeToggle').count(),0,'system preference controls theme');
    await page.locator('#settingsToggle').click();
    await page.locator('[data-settings-tab="event"]').click();
    await page.screenshot({path:path.join(previewDir,'admin-settings-dark.png'),fullPage:true});
@@ -80,13 +81,15 @@ async function run(){
    await page.locator('#closeSettings').click();
    await page.reload({waitUntil:'load'});
    await page.locator('#adminApp:not(.hidden)').waitFor();
-   assert.equal(await page.locator('html').getAttribute('data-theme'),'dark','dark mode persisted across reloads');
-   await page.locator('#themeToggle').click();
+   assert.equal(await page.locator('html').getAttribute('data-theme'),'dark','system dark mode applies after reload');
+   await page.emulateMedia({colorScheme:await page.locator('html').getAttribute('data-theme')==='dark'?'light':'dark'});
+   await page.waitForTimeout(100);
    assert.equal(await page.locator('html').getAttribute('data-theme'),'light','light mode restored');
    await page.locator('[data-tab="households"]').click();
    assert.equal(await page.locator('#householdRows details.hierarchy-section').count(),2,'two sides');
    assert.equal(await page.locator('#householdRows details.hierarchy-group').count(),2,'relationship groups');
    assert.equal(await page.locator('#householdRows details.household-tree-node').count(),3,'every household is expandable');
+   assert.ok((await page.locator('#householdRows').textContent()).includes('1 sub-household · 2 guests in sub-households'));
    await page.locator('#collapseHouseholds').click();
    assert.equal(await page.locator('#householdRows details[data-tree-key][open]').count(),0,'all groups collapsed');
    await page.locator('#expandHouseholds').click();
@@ -111,7 +114,8 @@ async function run(){
    assert.equal(saved.p_relation,'Cousin','existing guest relation retained');
    assert.equal(await page.locator('.household-guest-row').count(),2,'guests remain visible after saving');
    await page.screenshot({path:path.join(root,'artifacts','admin-households-light.png'),fullPage:true});
-   await page.locator('#themeToggle').click();
+   await page.emulateMedia({colorScheme:await page.locator('html').getAttribute('data-theme')==='dark'?'light':'dark'});
+   await page.waitForTimeout(100);
    await page.waitForTimeout(220);
    const actionBackground=await page.locator('.household-guest-row .admin-row-icon').first().evaluate(el=>getComputedStyle(el).backgroundColor);
    const toolBackground=await page.locator('#expandHouseholds').evaluate(el=>getComputedStyle(el).backgroundColor);
@@ -133,6 +137,8 @@ async function run(){
    await created.getByRole('button',{name:'Edit household: New test family',exact:true}).click();
    const profile=created.locator('.household-inline-editor .management-form');
    await profile.getByLabel('Household phone').fill('+298 123456');
+   await profile.getByLabel('WhatsApp',{exact:true}).fill('+298 654321');
+   await profile.getByLabel('Household language').selectOption('de');
    await profile.getByRole('button',{name:'Save household',exact:true}).click();
    await page.waitForFunction(id=>window.__fixtures.households.find(h=>h.id===id).phone==='+298 123456',createdId);
    await page.locator('#expandHouseholds').click();
@@ -164,7 +170,7 @@ async function run(){
    await page.waitForFunction(id=>!document.querySelector(`[data-tree-key="household:${id}"]`),createdId);
    await page.locator('#showArchived').check();
    await page.locator('#expandHouseholds').click();
-   assert.equal(await created.getByRole('button',{name:'Copy private invitation link'}).isDisabled(),true);
+   assert.equal(await created.getByRole('button',{name:'Copy private invitation link'}).count(),0);
    await created.getByRole('button',{name:'Restore household',exact:true}).click();
    await page.waitForFunction(id=>!window.__fixtures.households.find(h=>h.id===id).archived_at,createdId);
    // Server errors retain the edited form and its values.
@@ -181,6 +187,17 @@ async function run(){
    assert.ok(householdDimensions.scroll<=householdDimensions.client+3,'household forms fit mobile');
    await page.screenshot({path:path.join(root,'artifacts','household-management-mobile.png'),fullPage:true});
 
+
+   await page.locator('[data-tab="invites"]').click();
+   assert.equal(new URL(page.url()).hash,'#invites');
+   assert.equal(await page.locator('#householdRows button[title*=Copy]').count(),0,'copy controls only in Manage Invites');
+   assert.ok(await page.getByRole('button',{name:'Copy invite code',exact:true}).count()>0);
+   await page.evaluate(()=>{navigator.clipboard.writeText=async text=>{window.__copied=text;};});
+   await page.getByRole('button',{name:'Copy invite code',exact:true}).first().click();
+   assert.match(await page.evaluate(()=>window.__copied),/^[A-HJ-NP-Z2-9]{8}$/);
+   await page.getByRole('button',{name:'Copy invitation link',exact:true}).first().click();
+   assert.ok((await page.evaluate(()=>window.__copied)).includes('?='));
+   assert.equal(await page.locator('#inviteRows').getByText('New test family',{exact:true}).count(),0,'empty households omitted');
    await page.locator('[data-tab="food"]').click();
    assert.equal(await page.locator('.food-category').count(),2,'food grouped by category');
    await page.locator('.food-category').last().locator('summary').click();
@@ -193,6 +210,20 @@ async function run(){
    const dims=await page.evaluate(()=>({scroll:document.documentElement.scrollWidth,client:document.documentElement.clientWidth}));
    if(dims.scroll>dims.client+3)throw Error('Horizontal overflow on mobile: '+JSON.stringify(dims));
    await page.screenshot({path:path.join(root,'artifacts','admin-mobile-dark.png'),fullPage:true});
+
+   await page.goto(url.replace('/admin/','/'),{waitUntil:'load'});
+   assert.ok((await page.locator('.brand').textContent()).includes('Event Invitation'));
+   assert.equal(await page.locator('html').getAttribute('data-theme'),'dark');
+   await page.emulateMedia({colorScheme:'light'});await page.waitForTimeout(100);
+   assert.equal(await page.locator('html').getAttribute('data-theme'),'light');
+   await page.route('**/supabase.min.js',route=>route.fulfill({status:200,contentType:'application/javascript',body:"window.supabase={createClient:()=>({auth:{getUser:async()=>({data:{user:null}})}})}"}));
+   await page.emulateMedia({colorScheme:'dark'});
+   await page.goto(url,{waitUntil:'load'});
+   await page.locator('#loginForm').waitFor();
+   assert.ok((await page.locator('.brand').textContent()).includes('Administration'));
+   assert.equal(await page.locator('html').getAttribute('data-theme'),'dark');
+   await page.emulateMedia({colorScheme:'light'});await page.waitForTimeout(100);
+   assert.equal(await page.locator('html').getAttribute('data-theme'),'light');
    if(errors.length)throw Error('Admin browser script errors: '+errors.join(' | '));
    console.log('PASS: topbar, dark mode persistence, Settings page, expandable households, guest editing, refresh and mobile screenshots');
  }finally{

@@ -97,8 +97,9 @@
   }
   function configSource() {
     const cfg=config();
-    return '// RSVP Manager public browser configuration. NEVER add a secret/service_role key.\n'+
+    return '// Event Invitation public browser configuration. NEVER add a secret/service_role key.\n'+
       'window.RSVP_CONFIG = Object.freeze('+JSON.stringify({supabaseUrl:cfg.supabaseUrl,supabaseKey:cfg.supabaseKey},null,2)+');\n';
   }
   window.RSVP={config,getClient,guestRpc,normalizeUrl,validateKey,savePreview,invitationURL,getInviteCode,codePattern,siteRoot,dom,byId,showStatus,formatDate,safeError,dl,configSource};
 }());
+

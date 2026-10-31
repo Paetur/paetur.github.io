@@ -707,7 +707,10 @@
      const card=R.dom('div',{class:'admin-member admin-invitation-card'}),details=R.dom('div',{class:'admin-invitation-details'}),actions=R.dom('div',{class:'admin-invitation-actions edit-only'});
      const state=expired?'Expired':({sent:'Awaiting acceptance',failed:'Email failed',sending:'Sending / status pending'}[invitation.delivery_state]||'Pending');
      details.append(R.dom('div',{class:'name'},invitation.name),R.dom('div',{class:'email'},invitation.email),R.dom('p',{class:'micro'},state+' · Expires '+adminTime(invitation.expires_at)));
-     if(invitation.last_error_code)details.append(R.dom('p',{class:'micro'},'Email status: '+invitation.last_error_code));
+     if(invitation.last_error_code){
+       const errors={email_address_not_authorized:'Email sending is restricted. Check the email configuration.',over_email_send_rate_limit:'The email service sending limit was reached. Wait before resending.',over_request_rate_limit:'The email service request limit was reached. Wait before resending.',email_status_unknown:'Email delivery status is uncertain. Check before resending.'};
+       details.append(R.dom('p',{class:'micro',title:invitation.last_error_code},errors[invitation.last_error_code]||'The email could not be sent. Check the email configuration before resending.'));
+     }
      const resend=R.dom('button',{class:'btn secondary',type:'button'},'Resend'),cancel=R.dom('button',{class:'btn secondary',type:'button'},'Cancel');
      const status=R.dom('p',{class:'small admin-invitation-status',role:'status'});
      resend.addEventListener('click',async()=>{if(!editMode||!confirm('Send another administrator invitation email to '+invitation.email+'?'))return;resend.disabled=true;cancel.disabled=true;status.textContent='Sending invitation…';try{await sendAdminInvitation({id:invitation.id,email:invitation.email,name:invitation.name});await refreshAdminInvitations();show('Administrator invitation email sent.','success');}catch(error){status.textContent=R.safeError(error);}finally{resend.disabled=false;cancel.disabled=false;}});

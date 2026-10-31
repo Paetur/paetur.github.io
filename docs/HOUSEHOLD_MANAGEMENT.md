@@ -25,6 +25,7 @@ Add guest and Contacts are inside expanded households. Change history is under S
   must be resolved first. Records are retained; Show archived records exposes
   Restore actions. Restore a parent before its children. Household archival does
   not independently change its guests' own archive flags.
+- Contacts can optionally link an existing guest, found by guest/household search; selection fills name/language while contact details stay separate. See [Guest-linked contacts](GUEST_LINKED_CONTACTS.md).
 - Contacts support name, type, details, language, preferred delivery method and
   one primary contact per type. Archiving clears the primary flag. Existing
   household email/phone remain separate legacy fields; editing them does not

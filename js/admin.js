@@ -274,22 +274,69 @@
    }box.append(archiveButton('guests',g));return {actions:box,form:panel};
  }
  function contactSection(h){
-   const section=disclosure('Contacts');
-   for(const c of store.contacts.filter(c=>c.household_id===h.id&&($('showArchived').checked||!c.archived_at))){
-     const d=disclosure((c.contact_name||c.contact_type)+(c.archived_at?' · Archived':'')+(c.is_primary?' · Primary':''));
-     d.append(R.dom('p',{},c.contact_value),R.dom('p',{class:'micro'},[c.language_code,c.preferred_method].filter(Boolean).join(' · ')));
-     if(!h.archived_at){d.append(archiveButton('household_contacts',c));if(!c.archived_at)d.append(contactForm(h,c));}section.append(d);
+   const section=disclosure('Contacts','contact-section');
+   const contacts=store.contacts.filter(c=>c.household_id===h.id&&($('showArchived').checked||!c.archived_at));
+   const list=R.dom('div',{class:'contact-list'});
+   const types={email:'Email',phone:'Phone',postal:'Postal address',other:'Other'};
+   const methods={whatsapp:'WhatsApp',sms:'SMS',email:'Email',postal:'Postal',manual:'Manual'};
+   for(const c of contacts){
+     const card=R.dom('article',{class:'contact-card'});card.dataset.contactId=c.id;const header=R.dom('div',{class:'contact-card-header'});const info=R.dom('div',{class:'contact-card-info'});
+     const name=c.contact_name||types[c.contact_type]||'Contact';info.append(R.dom('strong',{},name),R.dom('span',{class:'contact-card-value'},c.contact_value));
+     const meta=R.dom('div',{class:'contact-card-meta'});meta.append(R.dom('span',{},[types[c.contact_type]||c.contact_type,methods[c.preferred_method],c.language_code?.toUpperCase()].filter(Boolean).join(' · ')));
+     if(c.guest_id){const g=store.guests.find(g=>g.id===c.guest_id);const source=store.households.find(h=>h.id===g?.household_id);meta.append(R.dom('span',{class:'tag'},'Guest'+(source?' · '+source.household_name:'')));}
+     if(c.is_primary)meta.append(R.dom('span',{class:'tag'},'Primary'));if(c.archived_at)meta.append(R.dom('span',{class:'tag'},'Archived'));info.append(meta);header.append(info);
+     const editor=R.dom('div',{class:'contact-editor edit-only hidden'});editor.id='contact-editor-'+c.id;
+     if(!h.archived_at){const actions=R.dom('div',{class:'contact-card-actions edit-only'});
+       if(!c.archived_at){
+         const edit=iconAction('edit','Edit contact: '+name,()=>{const opening=editor.classList.contains('hidden');if(opening){editor.replaceChildren(contactForm(h,c,()=>{editor.classList.add('hidden');edit.setAttribute('aria-expanded','false');edit.focus();}));}editor.classList.toggle('hidden',!opening);edit.setAttribute('aria-expanded',String(opening));if(opening)editor.querySelector('input[aria-label="Contact name"]')?.focus();},false,'edit-only');
+         edit.setAttribute('aria-expanded','false');edit.setAttribute('aria-controls',editor.id);actions.append(edit);
+       }
+       actions.append(archiveButton('household_contacts',c));header.append(actions);
+     }
+     card.append(header,editor);list.append(card);
    }
-   if(!h.archived_at){const add=disclosure('Add contact','edit-only');add.append(contactForm(h,{}));section.append(add);}return section;
+   if(contacts.length)section.append(list);else section.append(R.dom('p',{class:'micro contact-empty'},'No contacts added yet.'));
+   if(!h.archived_at){const add=disclosure('Add contact','edit-only contact-add');add.append(contactForm(h,{}));section.append(add);}return section;
  }
- function contactForm(h,c){
-   const f=managementForm();const name=field(f,'Contact name',c.contact_name,null,'text',false,140);
-   const type=field(f,'Contact type',c.contact_type||'email',[['email','Email'],['phone','Phone'],['postal','Postal'],['other','Other']]);
-   const value=field(f,'Contact details',c.contact_value,null,'text',true,1000);
+ let contactPickerSequence=0;
+ function contactGuestPicker(initialId,onSelect,onClear){
+   let selectedId=initialId||null;
+   const box=R.dom('div',{class:'span-2 contact-guest-picker'});const selected=R.dom('div',{class:'contact-guest-selected'});
+   const picker=disclosure('Choose someone from the guest list','contact-guest-search');
+   const label=R.dom('label',{},'Search guests');const search=R.dom('input',{type:'search',placeholder:'Guest name or household'});search.maxLength=200;search.setAttribute('aria-label','Search guests');search.autocomplete='off';
+   const options=R.dom('div',{class:'contact-guest-results',id:'contact-guest-results-'+(++contactPickerSequence)});search.setAttribute('aria-controls',options.id);label.append(search);
+   const hint=R.dom('p',{class:'micro'});hint.setAttribute('role','status');picker.append(label,hint,options);
+   function guestLabel(g){return [g.first_name,g.last_name].filter(Boolean).join(' ')||'Unnamed guest';}
+   function renderSelected(){
+     selected.replaceChildren();selected.classList.toggle('hidden',!selectedId);if(!selectedId)return;
+     const guest=store.guests.find(g=>g.id===selectedId);const household=store.households.find(h=>h.id===guest?.household_id);const text=R.dom('span');text.append(R.dom('strong',{},guest?guestLabel(guest):'Linked guest'),R.dom('small',{class:'muted'},household?.household_name||''));
+     const clear=R.dom('button',{type:'button',class:'small-tool'},'Remove guest link');clear.addEventListener('click',()=>{selectedId=null;onClear();renderSelected();});selected.append(text,clear);
+   }
+   function renderResults(){
+     const normalize=value=>String(value).normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLocaleLowerCase().replaceAll('ß','ss').replaceAll('æ','ae').replaceAll('ø','o').replaceAll('ð','d');
+     const query=normalize(search.value.trim());const matches=store.guests.filter(g=>!g.archived_at&&store.households.some(h=>h.id===g.household_id&&!h.archived_at)).filter(g=>normalize([guestLabel(g),store.households.find(h=>h.id===g.household_id)?.household_name].join(' ')).includes(query)).sort((a,b)=>guestLabel(a).localeCompare(guestLabel(b))||a.id.localeCompare(b.id));
+     options.replaceChildren();hint.textContent=matches.length?'Showing '+Math.min(matches.length,10)+' of '+matches.length+' matching guests.':'No active guests match this search.';
+     for(const g of matches.slice(0,10)){
+       const household=store.households.find(h=>h.id===g.household_id);const button=R.dom('button',{type:'button',class:'contact-guest-option'});button.setAttribute('aria-label','Select guest: '+guestLabel(g)+' — '+household.household_name);
+       button.append(R.dom('strong',{},guestLabel(g)),R.dom('small',{},household.household_name+(g.is_child?' · Child':'')));
+       button.addEventListener('click',()=>{selectedId=g.id;onSelect(g);renderSelected();picker.open=false;search.value='';});options.append(button);
+     }
+   }
+   search.addEventListener('keydown',event=>{if(event.key==='Enter'){event.preventDefault();options.querySelector('button')?.focus();}if(event.key==='Escape'){event.preventDefault();picker.open=false;picker.querySelector('summary')?.focus();}});
+   search.addEventListener('input',renderResults);picker.addEventListener('toggle',()=>{if(picker.open){renderResults();search.focus();}});
+   renderSelected();box.append(selected,picker,R.dom('p',{class:'micro'},'Choose a guest or enter a new contact below. Guest selection fills the name and language; enter this person’s contact details separately.'));return box;
+ }
+ function contactForm(h,c,onCancel=null){
+   const f=managementForm();f.classList.add('contact-form');let guestId=c.guest_id||null;const name=field(f,'Contact name',c.contact_name,null,'text',false,140);
+   const type=field(f,'Contact type',c.contact_type||'email',[['email','Email'],['phone','Phone'],['postal','Postal address'],['other','Other']]);
+   const value=field(f,'Contact details',c.contact_value,null,'text',true,1000);value.closest('label').classList.add('span-2');
    const lang=field(f,'Contact language',c.language_code,[['','Household default'],...languages]);
    const method=field(f,'Preferred delivery method',c.preferred_method,[['','Unspecified'],['whatsapp','WhatsApp'],['sms','SMS'],['email','Email'],['postal','Postal'],['manual','Manual']]);
-   const primary=field(f,'Primary contact for this type',c.is_primary,null,'checkbox');
-   return saveForm(f,c.id?'Save contact':'Create contact',()=>managementRpc('admin_save_contact',{p_id:c.id||null,p_household_id:h.id,p_values:{contact_name:name.value.trim(),contact_type:type.value,contact_value:value.value.trim(),language_code:lang.value||null,preferred_method:method.value||null,is_primary:primary.checked}}));
+   const primary=field(f,'Primary contact for this type',c.is_primary,null,'checkbox');primary.closest('label').classList.add('span-2','contact-primary');primary.closest('label').prepend(primary);
+   const guestPicker=contactGuestPicker(guestId,g=>{guestId=g.id;name.value=[g.first_name,g.last_name].filter(Boolean).join(' ');lang.value=g.language||store.households.find(h=>h.id===g.household_id)?.language||'';value.focus();},()=>{guestId=null;});f.prepend(guestPicker);
+   saveForm(f,c.id?'Save contact':'Create contact',()=>managementRpc('admin_save_contact',{p_id:c.id||null,p_household_id:h.id,p_values:{guest_id:guestId,contact_name:name.value.trim(),contact_type:type.value,contact_value:value.value.trim(),language_code:lang.value||null,preferred_method:method.value||null,is_primary:primary.checked}}));
+   const actions=R.dom('div',{class:'span-2 contact-form-actions'});actions.append(f.querySelector('button[type=submit]'));
+   if(onCancel){const cancel=R.dom('button',{type:'button',class:'btn secondary'},'Cancel');cancel.addEventListener('click',onCancel);actions.append(cancel);}f.append(actions);return f;
  }
  const logCategories={households:'Households',guests:'Guests',contacts:'Contacts',rsvp:'RSVP',invitations:'Invitations',login:'Login',venues:'Venues',sessions:'Sessions',food:'Food access',administrators:'Administrators'};
  const logActions={add:'Added',insert:'Added',update:'Updated',delete:'Deleted',move:'Moved',archive:'Archived',restore:'Restored',assign:'Assigned',invitations_changed:'Invitation assignments changed',submitted:'Household submitted',reopened:'RSVP reopened',late_submission_authorized:'Late response allowed',response_submitted:'Guest response submitted',response_corrected:'Guest response corrected',created:'Delivery created',draft:'Draft saved',ready:'Ready to send',sent:'Recorded sent',failed:'Failed delivery',cancelled:'Cancelled',opened:'Invitation opened',login:'Sign-in session',logout:'Signed out',logout_requested:'Sign-out requested',remove:'Access removed',rename:'Renamed',token_refreshed:'Token refreshed'};

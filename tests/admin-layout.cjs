@@ -38,6 +38,7 @@ const mock = [
 "window.__managementRpc=(name,args)=>{window.__calls.push({name,args});if(window.__failNext){window.__failNext=false;return {error:{message:'Simulated save failure'}};}let data=null;if(name==='admin_save_household'){if(args.p_id)Object.assign(fixtures.households.find(h=>h.id===args.p_id),args.p_values);else{data=crypto.randomUUID();fixtures.households.push({id:data,...args.p_values,invite_code:'TESTABCD',rsvp_state:'open'});}}else if(name==='admin_create_guest'){data=crypto.randomUUID();fixtures.guests.push({id:data,household_id:args.p_household_id,...args.p_values,rsvp_status:'pending'});}else if(name==='admin_move_guest'){fixtures.guests.find(g=>g.id===args.p_guest_id).household_id=args.p_household_id;}else if(name==='admin_set_archived'){fixtures[args.p_entity].find(x=>x.id===args.p_id).archived_at=args.p_archived?new Date().toISOString():null;}else if(name==='admin_save_contact'){if(args.p_id)Object.assign(fixtures.household_contacts.find(c=>c.id===args.p_id),args.p_values);else{data=crypto.randomUUID();fixtures.household_contacts.push({id:data,household_id:args.p_household_id,...args.p_values});}}else return null;return {data,error:null};};",
 "window.supabase={createClient:()=>client};"
 ].join('\n');
+async function openSection(scope,label){const summary=scope.locator('summary').filter({hasText:new RegExp('^'+label+'$')});if(!await summary.evaluate(el=>el.parentElement.open))await summary.click();}
 async function run(){
  await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
  const url='http://127.0.0.1:'+server.address().port+'/admin/';
@@ -87,13 +88,13 @@ async function run(){
    assert.equal(await page.locator('#householdRows details.hierarchy-group').count(),2,'relationship groups');
    assert.equal(await page.locator('#householdRows details.household-tree-node').count(),3,'every household is expandable');
    await page.locator('#collapseHouseholds').click();
-   assert.equal(await page.locator('#householdRows details[open]').count(),0,'all groups collapsed');
+   assert.equal(await page.locator('#householdRows details[data-tree-key][open]').count(),0,'all groups collapsed');
    await page.locator('#expandHouseholds').click();
-   assert.equal(await page.locator('#householdRows details:not([open])').count(),0,'all groups expanded');
+   assert.equal(await page.locator('#householdRows details[data-tree-key]:not([open])').count(),0,'all groups expanded');
    assert.equal(await page.locator('.household-actions .edit-only').first().isVisible(),false,'row editing hidden in view');
    await page.locator('#editModeButton').click();
    assert.equal(await page.locator('#adminApp').getAttribute('data-mode'),'edit');
-   await page.locator('.household-actions button[title^="Edit household hierarchy"]').first().click();
+   await page.locator('.household-actions button[title^="Edit household"]').first().click();
    assert.equal(await page.locator('.household-inline-editor').first().isVisible(),true,'inline edit expands');
    assert.equal(await page.locator('.household-guest-row').count(),2,'guest rows appear inside parent and child households');
    const guestEditorButton=page.locator('.household-guest-row button[title^="Edit guest"]').first();
@@ -129,17 +130,19 @@ async function run(){
    const createdId=await page.evaluate(()=>window.__fixtures.households.find(h=>h.household_name==='New test family').id);
    const created=page.locator(`[data-tree-key="household:${createdId}"]`);
    await page.locator('#expandHouseholds').click();
-   await created.getByRole('button',{name:'Edit household hierarchy: New test family',exact:true}).click();
+   await created.getByRole('button',{name:'Edit household: New test family',exact:true}).click();
    const profile=created.locator('.household-inline-editor .management-form');
    await profile.getByLabel('Household phone').fill('+298 123456');
    await profile.getByRole('button',{name:'Save household',exact:true}).click();
    await page.waitForFunction(id=>window.__fixtures.households.find(h=>h.id===id).phone==='+298 123456',createdId);
    await page.locator('#expandHouseholds').click();
+   await openSection(created,'Add guest');
    const newGuest=created.locator('.guest-edit-form');
    await newGuest.getByLabel('First name',{exact:true}).fill('New guest');
    await newGuest.getByRole('button',{name:'Save guest'}).click();
    await page.waitForFunction(()=>window.__fixtures.guests.some(g=>g.first_name==='New guest'));
    await page.locator('#expandHouseholds').click();
+   await openSection(created,'Contacts');await openSection(created,'Add contact');
    const contact=created.locator('.management-form').filter({has:page.getByRole('button',{name:'Create contact',exact:true})});
    await contact.getByLabel('Contact name',{exact:true}).fill('Family contact');
    await contact.getByLabel('Contact details').fill('contact@example.invalid');
@@ -147,11 +150,13 @@ async function run(){
    await contact.getByRole('button',{name:'Create contact'}).click();
    await page.waitForFunction(()=>window.__fixtures.household_contacts.length===1);
    await page.locator('#expandHouseholds').click();
+   await openSection(created,'Contacts');await openSection(created,'Family contact');
    const contactEdit=created.locator('.management-form').filter({has:page.getByRole('button',{name:'Save contact',exact:true})});
    await contactEdit.getByLabel('Contact name',{exact:true}).fill('Updated contact');
    await contactEdit.getByRole('button',{name:'Save contact'}).click();
    await page.waitForFunction(()=>window.__fixtures.household_contacts[0].contact_name==='Updated contact');
    await page.locator('#expandHouseholds').click();
+   await openSection(created,'Move guest');
    await created.getByLabel('Destination household').selectOption('33333333-3333-4333-8333-333333333333');
    await created.getByRole('button',{name:'Move guest',exact:true}).click();
    await page.waitForFunction(()=>window.__fixtures.guests.find(g=>g.first_name==='New guest').household_id==='33333333-3333-4333-8333-333333333333');
@@ -164,7 +169,7 @@ async function run(){
    await page.waitForFunction(id=>!window.__fixtures.households.find(h=>h.id===id).archived_at,createdId);
    // Server errors retain the edited form and its values.
    await page.locator('#expandHouseholds').click();
-   await created.getByRole('button',{name:'Edit household hierarchy: New test family',exact:true}).click();
+   await created.getByRole('button',{name:'Edit household: New test family',exact:true}).click();
    await profile.getByLabel('Household phone').fill('Unsaved phone');
    await page.evaluate(()=>window.__failNext=true);
    await profile.getByRole('button',{name:'Save household',exact:true}).click();

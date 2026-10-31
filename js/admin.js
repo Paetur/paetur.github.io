@@ -109,7 +109,7 @@
    return details;
  }
  function expandHouseholdTree(yes){
-   document.querySelectorAll('#householdRows details').forEach(d=>{
+   document.querySelectorAll('#householdRows details[data-tree-key]').forEach(d=>{
      d.open=yes;
      if(d.dataset.treeKey)expandedGroups.set(d.dataset.treeKey,yes);
    });
@@ -227,7 +227,7 @@
    form.addEventListener('submit',async e=>{
      e.preventDefault();e.stopPropagation();if(!editMode)return;
      button.disabled=true;
-     try{await save();if(await reload())show('Changes saved.','success');}
+     try{if(await save()===false)return;if(await reload())show('Changes saved.','success');}
      catch(error){show(R.safeError(error),'error');}
      finally{button.disabled=false;}
    });return form;
@@ -268,7 +268,7 @@
      const d=disclosure('Move guest');const f=managementForm();
      const target=field(f,'Destination household','',[['','Choose household'],...ordered(store.households,'household_name').filter(h=>h.id!==g.household_id&&!h.archived_at&&h.rsvp_state==='open').map(h=>[h.id,h.household_name])], 'text',true);
      f.append(R.dom('p',{class:'micro span-2'},'Current session invitations are preserved as individual overrides. Moves involving RSVP history are blocked.'));
-     saveForm(f,'Move guest',async()=>{if(!confirm('Move this guest and preserve their current session invitations?'))return;await managementRpc('admin_move_guest',{p_guest_id:g.id,p_household_id:target.value});});d.append(f);box.append(d);
+     saveForm(f,'Move guest',async()=>{if(!confirm('Move this guest and preserve their current session invitations?'))return false;await managementRpc('admin_move_guest',{p_guest_id:g.id,p_household_id:target.value});});d.append(f);box.append(d);
    }return box;
  }
  function contactSection(h){
@@ -375,7 +375,7 @@
            show('Private invitation link copied.','success');
          },!!h.archived_at));
          const editor=R.dom('div',{class:'household-inline-editor hidden edit-only'});
-         actions.append(iconAction('edit','Edit household hierarchy: '+(h.household_name||'household'),()=>{
+         actions.append(iconAction('edit','Edit household: '+(h.household_name||'household'),()=>{
            editor.classList.toggle('hidden');
          },!!h.archived_at,'edit-only'));
          actions.append(archiveButton('households',h));
@@ -383,21 +383,6 @@
          const pos=siblings.findIndex(m=>m.id===h.id);
          editor.append(btn('↑','Move household up',()=>rpcAction('admin_move_household',{p_household_id:h.id,p_direction:-1},'Household order saved.'),pos<=0));
          editor.append(btn('↓','Move household down',()=>rpcAction('admin_move_household',{p_household_id:h.id,p_direction:1},'Household order saved.'),pos>=siblings.length-1));
-         const label=R.dom('label',{class:'parent-picker'});
-         label.append(R.dom('span',{},'Parent'));
-         const select=R.dom('select');
-         select.setAttribute('aria-label','Parent for '+(h.household_name||'household'));
-         select.append(R.dom('option',{value:''},'None (top level)'));
-         ordered(members.filter(m=>m.id!==h.id&&!m.archived_at&&!isDescendantOf(m.id,h.id)),'household_name').forEach(parent=>
-           select.append(R.dom('option',{value:parent.id},parent.household_name||'Unnamed')));
-         select.value=h.parent_id||'';
-         select.addEventListener('change',async()=>{
-           const next=select.value||null;select.disabled=true;
-           try{await rpcAction('admin_set_household_parent',{p_household_id:h.id,p_parent_id:next},'Household parent updated.');}
-           catch(error){select.value=h.parent_id||'';show(R.safeError(error),'error');}
-           finally{select.disabled=false;}
-         });
-         label.append(select);editor.append(label);
          editor.append(householdForm(h));
          primary.append(actions);card.append(primary);
          const expanded=R.dom('div',{class:'household-expanded'});

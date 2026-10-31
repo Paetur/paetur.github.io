@@ -319,7 +319,7 @@
  function adminTime(value){return value?R.formatDate(value,'en',store.settings?.timezone||'Atlantic/Faroe'):'—';}
  function actorName(id){return store.admins.find(a=>a.user_id===id)?.name||'Administrator';}
  function foodAccessSection(h){
-   const d=disclosure('Food access');const claims=store.claims.filter(c=>c.household_id===h.id);
+   const d=disclosure('Food access','feature-section');const claims=store.claims.filter(c=>c.household_id===h.id);
    d.append(R.dom('p',{class:'small'},`${h.food?'Enabled':'Disabled'} · ${claims.length} food commitment${claims.length===1?'':'s'}${h.food_confirmed?' · Confirmed':''}`));
    if(h.archived_at)return d;
    const f=managementForm();const enabled=field(f,'Allow this household to contribute food',!!h.food,null,'checkbox');
@@ -328,14 +328,14 @@
    d.append(saveForm(f,'Save food access',()=>managementRpc('admin_set_food_access',{p_household_id:h.id,p_enabled:enabled.checked,p_expected:!!h.food,p_reason:reason.value.trim()})));return d;
  }
  function rsvpSection(h){
-   const d=disclosure('RSVP management');const zone=store.settings?.timezone||'Atlantic/Faroe';
+   const d=disclosure('RSVP management','feature-section');const zone=store.settings?.timezone||'Atlantic/Faroe';
    d.append(R.dom('p',{class:'small'},`${h.rsvp_state==='locked'?'Locked after submission':'Open for responses'}${h.rsvp_submitted_at?' · Last submission '+adminTime(h.rsvp_submitted_at):''}`));
    d.append(R.dom('p',{class:'micro'},`Event deadline: ${adminTime(store.settings?.rsvp_deadline)} · Late-response permission: ${adminTime(h.late_submission_until)} · ${zone}`));
    const rows=[];
    for(const g of store.guests.filter(g=>g.household_id===h.id&&!g.archived_at))for(const s of ordered(store.sessions,'name').filter(s=>s.is_active&&s.requires_rsvp)){
      const override=store.overrides.find(o=>o.guest_id===g.id&&o.session_id===s.id);const invited=override?override.is_invited:store.defaults.find(x=>x.household_id===h.id&&x.session_id===s.id)?.is_invited;if(!invited)continue;
      const current=store.responses.find(r=>r.guest_id===g.id&&r.session_id===s.id)?.rsvp_status||'pending';
-     const name=[g.first_name,g.last_name].filter(Boolean).join(' ');rows.push([name,s.name,current]);
+     const name=[g.first_name,g.last_name].filter(Boolean).join(' ');rows.push([name,s.name,({attending:'Attending',declined:'Not attending',pending:'Pending'}[current]||current)]);
      if(!h.archived_at){const editor=disclosure('Correct response: '+name+' · '+s.name,'edit-only');const f=managementForm();const status=field(f,'Corrected response',current==='pending'?'':current,[['','Choose response'],['attending','Attending'],['declined','Not attending']], 'text',true);const reason=field(f,'Reason for RSVP correction','',null,'textarea',true,2000);
        f.append(R.dom('p',{class:'micro span-2'},'This updates the current response and records the reason. The original submission and household lock are preserved.'));
        editor.append(saveForm(f,'Save correction',()=>managementRpc('admin_correct_rsvp',{p_guest_id:g.id,p_session_id:s.id,p_status:status.value,p_reason:reason.value.trim()})));d.append(editor);}
@@ -376,7 +376,7 @@
    const audit=disclosure('Delivery history');let loaded=false;audit.addEventListener('toggle',async()=>{if(!audit.open||loaded)return;loaded=true;const body=R.dom('div',{class:'management-history'},'Loading…');audit.append(body);try{const r=await db.from('invitation_delivery_audit').select('*').eq('queue_id',q.id).order('created_at',{ascending:false}).limit(100);if(r.error)throw r.error;body.replaceChildren();for(const x of (r.data||[]).filter(x=>x.queue_id===q.id))body.append(R.dom('p',{class:'small'},[adminTime(x.created_at),actorName(x.actor_user_id),x.action.replaceAll('_',' '),x.reason].filter(Boolean).join(' · ')));if(!body.children.length)body.textContent='No delivery history recorded.';}catch(error){loaded=false;body.textContent=R.safeError(error);}});d.append(audit);return d;
  }
  function deliverySection(h){
-   const d=disclosure('Invitation delivery');const records=store.queue.filter(q=>q.household_id===h.id).sort((a,b)=>b.created_at.localeCompare(a.created_at));
+   const d=disclosure('Invitation delivery','feature-section');const records=store.queue.filter(q=>q.household_id===h.id).sort((a,b)=>b.created_at.localeCompare(a.created_at));
    d.append(R.dom('p',{class:'micro'},records.length?records.filter(q=>q.status==='sent').length+' recorded sent · '+records.filter(q=>['draft','ready','failed'].includes(q.status)).length+' pending':'No delivery recorded yet.'));
    const create=disclosure('Prepare delivery','edit-only');create.append(deliveryEditor(h));d.append(create);records.forEach(q=>d.append(deliveryRecord(h,q)));return d;
  }

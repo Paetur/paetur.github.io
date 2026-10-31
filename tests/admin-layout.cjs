@@ -289,7 +289,7 @@ async function run(){
    await correction.getByLabel('Corrected response').selectOption('declined');await correction.getByLabel('Reason for RSVP correction').fill('Guest confirmed they cannot attend this session.');await correction.getByRole('button',{name:'Save correction'}).click();
    await page.waitForFunction(()=>window.__fixtures.guest_session_responses.some(r=>r.rsvp_status==='declined'));
    await page.locator('#expandHouseholds').click();await openSection(childNode,'RSVP management');
-   assert.ok((await rsvp.locator('.rsvp-current-responses').innerText()).includes('declined'));
+   assert.ok((await rsvp.locator('.rsvp-current-responses').innerText()).includes('Not attending'));
    await rsvp.getByLabel('Reason for reopening').fill('Household requested to update their plans.');
    await rsvp.screenshot({path:path.join(root,'artifacts','rsvp-controls-preview.png')});
    await rsvp.getByRole('button',{name:'Reopen RSVP'}).click();await page.waitForFunction(id=>window.__fixtures.households.find(h=>h.id===id).rsvp_state==='open',childId);

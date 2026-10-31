@@ -55,3 +55,18 @@ Never point this bootstrap test at an existing project.
 creation, editing, moves, contacts, archive/restore, and save errors. GitHub Actions
 runs both suites; the production smoke suite remains read-only for real records.
 Live authenticated acceptance and Safari testing remain separate release checks.
+
+## Validation record — 31 October 2026
+
+- Disposable local PostgreSQL: 39 lifecycle, audit, gateway and access assertions passed.
+- PostgreSQL 17 in CI: 43 assertions passed, including independent concurrent requests.
+- Chromium desktop/mobile workflows and deployed guest gateway smoke checks passed.
+- Consolidated installer successfully applied to an empty disposable database.
+- Migration applied to the active destination project. Synthetic creation, movement,
+  contacts, archive/restore and audit checks passed inside a transaction ending in
+  ROLLBACK. No synthetic records remain.
+- Before/after hashes confirm all 61 household and 104 guest records are unchanged;
+  two existing food claims remain and the event is unpublished.
+- Security advisor reviewed: existing public-event/authentication advisories remain.
+  New management functions require authenticated administrator authorization;
+  anonymous execution is denied. Audit data has admin-only RLS and immutable history.

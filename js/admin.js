@@ -209,7 +209,7 @@
    const input=R.dom(options?'select':type==='textarea'?'textarea':'input',options||type==='textarea'?{}:{type});
    if(options)for(const [v,t] of options)input.append(R.dom('option',{value:v},t));
    if(type==='checkbox')input.checked=!!value;else input.value=value??'';
-   input.required=required;if(!options)input.maxLength=max;
+   input.setAttribute('aria-label',label);input.required=required;if(!options)input.maxLength=max;
    wrap.append(input);form.append(wrap);return input;
  }
  function saveForm(form,label,save){

@@ -18,7 +18,9 @@ The source files in this archive do **not** contain guest data, invitation codes
 | Multiple administrators | List / add a previously invited and email-confirmed Auth user / revoke (cannot remove last) |
 | Publish control | Event defaults to **unpublished**; this starter does not provide a publish button |
 
-**Not yet implemented:** guest/household creation and editing, complete venue/calendar UI, individualized session invitations and exception UI, manual communication queue, fully automated email invitations for administrators, per-field auditing for every change, multi-language customization beyond FO/EN/DE, and full launch-security tests. Existing imported records can be browsed but not modified through the admin interface.
+**Household management:** create/edit households and guests, preserve invitations when moving guests, manage multiple contacts, archive/restore eligible records, and inspect append-only change history. See [Household management](docs/HOUSEHOLD_MANAGEMENT.md) for safeguards and migration order.
+
+**Still incomplete:** full venue/calendar UI, individual session invitation controls, manual communication queues, administrator email invitations, broader language customization, and full launch acceptance testing.
 
 ## Install without terminal or Python
 
@@ -45,7 +47,7 @@ The source files in this archive do **not** contain guest data, invitation codes
 5. The setup wizard will generate first-admin SQL for your verified email. Run it in **Supabase SQL Editor**, not in the public website. No unauthenticated user can self-claim admin through the website.
 6. Sign in through the setup wizard, download `config.js`, and commit it into `js/config.js` in the new repository.
 7. Sign in at `admin/` to configure the event. Invite further verified Auth users through the Supabase dashboard, then grant admin access in **Administrators**.
-8. To add guests/households to a fresh database, use a reviewed SQL/CSV import until the admin CRUD interface is completed.
+8. In Households, enable Edit mode to create households and guests. Assign household sessions in Settings before distributing invitation links.
 
 **New database installer and live database:** The installer includes the pre-existing draft migrations 001–004. The live wedding project was originally migrated with equivalent but not always identical SQL; migrations 005–008 reflect later additions. The install file is **not a database backup** and does **not** copy wedding guest data.
 
@@ -93,4 +95,5 @@ The guest-facing app calls `supabase/functions/guest-gateway/index.ts` using the
 - Run the GitHub Actions Chromium smoke test and verify the deployed Edge Function responds as expected.
 
 **Supabase Auth:** Leaked-password protection is configured in the dashboard under Authentication → Providers → Email, not through this repository. See [Supabase password security](https://supabase.com/docs/guides/auth/password-security).
+
 

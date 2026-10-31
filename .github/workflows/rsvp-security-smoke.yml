@@ -9,6 +9,7 @@ on:
       - 'supabase/**'
       - '.github/workflows/rsvp-security-smoke.yml'
       - 'tests/**'
+      - 'package*.json'
   workflow_dispatch:
   workflow_run:
     workflows: ['pages build and deployment']
@@ -16,6 +17,31 @@ on:
 permissions:
   contents: read
 jobs:
+  household-database:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_PASSWORD: test-only
+          POSTGRES_DB: rsvp_test
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm ci
+      - name: Test household lifecycle and concurrent operations in disposable PostgreSQL
+        env:
+          DATABASE_URL: postgres://postgres:test-only@localhost:5432/rsvp_test
+        run: node tests/household-management-db.cjs
   browser-smoke:
     runs-on: ubuntu-latest
     timeout-minutes: 12
@@ -26,7 +52,7 @@ jobs:
           node-version: '22'
       - name: Install pinned Playwright and Chromium
         run: |
-          npm install --no-save --no-package-lock playwright@1.56.1
+          npm ci
           npx playwright install --with-deps chromium
       - name: Validate admin JavaScript
         run: node --check js/admin.js && node --check tests/admin-layout.cjs
@@ -42,3 +68,4 @@ jobs:
           retention-days: 14
       - name: Check deployed site and guest gateway
         run: node tests/rsvp-smoke.cjs
+

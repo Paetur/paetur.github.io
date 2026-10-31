@@ -98,7 +98,7 @@ async function run(){
    assert.equal(await page.locator('.household-guest-row').count(),2,'guest rows appear inside parent and child households');
    const guestEditorButton=page.locator('.household-guest-row button[title^="Edit guest"]').first();
    await guestEditorButton.click();
-   const guestForm=page.locator('.guest-edit-form').first();
+   const guestForm=page.locator('.household-guest-entry .guest-edit-form').first();
    assert.equal(await guestForm.isVisible(),true,'individual guest editor is visible');
    await guestForm.locator('input[type="text"]').first().fill('Edited');
    await guestForm.locator('textarea').last().fill('New example note');

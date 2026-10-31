@@ -65,6 +65,7 @@
    const glyph={up:'↑',down:'↓'}[kind]||'';
    const button=R.dom('button',{class:'admin-row-icon '+extraClass,type:'button',title},glyph);
    const drawings={
+     move:['M4 7h15','m15 3 4 4-4 4','M20 17H5','m9 13-4 4 4 4'],
      edit:['m16 5 3 3','M4 20l4-1 12-12a2.1 2.1 0 0 0-3-3L5 16l-1 4Z'],
      delete:['M3 6h18','M8 6V4h8v2','M5 6l1 14h12l1-14','M10 10v6','M14 10v6'],
      copy:['M8 3h11a2 2 0 0 1 2 2v11','M16 8H5a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h11a2 2 0 0 0 2-2v-9a2 2 0 0 0-2-2Z'],
@@ -194,7 +195,7 @@
      const editor=buildGuestEditor(g);
      header.append(iconAction('edit','Edit guest: '+name,()=>editor.classList.toggle('hidden'),!!g.archived_at||!!store.households.find(h=>h.id===g.household_id)?.archived_at,'edit-only'));
      entry.append(header,editor);
-     entry.append(guestManagement(g));list.append(entry);
+     const management=guestManagement(g);header.append(management.actions);entry.append(management.form);list.append(entry);
    }
    if(!sorted.length)list.append(R.dom('p',{class:'micro'},'No guests assigned to this household.'));
    return list;
@@ -256,13 +257,13 @@
    },false,'edit-only');
  }
  function guestManagement(g){
-   const box=R.dom('div',{class:'guest-management edit-only'});box.append(archiveButton('guests',g));
+   const box=R.dom('div',{class:'guest-management edit-only'});const panel=R.dom('div',{class:'guest-move-panel edit-only hidden'});
    if(!g.archived_at){
-     const d=disclosure('Move guest');const f=managementForm();
+     const f=managementForm();const move=iconAction('move','Move guest',()=>{const opening=panel.classList.contains('hidden');panel.classList.toggle('hidden',!opening);move.setAttribute('aria-expanded',String(opening));if(opening)target.focus();},false,'edit-only');move.setAttribute('aria-expanded','false');box.append(move);
      const target=field(f,'Destination household','',[['','Choose household'],...ordered(store.households,'household_name').filter(h=>h.id!==g.household_id&&!h.archived_at&&h.rsvp_state==='open').map(h=>[h.id,h.household_name])], 'text',true);
      f.append(R.dom('p',{class:'micro span-2'},'Current session invitations are preserved as individual overrides. Moves involving RSVP history are blocked.'));
-     saveForm(f,'Move guest',async()=>{if(!confirm('Move this guest and preserve their current session invitations?'))return false;await managementRpc('admin_move_guest',{p_guest_id:g.id,p_household_id:target.value});});d.append(f);box.append(d);
-   }return box;
+     saveForm(f,'Move guest',async()=>{if(!confirm('Move this guest and preserve their current session invitations?'))return false;await managementRpc('admin_move_guest',{p_guest_id:g.id,p_household_id:target.value});});panel.append(f);
+   }box.append(archiveButton('guests',g));return {actions:box,form:panel};
  }
  function contactSection(h){
    const section=disclosure('Contacts');
@@ -307,19 +308,35 @@
    const active=guests.filter(g=>!g.archived_at).length;
    const descendants=store.households.filter(x=>!x.archived_at&&isDescendantOf(x.id,h.id));
    const nestedGuests=store.guests.filter(g=>!g.archived_at&&descendants.some(x=>x.id===g.household_id)).length;
-   return [active?`${active} guest${active===1?'':'s'}`:`${descendants.length} sub-household${descendants.length===1?'':'s'} · ${nestedGuests} guests in sub-households`,h.language?.toUpperCase(),h.archived_at?'Archived':active?'RSVP '+h.rsvp_state:'Grouping household'].filter(Boolean).join(' · ');
+   return [active?`${active} guest${active===1?'':'s'}`:null,descendants.length||!active?`${descendants.length} sub-household${descendants.length===1?'':'s'} · ${nestedGuests} guests in sub-households`:null,h.language?.toUpperCase(),h.archived_at?'Archived':active?'RSVP '+h.rsvp_state:'Grouping household'].filter(Boolean).join(' · ');
  }
  function renderInvites(){
    const box=$('inviteRows');box.replaceChildren();const search=$('inviteSearch').value.trim().toLowerCase();
-   const eligible=ordered(store.households,'household_name').filter(h=>!h.archived_at&&h.invite_code&&store.guests.some(g=>g.household_id===h.id&&!g.archived_at));
-   for(const h of eligible.filter(h=>h.household_name.toLowerCase().includes(search))){
-     const row=R.dom('div',{class:'invite-row'});const text=R.dom('div');
-     text.append(R.dom('strong',{},h.household_name),R.dom('code',{},h.invite_code));row.append(text);
-     const actions=R.dom('div',{class:'invite-actions'});
-     for(const [label,value] of [['Copy invite code',h.invite_code],['Copy invitation link',R.invitationURL(h.invite_code)]]){
-       const button=R.dom('button',{type:'button',class:'small-tool'},label);
-       button.addEventListener('click',async()=>{try{await navigator.clipboard.writeText(value);show(label==='Copy invite code'?'Invitation code copied.':'Invitation link copied.','success');}catch(error){show(R.safeError(error),'error');}});actions.append(button);
-     }row.append(actions);const item=R.dom('div',{class:'invite-item'});item.append(row,sessionAssignmentForm(h));box.append(item);
+   const all=ordered(store.households,'household_name').filter(h=>!h.archived_at);
+   const eligible=new Set(all.filter(h=>h.invite_code&&store.guests.some(g=>g.household_id===h.id&&!g.archived_at)).map(h=>h.id));
+   const visible=new Set(all.filter(h=>eligible.has(h.id)&&(h.household_name.toLowerCase().includes(search)||all.some(a=>isDescendantOf(h.id,a.id)&&a.household_name.toLowerCase().includes(search)))).map(h=>h.id));
+   for(const id of [...visible]){let h=all.find(x=>x.id===id);const seen=new Set();while(h?.parent_id&&!seen.has(h.id)){seen.add(h.id);visible.add(h.parent_id);h=all.find(x=>x.id===h.parent_id);}}
+   function group(title,key,cls){const d=R.dom('details',{class:cls+' tree-disclosure'});setDisclosure(d,'invites:'+key,true,!!search);const heading=R.dom('summary',{class:cls==='hierarchy-section'?'tree-side':'tree-group'},title);d.append(heading);const body=R.dom('div',{class:'tree-children'});d.append(body);return {d,body};}
+   for(const side of [...new Set(all.map(h=>h.side||'unassigned'))].sort()){
+     const members=all.filter(h=>(h.side||'unassigned')===side&&visible.has(h.id));if(!members.length)continue;
+     const section=group(side.split('_').map(w=>w[0]?.toUpperCase()+w.slice(1)).join(' '),'side:'+side,'hierarchy-section');box.append(section.d);
+     for(const gid of [...new Set(members.map(h=>h.relation_group_id||''))]){
+       const households=members.filter(h=>(h.relation_group_id||'')===gid);const relation=group(householdGroupName(households[0]),side+':'+gid,'hierarchy-group');section.body.append(relation.d);
+       const visited=new Set();
+       function draw(h,parent){
+         if(visited.has(h.id))return;visited.add(h.id);
+         const node=R.dom('details',{class:'household-tree-node'});node.dataset.inviteHousehold=h.id;setDisclosure(node,'invites:household:'+h.id,false,!!search);
+         const summary=R.dom('summary',{class:'household-node'});const info=R.dom('div',{class:'household-node-name'});info.append(R.dom('strong',{},h.household_name),R.dom('small',{class:'muted'},householdSummary(h,store.guests.filter(g=>g.household_id===h.id))));summary.append(info);node.append(summary);
+         const body=R.dom('div',{class:'household-expanded'});node.append(body);parent.append(node);
+         if(eligible.has(h.id)){
+           const item=R.dom('div',{class:'invite-item'});const row=R.dom('div',{class:'invite-row'});row.append(R.dom('code',{},h.invite_code));const actions=R.dom('div',{class:'invite-actions'});
+           for(const [label,value] of [['Copy invite code',h.invite_code],['Copy invitation link',R.invitationURL(h.invite_code)]]){const button=R.dom('button',{type:'button',class:'small-tool'},label);button.addEventListener('click',async()=>{try{await navigator.clipboard.writeText(value);show(label==='Copy invite code'?'Invitation code copied.':'Invitation link copied.','success');}catch(error){show(R.safeError(error),'error');}});actions.append(button);}
+           row.append(actions);item.append(row,sessionAssignmentForm(h));body.append(item);
+         }
+         const children=households.filter(x=>x.parent_id===h.id);if(children.length){const nested=R.dom('div',{class:'tree-children'});body.append(nested);children.forEach(child=>draw(child,nested));}
+       }
+       households.filter(h=>!households.some(x=>x.id===h.parent_id)).forEach(h=>draw(h,relation.body));households.forEach(h=>draw(h,relation.body));
+     }
    }
    if(!box.children.length)box.append(R.dom('p',{class:'muted'},'No matching invitations. Empty and archived households have no active invitation.'));
  }

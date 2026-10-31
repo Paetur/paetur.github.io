@@ -26,7 +26,15 @@ function jwt(tag){return [Buffer.from(JSON.stringify({alg:'HS256',typ:'JWT'})).t
      const login=await page.evaluate(()=>window.RSVP.getClient().auth.signInWithPassword({email:'synthetic@example.invalid',password:'synthetic-only'}));assert.equal(login.error,null);
      const saved=await page.evaluate(()=>window.RSVP.adminRpc('admin_save_household',{p_id:null,p_values:{household_name:'Synthetic'}}));assert.equal(saved.data,'synthetic-saved');assert.equal(headers[0],'Bearer '+original);
      rejectNext=true;const recovered=await page.evaluate(()=>window.RSVP.adminRpc('admin_save_household',{}));assert.equal(recovered.data,'synthetic-saved');assert.equal(refreshCount,1);assert.equal(headers.at(-1),'Bearer '+renewed);
-     assert.ok(headers.every(h=>h&&!h.includes('sb_publishable')));console.log('PASS: '+name+' real SDK login, explicit admin authorization and refresh recovery');
+     assert.ok(headers.every(h=>h&&!h.includes('sb_publishable')));
+     // Invitation emails use the implicit callback, including in a fresh browser.
+     await page.evaluate(()=>localStorage.clear());
+     const invited=jwt('email-invitation');
+     await page.goto('http://127.0.0.1:'+server.address().port+'/?admin-invitation=1#'+new URLSearchParams({access_token:invited,refresh_token:'synthetic-invite-refresh',expires_in:'3600',token_type:'bearer',type:'invite'}),{waitUntil:'load'});
+     const callback=await page.evaluate(async()=>{const client=window.RSVP.getClient();const verified=await client.auth.getUser();const session=await client.auth.getSession();return {user:verified.data.user?.id,token:session.data.session?.access_token,hash:location.hash};});
+     assert.equal(callback.user,user.id);assert.equal(callback.token,invited);assert.equal(callback.hash,'','SDK removes callback tokens from URL');
+     assert.equal((await page.evaluate(()=>window.RSVP.adminRpc('admin_save_household',{}))).data,'synthetic-saved');assert.equal(headers.at(-1),'Bearer '+invited);
+     console.log('PASS: '+name+' real SDK login, invitation callback, explicit admin authorization and refresh recovery');
    }finally{await browser.close();}
  }}finally{await new Promise(r=>server.close(r));}
 })().catch(e=>{console.error(e);process.exitCode=1;server.close();});

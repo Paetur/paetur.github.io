@@ -11,3 +11,7 @@ Households → household → Food access allows or prevents food contribution. E
 Apply `20261031101548_admin_delivery_rsvp_food_controls.sql` after earlier migrations, before deploying the interface. It changes no real delivery status, RSVP response, food permission or publication state. Existing ready records must be saved once to capture recipient details before confirmation. Legacy direct queue writes and the unchecked legacy confirmation entry point are revoked. Use guarded administrator RPCs.
 
 Tests use disposable PostgreSQL and synthetic browser fixtures. Real communications are not sent during tests. The event remains unpublished until explicitly approved for launch.
+
+Venue welcome messages are independently editable in Settings → Venues → each venue, in Faroese, English and German. Existing global welcome text is copied into existing venues during migration. Guests see the venue message alongside each invited session. Main-page language controls appear when an event or invitation code is present; the Admin link appears on the empty landing page.
+
+Household saves validate the signed-in account, and retry once after refreshing the session if the server rejects the function permission. A failed refresh leaves the form intact and requests sign-in. The reported Maria account was verified as an existing confirmed administrator, with an authenticated save succeeding in a rolled-back live transaction; the reported browser failure was not reproduced server-side.

@@ -197,6 +197,7 @@ async function run(){
 
 
    await page.locator('#settingsToggle').click();
+   await page.locator('[data-settings-tab="venues"]').click();
    await openSection(page,'Venues');await openSection(page,'Add venue');
    const newVenue=page.locator('#newVenueForm form');
    await newVenue.getByLabel('Venue name',{exact:true}).fill('Faroe test venue');

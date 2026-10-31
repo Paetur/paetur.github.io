@@ -19,7 +19,7 @@
  function makeTable(headers,values){const table=R.dom('table',{class:'data-table'});const thead=row(table,'thead'),tr=row(thead,'tr');headers.forEach(h=>row(tr,'th',{},h));const tbody=row(table,'tbody');values.forEach(cols=>{const tr=row(tbody,'tr');cols.forEach(v=>{const td=row(tr,'td');if(v instanceof Node)td.append(v);else td.textContent=String(v??'');});});return table;}
  function stat(label,value){const div=R.dom('div',{class:'stat-card'});div.append(R.dom('b',{},value),R.dom('span',{},label));return div;}
  function sessionName(id){return store.sessions.find(s=>s.id===id)?.name||'Session';}
- function settingsTab(name){activeSettingsTab=name;document.querySelectorAll('[data-settings-tab]').forEach(b=>{const active=b.dataset.settingsTab===name;b.classList.toggle('active',active);b.setAttribute('aria-pressed',String(active));});document.querySelectorAll('[data-settings-panel]').forEach(n=>n.classList.toggle('hidden',n.dataset.settingsPanel!==name));}
+ function settingsTab(name){activeSettingsTab=name;document.querySelectorAll('[data-settings-tab]').forEach(b=>{const active=b.dataset.settingsTab===name;b.classList.toggle('active',active);b.setAttribute('aria-pressed',String(active));});document.querySelectorAll('[data-settings-panel]').forEach(n=>n.classList.toggle('hidden',n.dataset.settingsPanel!==name));if(name==='logs')loadLogs(true);}
  function tab(name,updateUrl=true){
    if(!['dashboard','households','invites','food','settings'].includes(name))name='dashboard';
    activeTab=name;if(name!=='settings')lastMainTab=name;
@@ -291,26 +291,40 @@
    const primary=field(f,'Primary contact for this type',c.is_primary,null,'checkbox');
    return saveForm(f,c.id?'Save contact':'Create contact',()=>managementRpc('admin_save_contact',{p_id:c.id||null,p_household_id:h.id,p_values:{contact_name:name.value.trim(),contact_type:type.value,contact_value:value.value.trim(),language_code:lang.value||null,preferred_method:method.value||null,is_primary:primary.checked}}));
  }
- function historySection(h){
-   const d=disclosure('Change history');const body=R.dom('div',{class:'management-history'});d.append(body);
-   let loaded=false;
-   d.addEventListener('toggle',async()=>{
-     if(!d.open||loaded)return;loaded=true;body.textContent='Loading history…';
-     try{
-       const {data,error}=await db.from('management_audit').select('*').eq('household_id',h.id).order('created_at',{ascending:false}).order('id',{ascending:false}).limit(100);if(error)throw error;
-       body.replaceChildren();
-       for(const item of data||[]){
-         const entry=disclosure(`${new Date(item.created_at).toLocaleString()} · ${item.entity_type} · ${item.action}`);
-         entry.append(R.dom('p',{class:'micro'},'Administrator: '+(store.admins.find(a=>a.user_id===item.actor_user_id)?.name||item.actor_user_id)));
-         const keys=[...new Set([...Object.keys(item.before_value||{}),...Object.keys(item.after_value||{})])].filter(k=>JSON.stringify(item.before_value?.[k])!==JSON.stringify(item.after_value?.[k]));
-         entry.append(makeTable(['Field','Before','After'],keys.map(k=>[k,String(item.before_value?.[k]??'—'),String(item.after_value?.[k]??'—')])));body.append(entry);
-       }
-       if(!data?.length)body.textContent='No recorded changes. History starts when management auditing is installed.';
-       else body.append(R.dom('p',{class:'micro'},'Showing the latest 100 changes.'));
-     }catch(error){loaded=false;body.textContent=R.safeError(error);}
-   });return d;
+ const logCategories={households:'Households',guests:'Guests',contacts:'Contacts',rsvp:'RSVP',invitations:'Invitations',login:'Login',venues:'Venues',sessions:'Sessions',food:'Food access',administrators:'Administrators'};
+ const logActions={add:'Added',insert:'Added',update:'Updated',delete:'Deleted',move:'Moved',archive:'Archived',restore:'Restored',assign:'Assigned',invitations_changed:'Invitation assignments changed',submitted:'Household submitted',reopened:'RSVP reopened',late_submission_authorized:'Late response allowed',response_submitted:'Guest response submitted',response_corrected:'Guest response corrected',created:'Delivery created',draft:'Draft saved',ready:'Ready to send',sent:'Recorded sent',failed:'Failed delivery',cancelled:'Cancelled',opened:'Invitation opened',login:'Sign-in session',logout:'Signed out',logout_requested:'Sign-out requested',remove:'Access removed',rename:'Renamed',token_refreshed:'Token refreshed'};
+ let logEntries=[],logCursor=null,logGeneration=0,logsLoaded=false;
+ function logDateBoundary(value,next=false){if(!value)return null;let date=value;if(next){const d=new Date(value+'T00:00:00Z');d.setUTCDate(d.getUTCDate()+1);date=d.toISOString().slice(0,10);}return R.zonedInstant(date+'T00:00',store.settings?.timezone||'Atlantic/Faroe');}
+ function formatLogValue(value){return value==null?'—':typeof value==='object'?JSON.stringify(value,null,2):String(value);}
+ function renderLogs(){
+   const box=$('logRows');box.replaceChildren();
+   for(const e of logEntries){
+     const d=R.dom('details',{class:'log-entry'});const summary=R.dom('summary');const date=new Date(e.occurred_at);const time=R.dom('time',{title:date.toISOString()},new Intl.DateTimeFormat('en-GB',{dateStyle:'medium',timeStyle:'medium'}).format(date));time.dateTime=date.toISOString();
+     const subject=R.dom('span',{class:'log-subject'});subject.append(R.dom('strong',{},e.subject),R.dom('small',{class:'muted'},e.household_name||''));
+     const kind=R.dom('span');kind.append(R.dom('span',{class:'tag'},logCategories[e.category]||e.category),R.dom('small',{},logActions[e.action]||e.action.replaceAll('_',' ')));
+     summary.append(time,subject,kind,R.dom('span',{class:'log-actor'},e.actor));d.append(summary);
+     const content=R.dom('div',{class:'log-details'});content.append(R.dom('p',{class:'micro'},'Reference: '+e.event_key+' · '+date.toISOString()));
+     const details=e.details||{};
+     if(details.before&&typeof details.before==='object'&&details.after&&typeof details.after==='object'){
+       const keys=[...new Set([...Object.keys(details.before),...Object.keys(details.after)])].filter(k=>JSON.stringify(details.before[k])!==JSON.stringify(details.after[k]));
+       content.append(makeTable(['Field','Before','After'],keys.map(k=>[k,formatLogValue(details.before[k]),formatLogValue(details.after[k])])));
+     }else{for(const [key,value] of Object.entries(details)){if(value==null)continue;const row=R.dom('div',{class:'log-detail-value'});row.append(R.dom('strong',{},key.replaceAll('_',' ')),R.dom('pre',{},formatLogValue(value)));content.append(row);}}
+     d.append(content);box.append(d);
+   }
+   if(!logEntries.length)box.append(R.dom('p',{class:'muted'},'No log entries match these filters.'));
+   $('logCount').textContent=logEntries.length+' entries shown · Newest first';
  }
-
+ async function loadLogs(reset=true){
+   const generation=++logGeneration;$('logMore').disabled=true;$('logApply').disabled=true;$('logStatus').textContent='Loading logs…';
+   try{
+     const filters={p_search:$('logSearch').value.trim(),p_category:$('logCategory').value,p_action:$('logAction').value,p_from:logDateBoundary($('logFrom').value),p_to:logDateBoundary($('logTo').value,true),p_before_at:reset?null:logCursor?.occurred_at||null,p_before_key:reset?null:logCursor?.event_key||null,p_limit:50};
+     const {data,error}=await R.adminRpc('admin_query_logs',filters);if(error)throw error;if(generation!==logGeneration)return;
+     const incoming=data?.entries||[];logEntries=reset?incoming:[...logEntries,...incoming];logCursor=logEntries.at(-1)||null;logsLoaded=true;renderLogs();
+     const selected=$('logAction').value;$('logAction').replaceChildren(R.dom('option',{value:''},'All actions'));for(const action of data?.actions||[])$('logAction').append(R.dom('option',{value:action},logActions[action]||action.replaceAll('_',' ')));$('logAction').value=selected;
+     $('logMore').classList.toggle('hidden',!data?.has_more);$('logStatus').textContent='';
+   }catch(error){if(generation!==logGeneration)return;$('logStatus').textContent=R.safeError(error);if(reset){logEntries=[];renderLogs();}$('logMore').classList.add('hidden');}
+   finally{if(generation===logGeneration){$('logMore').disabled=false;$('logApply').disabled=false;}}
+ }
 
  function adminTime(value){return value?R.formatDate(value,'en',store.settings?.timezone||'Atlantic/Faroe'):'—';}
  function actorName(id){return store.admins.find(a=>a.user_id===id)?.name||'Administrator';}
@@ -342,12 +356,7 @@
      if(h.rsvp_state==='locked'){const f=managementForm();const reason=field(f,'Reason for reopening','',null,'textarea',true,2000);f.append(R.dom('p',{class:'micro span-2'},'Reopening lets the household submit again. Previous submissions remain in history. If the event deadline has passed, grant a late-response window after reopening.'));d.append(saveForm(f,'Reopen RSVP',async()=>{if(!confirm('Reopen this household’s RSVP while preserving its submission history?'))return false;return managementRpc('admin_reopen_household_rsvp',{p_household_id:h.id,p_reason:reason.value.trim()});}));}
      else{const late=disclosure('Allow a late response','edit-only');const f=managementForm();const until=field(f,'Allow responses until ('+zone+')',R.zonedInput(h.late_submission_until,zone),null,'datetime-local',true);const reason=field(f,'Reason for late response','',null,'textarea',true,2000);late.append(saveForm(f,'Allow late response',()=>managementRpc('admin_authorize_late_rsvp',{p_household_id:h.id,p_until:R.zonedInstant(until.value,zone),p_reason:reason.value.trim()})));d.append(late);}
    }
-   const history=disclosure('RSVP history');let loaded=false;history.addEventListener('toggle',async()=>{if(!history.open||loaded)return;loaded=true;const content=R.dom('div',{class:'management-history'},'Loading…');history.append(content);try{
-     const results=await Promise.all(['rsvp_household_audit','rsvp_response_audit'].map(table=>db.from(table).select('*').eq('household_id',h.id).order('created_at',{ascending:false}).limit(100)));for(const r of results)if(r.error)throw r.error;
-     const entries=results.flatMap(r=>r.data||[]).filter(x=>x.household_id===h.id).sort((a,b)=>b.created_at.localeCompare(a.created_at));content.replaceChildren();
-     for(const x of entries){const g=store.guests.find(g=>g.id===x.guest_id);content.append(R.dom('p',{class:'small'},[adminTime(x.created_at),x.action.replaceAll('_',' '),g?[g.first_name,g.last_name].filter(Boolean).join(' '):null,x.session_id?sessionName(x.session_id):null,x.new_status?`${x.previous_status||'pending'} → ${x.new_status}`:null,x.actor_user_id?actorName(x.actor_user_id):'Guest',x.reason].filter(Boolean).join(' · ')));}
-     if(!entries.length)content.textContent='No RSVP history recorded.';
-   }catch(error){loaded=false;content.textContent=R.safeError(error);}});d.append(history);return d;
+   return d;
  }
  function deliveryEditor(h,q={}){
    const f=managementForm();const channel=field(f,'Delivery channel',q.channel||h.preferred_contact_method||'manual',[['manual','Manual / in person'],['email','Email'],['whatsapp','WhatsApp'],['sms','SMS'],['postal','Postal']]);
@@ -369,7 +378,7 @@
      const edit=disclosure('Edit delivery','edit-only');edit.append(deliveryEditor(h,q));d.append(edit);
      if(q.status==='ready'){const f=managementForm();const note=field(f,'Sent note','',null,'textarea',false,2000);const ack=field(f,'I sent this message to the displayed recipient',false,null,'checkbox',true);d.append(saveForm(f,'Record as sent',async()=>{if(!ack.checked)return false;return managementRpc('admin_record_delivery_sent',{p_queue_id:q.id,p_expected_revision:q.revision,p_note:note.value.trim()});}));}
    }
-   const audit=disclosure('Delivery history');let loaded=false;audit.addEventListener('toggle',async()=>{if(!audit.open||loaded)return;loaded=true;const body=R.dom('div',{class:'management-history'},'Loading…');audit.append(body);try{const r=await db.from('invitation_delivery_audit').select('*').eq('queue_id',q.id).order('created_at',{ascending:false}).limit(100);if(r.error)throw r.error;body.replaceChildren();for(const x of (r.data||[]).filter(x=>x.queue_id===q.id))body.append(R.dom('p',{class:'small'},[adminTime(x.created_at),actorName(x.actor_user_id),x.action.replaceAll('_',' '),x.reason].filter(Boolean).join(' · ')));if(!body.children.length)body.textContent='No delivery history recorded.';}catch(error){loaded=false;body.textContent=R.safeError(error);}});d.append(audit);return d;
+   return d;
  }
  function deliverySection(h){
    const d=disclosure('Invitation delivery','feature-section');const records=store.queue.filter(q=>q.household_id===h.id).sort((a,b)=>b.created_at.localeCompare(a.created_at));
@@ -497,7 +506,7 @@
          const expanded=R.dom('div',{class:'household-expanded'});
          expanded.append(editor,buildGuestList(guests));
          if(!h.archived_at){const add=disclosure('Add guest','edit-only');const form=buildGuestEditor({household_id:h.id});form.classList.remove('hidden');add.append(form);expanded.append(add);}
-         expanded.append(rsvpSection(h),foodAccessSection(h),contactSection(h),historySection(h));
+         expanded.append(rsvpSection(h),foodAccessSection(h),contactSection(h));
          if(nested){
            const childList=R.dom('div',{class:'tree-children'});
            childList.append(R.dom('div',{class:'guest-list-heading'},'Child households'));
@@ -720,7 +729,7 @@
    if(access!==true)throw new Error('Your account does not have administrator access. Ask an existing administrator to grant it first.');
    $('loginPanel').classList.add('hidden');$('adminApp').classList.remove('hidden');$('adminTopActions').classList.remove('hidden');$('loggedInAs').textContent=user.email||'';
    const fragment=location.hash.slice(1);activeTab=['dashboard','households','invites','food','settings'].includes(fragment)?fragment:'dashboard';
-   tab(activeTab,false);mode(false);await reload();
+   tab(activeTab,false);mode(false);await reload();const logged=await R.adminRpc('admin_record_session',{p_action:'login'});if(logged.error)show('Signed in, but session logging is unavailable.','warning');
  }
  async function init(){
    window.addEventListener('popstate',()=>{
@@ -738,15 +747,20 @@
      }catch(err){show(R.safeError(err),'error');}
      button.disabled=false;
    });
-   $('logout').addEventListener('click',async()=>{await db.auth.signOut();location.reload();});
+   $('logout').addEventListener('click',async()=>{const logged=await R.adminRpc('admin_record_session',{p_action:'logout_requested'});if(logged.error)show('Session logging is unavailable.','warning');const result=await db.auth.signOut();if(result.error)show(R.safeError(result.error),'error');else location.reload();});
    document.querySelectorAll('[data-tab]').forEach(b=>b.addEventListener('click',()=>tab(b.dataset.tab)));
    document.querySelectorAll('[data-settings-tab]').forEach(b=>b.addEventListener('click',()=>settingsTab(b.dataset.settingsTab)));
    $('settingsToggle').addEventListener('click',()=>toggleSettings());
+   $('logFilters').addEventListener('submit',e=>{e.preventDefault();loadLogs(true);});
+   $('logCategory').addEventListener('change',()=>{$('logAction').value='';loadLogs(true);});
+   $('logAction').addEventListener('change',()=>loadLogs(true));
+   $('logReset').addEventListener('click',()=>{$('logFilters').reset();loadLogs(true);});
+   $('logMore').addEventListener('click',()=>loadLogs(false));
    $('closeSettings').addEventListener('click',()=>tab(lastMainTab));
    $('editModeButton').addEventListener('click',()=>mode(!editMode));
    $('refreshButton').addEventListener('click',async()=>{
      const button=$('refreshButton');button.disabled=true;button.classList.add('is-refreshing');
-     try{if(await reload())show('Event data refreshed.','success');}
+     try{if(await reload()){if(activeTab==='settings'&&activeSettingsTab==='logs')await loadLogs(true);show('Event data refreshed.','success');}}
      finally{button.classList.remove('is-refreshing');button.disabled=false;}
    });
    $('expandHouseholds').addEventListener('click',()=>expandHouseholdTree(true));

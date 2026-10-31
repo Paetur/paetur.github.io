@@ -81,7 +81,7 @@ Deno.serve(async (req: Request) => {
     const limited = await invoke("guest_gateway_allow_request", { p_ip_hash: ipHash, p_code: params.p_code, p_action: action });
     if (!limited.ok) return reply(503, { error: "Request validation unavailable" });
     if (await limited.json() !== true) return reply(429, { error: "Too many requests. Try again in a minute." });
-    const result = await invoke(action, params);
+    const result = await invoke(action === "get_invitation_v2" ? "get_invitation_logged" : action, params);
     if (!result.ok) {
       // Do not expose internal PostgreSQL errors to unauthenticated clients.
       const status = result.status === 401 || result.status === 403 ? 403 : result.status === 404 ? 404 : 400;
@@ -95,3 +95,4 @@ Deno.serve(async (req: Request) => {
     return reply(503, { error: "Request temporarily unavailable" });
   }
 });
+

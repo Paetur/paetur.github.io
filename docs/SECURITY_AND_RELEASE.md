@@ -1,4 +1,4 @@
-# RSVP Manager — release checklist
+# Event Invitation — release checklist
 
 **Current release status: NOT APPROVED FOR PUBLICATION.** The event is still unpublished.
 
@@ -32,7 +32,7 @@ The admin interface provides **Settings → Event settings → Edit → Publish 
 
 ## Administrator setup
 
-The initial account must be verified in Supabase Auth and provisioned as an admin in the SQL Editor. Subsequent administrators are invited through the Supabase dashboard and granted access via guarded admin RPCs. No browser `service_role` key is allowed, and the last administrator cannot be removed.
+The initial account must be verified in Supabase Auth and provisioned as an admin in the SQL Editor. Subsequent administrators can be invited from Settings → Administrators after the invitation Edge Function, SMTP and redirect setup is verified. Acceptance grants access via guarded RPCs. Maria’s household-save acceptance check was confirmed by the user on 31 October 2026. No browser `service_role` key is allowed, and the last administrator cannot be removed.
 
 ## Known warnings
 
@@ -41,3 +41,4 @@ Security advisors flag `SECURITY DEFINER` functions that are callable by guest a
 ## Gateway protection
 
 Migration 012 and the deployed `guest-gateway` now enforce code/IP/global throttling and prevent direct anonymous guest RPC bypass. A live GitHub Actions Chromium smoke workflow tests this connection and should be green before publication. Remaining browser scenarios requiring real admin credentials or existing valid invitation codes require a controlled manual test.
+

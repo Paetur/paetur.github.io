@@ -42,6 +42,7 @@ jobs:
         env:
           DATABASE_URL: postgres://postgres:test-only@localhost:5432/rsvp_test
         run: |
+          node tests/admin-invitations.cjs
           node tests/admin-auth.cjs
           node tests/timezones.cjs
           node tests/household-management-db.cjs
@@ -53,6 +54,21 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
+      - name: Use HTTPS Ubuntu mirror and bounded package retries
+        run: |
+          sudo python3 - <<'PY'
+          from pathlib import Path
+          sources = [Path('/etc/apt/sources.list')]
+          sources += list(Path('/etc/apt/sources.list.d').glob('*.sources'))
+          sources += list(Path('/etc/apt/sources.list.d').glob('*.list'))
+          for source in sources:
+              if source.is_file():
+                  text = source.read_text()
+                  updated = text.replace('http://azure.archive.ubuntu.com/ubuntu', 'https://archive.ubuntu.com/ubuntu')
+                  if updated != text:
+                      source.write_text(updated)
+          Path('/etc/apt/apt.conf.d/99-rsvp-network').write_text('Acquire::http::Timeout "30";\nAcquire::https::Timeout "30";\nAcquire::Retries "1";\n')
+          PY
       - name: Install pinned Playwright and Chromium
         run: |
           npm ci

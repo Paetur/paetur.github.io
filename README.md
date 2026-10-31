@@ -15,7 +15,7 @@ The source files in this archive do **not** contain guest data, invitation codes
 | Food | List, claim/quantity update, final confirmation via database RPCs (when event is published and food is enabled for that household) |
 | Administrator access | Supabase Auth login + `is_admin` authorization before any admin data is loaded |
 | Admin dashboard | Household and guest overview, private link copy, food quantities, event settings, translations, sessions |
-| Multiple administrators | List / add a previously invited and email-confirmed Auth user / revoke (cannot remove last) |
+| Multiple administrators | Email invitations, pending/resend/cancel, verified acceptance and revoke (cannot remove last) |
 | Publish control | Event defaults to **unpublished**; this starter does not provide a publish button |
 
 **Household management:** create/edit households and guests, preserve invitations when moving guests, manage multiple contacts, archive/restore eligible records, and inspect append-only change history. See [Household management](docs/HOUSEHOLD_MANAGEMENT.md) for safeguards and migration order.
@@ -24,9 +24,11 @@ The source files in this archive do **not** contain guest data, invitation codes
 
 **Administration workflows:** manual invitation delivery tracking, reasoned RSVP corrections/reopening and household food-access controls. See [workflow guide](docs/DELIVERY_RSVP_FOOD_CONTROLS.md).
 
+**Administrator invitations:** send, resend or cancel email invitations from Settings → Administrators. Verified recipients accept before access is granted. Requires the admin-invitations Edge Function, SMTP and allowed redirect configuration; see [Administrator invitations](docs/ADMINISTRATOR_INVITATIONS.md).
+
 **Logs:** Settings → Logs provides searchable, filtered history across households, guests, RSVP, invitations, venues, food permissions and administrator sessions. See [Administration logs](docs/ADMINISTRATION_LOGS.md).
 
-**Still incomplete:** automatic message sending, administrator email invitations, broader language customization, and full launch acceptance testing.
+**Still incomplete:** automatic guest-message sending, broader language customization, and full launch acceptance testing.
 
 ## Install without terminal or Python
 
@@ -82,7 +84,7 @@ GitHub Pages is static hosting. A public page can **never** safely run arbitrary
 - First administrator bootstrap is executed privately in SQL Editor, after their Auth account has been verified.
 - The website uses the project's **publishable / anon key** and explicitly scoped server-side RPCs.
 - The wizard downloads a `config.js` file that must be committed to the new repo for visitors; saving connection settings in local browser storage is for preview only.
-- New admin email invitations are sent through the Supabase dashboard; adding them to the app is done in **Administrators** once they are verified.
+- Administrator invitation emails are sent server-side by the `admin-invitations` Edge Function; its SMTP and redirect setup is documented above.
 
 ## Original project
 

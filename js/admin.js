@@ -1,11 +1,11 @@
 (function(){
  'use strict';
  const R=window.RSVP,$=R.byId;
- let db=null,user=null,store={settings:null,sessions:[],locations:[],households:[],guests:[],food:[],claims:[],submissions:[],defaults:[],content:[],admins:[],relationGroups:[],foodCategories:[],contacts:[],overrides:[],responses:[],queue:[],deliveries:[]};
+ let db=null,user=null,store={settings:null,sessions:[],locations:[],households:[],guests:[],food:[],claims:[],submissions:[],defaults:[],content:[],admins:[],adminInvitations:[],relationGroups:[],foodCategories:[],contacts:[],overrides:[],responses:[],queue:[],deliveries:[]};
  let activeTab='dashboard',lastMainTab='dashboard',activeSettingsTab='event',editMode=false;
  const expandedGroups=new Map();
  const qs=(s)=>document.querySelector(s);
- let statusTimer=null;
+ let statusTimer=null,pendingAdminInvitation=null,invitationApiError='';
  function show(msg,type='info'){
    clearTimeout(statusTimer);R.showStatus('adminMessage',msg,type);if(!msg)return;
    const now=new Date();const time=R.dom('time',{class:'status-time',title:now.toISOString()},new Intl.DateTimeFormat('en-GB',{hour:'2-digit',minute:'2-digit',second:'2-digit',hourCycle:'h23'}).format(now));time.dateTime=now.toISOString();
@@ -50,6 +50,7 @@
      const {data:admins,error:adminsError}=await R.adminRpc('admin_list_members');
      store.admins=adminsError?[]:(admins||[]);
      if(adminsError)show('Admin management API unavailable: '+R.safeError(adminsError),'warning');else show('');
+     const invitations=await R.adminRpc('admin_list_invitations');store.adminInvitations=invitations.data||[];invitationApiError=invitations.error?'Administrator invitations are unavailable. The invitation service must be installed before sending.':'';
      renderAll();return true;
    }catch(e){show(R.safeError(e),'error');return false;}
  }
@@ -339,7 +340,7 @@
    if(onCancel){const cancel=R.dom('button',{type:'button',class:'btn secondary'},'Cancel');cancel.addEventListener('click',onCancel);actions.append(cancel);}f.append(actions);return f;
  }
  const logCategories={households:'Households',guests:'Guests',contacts:'Contacts',rsvp:'RSVP',invitations:'Invitations',login:'Login',venues:'Venues',sessions:'Sessions',food:'Food access',administrators:'Administrators'};
- const logActions={add:'Added',insert:'Added',update:'Updated',delete:'Deleted',move:'Moved',archive:'Archived',restore:'Restored',assign:'Assigned',invitations_changed:'Invitation assignments changed',submitted:'Household submitted',reopened:'RSVP reopened',late_submission_authorized:'Late response allowed',response_submitted:'Guest response submitted',response_corrected:'Guest response corrected',created:'Delivery created',draft:'Draft saved',ready:'Ready to send',sent:'Recorded sent',failed:'Failed delivery',cancelled:'Cancelled',opened:'Invitation opened',login:'Sign-in session',logout:'Signed out',logout_requested:'Sign-out requested',remove:'Access removed',rename:'Renamed',token_refreshed:'Token refreshed'};
+ const logActions={add:'Added',insert:'Added',update:'Updated',delete:'Deleted',move:'Moved',archive:'Archived',restore:'Restored',assign:'Assigned',invitations_changed:'Invitation assignments changed',submitted:'Household submitted',reopened:'RSVP reopened',late_submission_authorized:'Late response allowed',response_submitted:'Guest response submitted',response_corrected:'Guest response corrected',created:'Delivery created',draft:'Draft saved',ready:'Ready to send',sent:'Recorded sent',failed:'Failed delivery',cancelled:'Cancelled',opened:'Invitation opened',login:'Sign-in session',logout:'Signed out',logout_requested:'Sign-out requested',email_requested:'Administrator email requested',email_sent:'Administrator email accepted by service',email_failed:'Administrator email failed',invitation_cancelled:'Administrator invitation cancelled',invitation_accepted:'Administrator invitation accepted',remove:'Access removed',rename:'Renamed',token_refreshed:'Token refreshed'};
  let logEntries=[],logCursor=null,logGeneration=0,logsLoaded=false;
  function logDateBoundary(value,next=false){if(!value)return null;let date=value;if(next){const d=new Date(value+'T00:00:00Z');d.setUTCDate(d.getUTCDate()+1);date=d.toISOString().slice(0,10);}return R.zonedInstant(date+'T00:00',store.settings?.timezone||'Atlantic/Faroe');}
  function formatLogValue(value){return value==null?'—':typeof value==='object'?JSON.stringify(value,null,2):String(value);}
@@ -684,7 +685,40 @@
    }
    if(!box.children.length)box.append(R.dom('p',{class:'muted'},'No matching food items.'));
  }
-  function renderAdmins(){
+ async function sendAdminInvitation(values){
+   let result=await db.auth.getSession(),session=result.data?.session;
+   if(session?.expires_at&&session.expires_at*1000<Date.now()+60000){result=await db.auth.refreshSession();session=result.data?.session;}
+   if(result.error||!session?.access_token||session.access_token.startsWith('sb_'))throw new Error('Sign in again before sending an invitation.');
+   const cfg=R.config();
+   // Never retry an email send automatically: a timed-out request may have sent it.
+   const response=await fetch(R.normalizeUrl(cfg.supabaseUrl)+'/functions/v1/admin-invitations',{method:'POST',headers:{apikey:cfg.supabaseKey,Authorization:'Bearer '+session.access_token,'Content-Type':'application/json'},body:JSON.stringify(values),signal:AbortSignal.timeout(30000)});
+   let value;try{value=await response.json();}catch{throw new Error('Email status is uncertain. Refresh pending invitations before retrying.');}
+   if(!response.ok)throw new Error(value.error||'Invitation could not be sent.');return value;
+ }
+ async function refreshAdminInvitations(){
+   const result=await R.adminRpc('admin_list_invitations');if(!result.error){store.adminInvitations=result.data||[];renderAdminInvitations();}
+ }
+ function renderAdminInvitations(){
+   const list=$('adminInvitationsList');list.replaceChildren();$('adminInvitationsStatus').textContent=invitationApiError;
+   $('addAdminForm').querySelector('button').disabled=!!invitationApiError;
+   if(!store.adminInvitations.length){list.append(R.dom('p',{class:'small muted'},'No pending invitations.'));return;}
+   for(const invitation of store.adminInvitations){
+     const expired=new Date(invitation.expires_at)<=new Date();
+     const card=R.dom('div',{class:'admin-member admin-invitation-card'}),details=R.dom('div',{class:'admin-invitation-details'}),actions=R.dom('div',{class:'admin-invitation-actions edit-only'});
+     const state=expired?'Expired':({sent:'Awaiting acceptance',failed:'Email failed',sending:'Sending / status pending'}[invitation.delivery_state]||'Pending');
+     details.append(R.dom('div',{class:'name'},invitation.name),R.dom('div',{class:'email'},invitation.email),R.dom('p',{class:'micro'},state+' · Expires '+adminTime(invitation.expires_at)));
+     if(invitation.last_error_code){
+       const errors={email_address_not_authorized:'Email sending is restricted. Check the email configuration.',over_email_send_rate_limit:'The email service sending limit was reached. Wait before resending.',over_request_rate_limit:'The email service request limit was reached. Wait before resending.',email_status_unknown:'Email delivery status is uncertain. Check before resending.'};
+       details.append(R.dom('p',{class:'micro',title:invitation.last_error_code},errors[invitation.last_error_code]||'The email could not be sent. Check the email configuration before resending.'));
+     }
+     const resend=R.dom('button',{class:'btn secondary',type:'button'},'Resend'),cancel=R.dom('button',{class:'btn secondary',type:'button'},'Cancel');
+     const status=R.dom('p',{class:'small admin-invitation-status',role:'status'});
+     resend.addEventListener('click',async()=>{if(!editMode||!confirm('Send another administrator invitation email to '+invitation.email+'?'))return;resend.disabled=true;cancel.disabled=true;status.textContent='Sending invitation…';try{await sendAdminInvitation({id:invitation.id,email:invitation.email,name:invitation.name});await refreshAdminInvitations();show('Administrator invitation email sent.','success');}catch(error){status.textContent=R.safeError(error);}finally{resend.disabled=false;cancel.disabled=false;}});
+     cancel.addEventListener('click',async()=>{if(!editMode||!confirm('Cancel administrator invitation for '+invitation.email+'?'))return;resend.disabled=true;cancel.disabled=true;try{await managementRpc('admin_cancel_invitation',{p_id:invitation.id});await refreshAdminInvitations();show('Administrator invitation cancelled.','success');}catch(error){status.textContent=R.safeError(error);}finally{resend.disabled=false;cancel.disabled=false;}});
+     actions.append(resend,cancel);card.append(details,actions,status);list.append(card);
+   }
+ }
+ function renderAdmins(){
    const div=$('adminList');div.replaceChildren();$('authUsersLink').href=store.settings?`https://supabase.com/dashboard/project/${new URL(R.config().supabaseUrl).hostname.split('.')[0]}/auth/users`:'https://supabase.com/dashboard/projects';
    if(!store.admins.length){div.append(R.dom('p',{class:'muted'},'Administrator list unavailable. Apply migration 006 if needed.'));return;}
    store.admins.forEach(a=>{
@@ -700,6 +734,7 @@
      });
      wrap.append(left,remove);div.append(wrap);
    });
+   renderAdminInvitations();
  }
  function renderSettings(){
    const e=store.settings||{};
@@ -773,7 +808,18 @@
  async function checkAccess(){
    const {data:access,error}=await R.adminRpc('is_admin');
    if(error)throw error;
-   if(access!==true)throw new Error('Your account does not have administrator access. Ask an existing administrator to grant it first.');
+   if(access!==true){
+     const invitation=await R.adminRpc('admin_my_invitation');
+     if(invitation.error)throw new Error('Your account does not have administrator access, or invitation acceptance is unavailable. Ask an administrator to check your invitation.');
+     if(!invitation.data)throw new Error('No active administrator invitation was found for this account. Ask an administrator to send or resend it.');
+     pendingAdminInvitation=invitation.data;
+     $('loginPanel').classList.add('hidden');$('acceptInvitationPanel').classList.remove('hidden');
+     $('acceptInvitationDetails').textContent=invitation.data.name+' · '+invitation.data.email;
+     $('invitationPasswordFields').classList.toggle('hidden',!invitation.data.needs_password);
+     for(const id of ['invitationPassword','invitationPasswordConfirm'])$(id).required=!!invitation.data.needs_password;
+     return;
+   }
+   $('acceptInvitationPanel').classList.add('hidden');pendingAdminInvitation=null;
    $('loginPanel').classList.add('hidden');$('adminApp').classList.remove('hidden');$('adminTopActions').classList.remove('hidden');$('loggedInAs').textContent=user.email||'';
    const fragment=location.hash.slice(1);activeTab=['dashboard','households','invites','food','settings'].includes(fragment)?fragment:'dashboard';
    tab(activeTab,false);mode(false);await reload();const logged=await R.adminRpc('admin_record_session',{p_action:'login'});if(logged.error)show('Signed in, but session logging is unavailable.','warning');
@@ -831,11 +877,24 @@
      catch(error){show(R.safeError(error),'error');}finally{button.disabled=false;}
    });
    $('addAdminForm').addEventListener('submit',async e=>{
-     e.preventDefault();const button=e.target.querySelector('button');button.disabled=true;
-     const {error}=await R.adminRpc('admin_add_existing_user',{p_email:$('newAdminEmail').value.trim(),p_name:$('newAdminName').value.trim()});
-     if(error)show(R.safeError(error),'error');else{e.target.reset();show('Administrator added.','success');await reload();}
-     button.disabled=false;
+     e.preventDefault();if(!editMode)return;const button=e.target.querySelector('button');button.disabled=true;$('adminInviteStatus').textContent='Sending invitation…';
+     try{const result=await sendAdminInvitation({email:$('newAdminEmail').value.trim(),name:$('newAdminName').value.trim()});e.target.reset();await reload();$('adminInviteStatus').textContent=result.message;show('Administrator invitation email sent.','success');}
+     catch(error){$('adminInviteStatus').textContent=R.safeError(error);await refreshAdminInvitations();}
+     finally{button.disabled=false;}
    });
+   $('acceptInvitationForm').addEventListener('submit',async e=>{
+     e.preventDefault();if(!pendingAdminInvitation)return;const button=e.target.querySelector('button[type="submit"]');button.disabled=true;$('acceptInvitationStatus').textContent='Accepting invitation…';
+     try{
+       if(pendingAdminInvitation.needs_password){
+         const password=$('invitationPassword').value;if(password.length<12||password!==$('invitationPasswordConfirm').value)throw new Error('Enter matching passwords of at least 12 characters.');
+         const result=await db.auth.updateUser({password});if(result.error)throw result.error;
+         $('invitationPassword').value='';$('invitationPasswordConfirm').value='';pendingAdminInvitation.needs_password=false;
+       }
+       const {error}=await R.adminRpc('admin_accept_invitation',{p_id:pendingAdminInvitation.id});if(error)throw error;
+       history.replaceState(null,'',location.pathname);await checkAccess();show('Administrator invitation accepted.','success');
+     }catch(error){$('acceptInvitationStatus').textContent=R.safeError(error);}finally{button.disabled=false;}
+   });
+   $('declineInvitationSession').addEventListener('click',async()=>{const {error}=await db.auth.signOut();if(error)$('acceptInvitationStatus').textContent=R.safeError(error);else location.assign(location.pathname);});
    $('eventSettingsForm').addEventListener('submit',async e=>{
      e.preventDefault();const deadline=$('settingDeadline').value;
      if(deadline&&!Number.isFinite(new Date(deadline).valueOf())){show('Invalid RSVP deadline.','error');return;}

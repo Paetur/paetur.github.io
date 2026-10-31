@@ -193,6 +193,7 @@ async function run(){
    await openSection(contact,'Choose someone from the guest list');
    await contact.getByLabel('Search guests',{exact:true}).fill('Example child');
    assert.equal(await contact.locator('.contact-guest-option').count(),2,'household names are searchable');
+   await contact.getByLabel('Search guests',{exact:true}).press('Enter');assert.equal(await page.evaluate(()=>window.__fixtures.household_contacts.length),1,'Enter in search does not submit the contact');
    await contact.locator('.contact-guest-picker').screenshot({path:path.join(root,'artifacts','contact-guest-search-desktop.png')});
    await contact.getByLabel('Search guests',{exact:true}).fill('édited');
    assert.equal(await contact.locator('.contact-guest-option').count(),1,'guest names support case/accent-insensitive search');

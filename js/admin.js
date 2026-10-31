@@ -322,6 +322,7 @@
        button.addEventListener('click',()=>{selectedId=g.id;onSelect(g);renderSelected();picker.open=false;search.value='';});options.append(button);
      }
    }
+   search.addEventListener('keydown',event=>{if(event.key==='Enter'){event.preventDefault();options.querySelector('button')?.focus();}if(event.key==='Escape'){event.preventDefault();picker.open=false;picker.querySelector('summary')?.focus();}});
    search.addEventListener('input',renderResults);picker.addEventListener('toggle',()=>{if(picker.open){renderResults();search.focus();}});
    renderSelected();box.append(selected,picker,R.dom('p',{class:'micro'},'Choose a guest or enter a new contact below. Guest selection fills the name and language; enter this person’s contact details separately.'));return box;
  }

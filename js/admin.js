@@ -628,7 +628,6 @@
    $('collapseHouseholds').addEventListener('click',()=>expandHouseholdTree(false));
    $('householdSearch').addEventListener('input',renderHouseholds);
    $('showArchived').addEventListener('change',renderHouseholds);
-   $('newHousehold').append(householdForm({language:'fo',side:'paetur_hentze'}));
    $('foodSearch').addEventListener('input',renderFood);
    $('addCategoryForm').addEventListener('submit',async e=>{
      e.preventDefault();const input=$('categoryName'),name=input.value.trim();if(!name)return;const button=e.target.querySelector('button');button.disabled=true;

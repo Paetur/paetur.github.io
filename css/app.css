@@ -371,3 +371,13 @@ html[data-theme="dark"] .food-item input:disabled,html[data-theme="dark"] .choic
 @media(max-width:600px){.invite-row{align-items:start;flex-direction:column}.topbar-inner{gap:8px}.topbar .brand{font-size:.8rem}.topbar-actions{gap:8px}.admin-main-tabs button{font-size:.9rem!important}}
 
 .invite-item{padding-bottom:10px;border-bottom:1px solid var(--line)}.invite-item>.admin-management{margin-top:4px}.session-venue{white-space:normal;overflow-wrap:anywhere}#venueList>.admin-management,#sessionsList>.admin-management{margin:8px 0}
+
+/* Appearance choice and compact household actions. */
+.theme-control{position:relative;flex-shrink:0}.theme-menu{position:absolute;right:0;top:calc(100% + 10px);z-index:100;width:205px;padding:16px;background:var(--white,#fff);border:1px solid var(--line);border-radius:12px;box-shadow:var(--shadow)}.theme-menu label{display:grid;gap:8px;font-size:.8rem;font-weight:700}.theme-menu select{font-size:.85rem}
+#adminApp .admin-main-tabs [data-tab="invites"]{margin-left:auto}
+#adminApp .household-guest-row>.guest-management{margin:0;gap:6px;flex-shrink:0}
+#adminApp .household-guest-row{gap:6px}#adminApp .household-guest-info{flex:1}
+.guest-move-panel{padding:0 12px}.guest-move-panel form{margin:0}
+#adminApp #inviteRows .invite-item{border:0;padding:8px 0}
+html[data-theme="dark"] code{background:#253b32;color:var(--ink)}
+@media(max-width:600px){.topbar .admin-topbar-actions{gap:5px}.topbar .admin-top-actions{gap:5px}.topbar .admin-icon-btn{width:29px;height:29px;min-width:29px}.topbar .brand-symbol{width:28px;height:28px}.topbar .brand{gap:5px}.theme-menu{right:auto;left:0}#adminApp .admin-main-tabs{gap:5px}}

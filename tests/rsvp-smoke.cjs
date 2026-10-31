@@ -13,8 +13,9 @@ async function run() {
   const issues = [];
   page.on('pageerror', e => issues.push(e.message));
   try {
-    await page.goto(site, { waitUntil: 'domcontentloaded', timeout: 45000 });
-    await page.locator('#unpublishedMessage').waitFor({ state: 'visible', timeout: 20000 });
+    const publicEvent=page.waitForResponse(r=>r.url().endsWith('/rpc/get_public_event_v2'));
+    await page.goto(site, { waitUntil: 'load', timeout: 45000 });
+    if(await (await publicEvent).json()!==null)throw Error('Event must remain unpublished');
     if (await page.locator('#invitationCard').isVisible()) throw Error('Invitation should be hidden while unpublished');
     const meta = await page.locator('meta[name=referrer]').getAttribute('content');
     if (meta !== 'no-referrer') throw Error('Guest referrer policy must be no-referrer');
@@ -23,8 +24,10 @@ async function run() {
       screen: document.documentElement.clientWidth
     }));
     if (width.scroll > width.screen + 3) throw Error('Horizontal overflow on mobile: ' + JSON.stringify(width));
-    await page.goto(site + '?=AAAAAAAA', { waitUntil: 'domcontentloaded', timeout: 45000 });
-    await page.locator('#unpublishedMessage').waitFor({ state: 'visible', timeout: 20000 });
+    const secondEvent=page.waitForResponse(r=>r.url().endsWith('/rpc/get_public_event_v2'));
+    await page.goto(site + '?=AAAAAAAA', { waitUntil: 'load', timeout: 45000 });
+    if(await (await secondEvent).json()!==null)throw Error('Event must remain unpublished');
+    if(await page.locator('#invitationCard').isVisible())throw Error('Unpublished invitation must stay hidden');
     await page.waitForFunction(() => !location.search.includes('AAAAAAAA'), { timeout: 20000 });
     await page.goto(site + 'admin/', { waitUntil: 'domcontentloaded', timeout: 45000 });
     await page.locator('#loginForm').waitFor({ state: 'visible', timeout: 20000 });
@@ -79,3 +82,4 @@ async function run() {
   process.stdout.write('PASS: live guest page, mobile viewport, query scrubbing, login screen, gateway, live throttling and direct-RPC denial\n');
 }
 run().catch(e => { console.error(e); process.exitCode = 1; });
+

@@ -52,7 +52,7 @@ async function run(){
    await page.locator('#adminApp:not(.hidden)').waitFor({timeout:12000});
    await page.locator('#householdRows .hierarchy-section').first().waitFor({state:'attached'});
    assert.equal(await page.locator('[data-tab]').count(),4,'four main text tabs');
-   assert.deepEqual(await page.locator('[data-tab]').evaluateAll(nodes=>nodes.map(n=>n.textContent.trim())),['Overview','Households','Manage Invites','Food']);
+   assert.deepEqual(await page.locator('[data-tab]').evaluateAll(nodes=>nodes.map(n=>n.textContent.trim())),['Overview','Households','Food','Manage Invites']);
    assert.deepEqual(await page.locator('.admin-top-actions>button').evaluateAll(nodes=>nodes.map(n=>n.id)),
      ['settingsToggle','editModeButton','refreshButton','logout'],'topbar action icon order');
    assert.equal(await page.locator('#viewWebsite').getAttribute('target'),'_blank','website link opens a new tab');
@@ -73,7 +73,11 @@ async function run(){
    await page.waitForTimeout(100);
    await page.waitForTimeout(220);
    assert.equal(await page.locator('html').getAttribute('data-theme'),'dark','dark mode enabled');
-   assert.equal(await page.locator('#themeToggle').count(),0,'system preference controls theme');
+   assert.equal(await page.locator('#themeToggle').count(),1,'appearance control is available');
+   await page.locator('#themeToggle').click();assert.equal(await page.locator('#themePreference').inputValue(),'system');
+   await page.locator('#themePreference').selectOption('light');assert.equal(await page.locator('html').getAttribute('data-theme'),'light');
+   await page.locator('#themePreference').selectOption('dark');assert.equal(await page.locator('html').getAttribute('data-theme'),'dark');
+   await page.locator('#themePreference').selectOption('system');await page.locator('#themeToggle').click();
    await page.locator('#settingsToggle').click();
    await page.locator('[data-settings-tab="event"]').click();
    await page.screenshot({path:path.join(previewDir,'admin-settings-dark.png'),fullPage:true});
@@ -162,9 +166,9 @@ async function run(){
    await contactEdit.getByRole('button',{name:'Save contact'}).click();
    await page.waitForFunction(()=>window.__fixtures.household_contacts[0].contact_name==='Updated contact');
    await page.locator('#expandHouseholds').click();
-   await openSection(created,'Move guest');
+   await created.getByRole('button',{name:'Move guest',exact:true}).first().click();
    await created.getByLabel('Destination household').selectOption('33333333-3333-4333-8333-333333333333');
-   await created.getByRole('button',{name:'Move guest',exact:true}).click();
+   await created.locator('.guest-move-panel').getByRole('button',{name:'Move guest',exact:true}).click();
    await page.waitForFunction(()=>window.__fixtures.guests.find(g=>g.first_name==='New guest').household_id==='33333333-3333-4333-8333-333333333333');
    await created.getByRole('button',{name:'Archive household',exact:true}).click();
    await page.waitForFunction(id=>!document.querySelector(`[data-tree-key="household:${id}"]`),createdId);
@@ -219,6 +223,7 @@ async function run(){
    await page.locator('#closeSettings').click();
    await page.locator('[data-tab="invites"]').click();
    assert.equal(new URL(page.url()).hash,'#invites');
+   await page.locator('#inviteRows details').evaluateAll(nodes=>nodes.forEach(n=>n.open=true));
    assert.equal(await page.locator('#householdRows button[title*=Copy]').count(),0,'copy controls only in Manage Invites');
    assert.ok(await page.getByRole('button',{name:'Copy invite code',exact:true}).count()>0);
    await page.evaluate(()=>{navigator.clipboard.writeText=async text=>{window.__copied=text;};});
@@ -228,7 +233,7 @@ async function run(){
    assert.ok((await page.evaluate(()=>window.__copied)).includes('?='));
    assert.equal(await page.locator('#inviteRows').getByText('New test family',{exact:true}).count(),0,'empty households omitted');
 
-   const invitations=page.locator('.invite-item').filter({hasText:'Example child'});
+   const invitations=page.locator('[data-invite-household="22222222-2222-4222-8222-222222222222"] > .household-expanded > .invite-item');
    await openSection(invitations,'Session invitations');
    await invitations.getByLabel('Faroe celebration · Faroe test venue — household',{exact:true}).selectOption('true');
    await invitations.getByLabel('German celebration · Germany test venue — household',{exact:true}).selectOption('false');
@@ -236,6 +241,8 @@ async function run(){
    await invitations.getByRole('button',{name:'Save session invitations'}).click();
    await page.waitForFunction(()=>!!window.__lastAssignments);
    assert.ok(await page.evaluate(()=>window.__lastAssignments.p_assignments.some(a=>a.guest_id&&a.is_invited===true)));
+   await page.setViewportSize({width:1250,height:950});
+   await page.locator('#inviteRows details').evaluateAll(nodes=>nodes.forEach(n=>n.open=!n.classList.contains('admin-management')));
    await page.screenshot({path:path.join(root,'artifacts','manage-invites-venues.png'),fullPage:true});
    await page.locator('[data-tab="food"]').click();
    assert.equal(await page.locator('.food-category').count(),2,'food grouped by category');
@@ -250,7 +257,21 @@ async function run(){
    if(dims.scroll>dims.client+3)throw Error('Horizontal overflow on mobile: '+JSON.stringify(dims));
    await page.screenshot({path:path.join(root,'artifacts','admin-mobile-dark.png'),fullPage:true});
 
+   await page.setViewportSize({width:1250,height:950});
+   await page.evaluate(()=>window.__fixtures.guests.push({id:'preview-parent-guest',household_id:'11111111-1111-4111-8111-111111111111',first_name:'Parent',last_name:'Guest',rsvp_status:'pending'}));
+   await page.locator('#refreshButton').click();await page.waitForFunction(()=>document.querySelector('#adminMessage').textContent.includes('refreshed')||!document.querySelector('#refreshButton').disabled);
+   await page.locator('[data-tab="households"]').click();await page.locator('#expandHouseholds').click();
+   assert.ok((await page.locator('[data-tree-key="household:11111111-1111-4111-8111-111111111111"] > summary').innerText()).includes('1 guest · 1 sub-household'));
+   assert.equal(await page.locator('.admin-heading .eyebrow').count(),0);assert.equal(await page.locator('footer').count(),0);
+   await page.locator('#newHousehold').evaluate(el=>el.closest('details').open=false);
+   await page.locator('[data-tree-key="side:maria_haass"]').evaluate(el=>el.open=false);
+   await page.locator('[data-tree-key="group:paetur_hentze:"]').evaluate(el=>el.open=false);
+   await page.locator('#themeToggle').click();
+   await page.screenshot({path:path.join(root,'artifacts','households-preview-dark.png'),fullPage:true});await page.locator('#themeToggle').click();
    await page.goto(url.replace('/admin/','/'),{waitUntil:'load'});
+   assert.equal(await page.locator('footer').count(),0);assert.equal(await page.locator('#unpublishedMessage').count(),0);
+   await page.setViewportSize({width:1250,height:850});
+   await page.screenshot({path:path.join(root,'artifacts','main-preview-dark.png'),fullPage:true});
    assert.ok((await page.locator('.brand').textContent()).includes('Event Invitation'));
    assert.equal(await page.locator('html').getAttribute('data-theme'),'dark');
    await page.emulateMedia({colorScheme:'light'});await page.waitForTimeout(100);

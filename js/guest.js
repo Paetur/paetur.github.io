@@ -12,7 +12,7 @@
   function status(s,type='info'){R.showStatus('guestStatus',s,type);}
   function setLanguage(lang){ language=dict[lang]?lang:'en';document.documentElement.lang=language;
     document.querySelectorAll('[data-language]').forEach(b=>b.classList.toggle('selected',b.dataset.language===language));
-    $('eventType').textContent=t('invitation');$('invitationDescription').textContent=t('who');
+    $('invitationDescription').textContent=t('who');
     $('codeCard').querySelector('h2').textContent=t('enter');$('codeCard').querySelector('p').textContent=t('codeHelp');
     $('codeForm').querySelector('button').textContent=t('open');$('saveRsvp').textContent=t('submit');$('confirmFood').textContent=t('confirmFood');
     $('foodCard').querySelector('h2').textContent=t('food');$('foodCard').querySelector('p').textContent=t('foodHelp');
@@ -23,7 +23,6 @@
     if(!event)return;
     const name=event.event_name||'Your event';
     $('eventTitle').textContent=name;
-    $('eventType').textContent=(event.event_type||'Event').toUpperCase();
     $('eventDate').textContent=R.formatDate(event.event_date,language,event.timezone);
     document.title=name+' | Invitation';
     const content=eventData.content||{};
@@ -152,7 +151,7 @@
       if(error&&error.code==='PGRST202'){const old=await db.rpc('get_public_event');if(old.error)throw old.error;eventData=old.data;}
       else if(error)throw error;else eventData=data;
     }catch(e){status(t('offline')+' '+R.safeError(e),'error');return;}
-    if(!eventData){$('unpublishedMessage').textContent=t('notPublished');$('unpublishedMessage').classList.remove('hidden');return;}
+    if(!eventData)return;
     renderEvent();$('codeCard').classList.remove('hidden');
     if(rawCode){$('inviteCode').value=rawCode;await loadInvitation(rawCode);}
   }

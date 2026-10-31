@@ -1,0 +1,13 @@
+const vm=require('node:vm'),fs=require('node:fs'),assert=require('node:assert/strict');
+const context={URL,URLSearchParams,Intl,Date,console,window:{location:{href:'https://example.invalid/'}},document:{querySelector:()=>({src:'https://example.invalid/js/core.js'})}};
+vm.createContext(context);vm.runInContext(fs.readFileSync('js/core.js','utf8'),context);
+const {zonedInput,zonedInstant}=context.window.RSVP;
+assert.equal(zonedInstant('2027-02-20T18:00','Atlantic/Faroe'),'2027-02-20T18:00:00.000Z');
+assert.equal(zonedInstant('2027-02-20T18:00','Europe/Berlin'),'2027-02-20T17:00:00.000Z');
+assert.equal(zonedInput('2027-02-20T17:00:00Z','Europe/Berlin'),'2027-02-20T18:00');
+assert.throws(()=>zonedInstant('2027-03-28T02:30','Europe/Berlin'),/does not exist/);
+assert.throws(()=>zonedInstant('2026-10-25T02:30','Europe/Berlin'),/ambiguous/);
+assert.equal(zonedInstant('2027-07-20T18:00','Atlantic/Faroe'),'2027-07-20T17:00:00.000Z');
+assert.equal(zonedInstant('2027-07-20T18:00','Europe/Berlin'),'2027-07-20T16:00:00.000Z');
+assert.equal(zonedInstant('','Europe/Berlin'),null);
+console.log('PASS: venue-local dates, seasonal offsets and clock-change ambiguity');

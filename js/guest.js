@@ -36,13 +36,20 @@
     const invited=invitation.invitations||[];
     const guests=invitation.guests||[];
     guests.forEach(guest=>{
-      const items=invited.filter(x=>x.guest_id===guest.id&&x.requires_rsvp);
+      const items=invited.filter(x=>x.guest_id===guest.id);
       if(!items.length)return;
       const entry=R.dom('div',{class:'guest-response'});
       entry.append(R.dom('h3',{},[guest.courtesy_title,guest.first_name,guest.last_name].filter(Boolean).join(' ')||'Guest'));
       items.forEach(link=>{
         const session=sessions.find(s=>s.id===link.session_id);if(!session)return;
         entry.append(R.dom('div',{class:'session-name'},session.name));
+        const venue=eventData?.locations?.find(v=>v.id===session.location_id);
+        const zone=venue?.timezone||eventData?.event?.timezone||'UTC';
+        const details=[venue?.name,venue?.address,session.starts_at?R.formatDate(session.starts_at,language,zone):null,session.ends_at?'– '+R.formatDate(session.ends_at,language,zone):null,session.starts_at?zone:null].filter(Boolean);
+        entry.append(R.dom('p',{class:'micro session-venue'},details.join(' · ')));
+        if(venue?.notes)entry.append(R.dom('p',{class:'micro'},venue.notes));
+        if(venue?.map_url){try{const url=new URL(venue.map_url);if(url.protocol==='https:'){const a=R.dom('a',{class:'quiet-link'},'↗ '+venue.name);a.href=url.href;a.target='_blank';a.rel='noopener noreferrer';entry.append(a);}}catch(_){} }
+        if(!link.requires_rsvp)return;
         const options=R.dom('div',{class:'response-options'});
         ['attending','declined'].forEach(value=>{
           const label=R.dom('label',{class:'radio-pill'});
@@ -151,3 +158,4 @@
   }
   document.addEventListener('DOMContentLoaded',()=>{init().catch(e=>status(R.safeError(e),'error'));});
 }());
+

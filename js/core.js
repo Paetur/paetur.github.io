@@ -90,6 +90,22 @@
     }
     return new Intl.DateTimeFormat({fo:'fo-FO',en:'en-GB',de:'de-DE'}[lang]||'en-GB',{dateStyle:'medium',timeStyle:'short',timeZone:tz||'UTC'}).format(new Date(date));
   }
+
+  function zonedInput(value,timezone){
+    if(!value)return '';
+    const parts=new Intl.DateTimeFormat('en-CA',{timeZone:timezone,year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',hourCycle:'h23'}).formatToParts(new Date(value));
+    const p=Object.fromEntries(parts.map(x=>[x.type,x.value]));return `${p.year}-${p.month}-${p.day}T${p.hour}:${p.minute}`;
+  }
+  function zonedInstant(value,timezone){
+    if(!value)return null;
+    if(!/^\d{4}-\d\d-\d\dT\d\d:\d\d$/.test(value))throw Error('Enter a complete date and time.');
+    const wall=Date.parse(value+'Z');if(!Number.isFinite(wall))throw Error('Invalid date and time.');
+    const offsets=new Set([-36,0,36].map(hours=>{const t=wall+hours*3600000;return Date.parse(zonedInput(t,timezone)+'Z')-t;}));
+    const matches=[...offsets].map(offset=>wall-offset).filter(t=>zonedInput(t,timezone)===value);
+    if(matches.length!==1)throw Error('This local time is ambiguous or does not exist because clocks change. Choose a time outside the clock change.');
+    return new Date(matches[0]).toISOString();
+  }
+
   function safeError(error) {return error && typeof error.message==='string' ? error.message : 'Something went wrong.';}
   function dl(filename,contents) {
     const blob=new Blob([contents],{type:'text/javascript;charset=utf-8'});
@@ -100,6 +116,6 @@
     return '// Event Invitation public browser configuration. NEVER add a secret/service_role key.\n'+
       'window.RSVP_CONFIG = Object.freeze('+JSON.stringify({supabaseUrl:cfg.supabaseUrl,supabaseKey:cfg.supabaseKey},null,2)+');\n';
   }
-  window.RSVP={config,getClient,guestRpc,normalizeUrl,validateKey,savePreview,invitationURL,getInviteCode,codePattern,siteRoot,dom,byId,showStatus,formatDate,safeError,dl,configSource};
+  window.RSVP={config,getClient,guestRpc,normalizeUrl,validateKey,savePreview,invitationURL,getInviteCode,codePattern,siteRoot,dom,byId,showStatus,formatDate,zonedInput,zonedInstant,safeError,dl,configSource};
 }());
 

@@ -31,11 +31,11 @@ const mock = [
 " food_categories:[{id:cat1,name:'Main dishes',sort_order:1},{id:cat2,name:'Desserts',sort_order:2}],",
 " food_items:[{id:'66666666-6666-4666-8666-666666666666',category:'Main dishes',name_fo:'Sample dish',name_en:'Sample dish',name_de:'Sample dish',sort_order:1,quantity_needed:4,active:true}],",
 " relation_groups:[{id:cat1,name:'Family',sort_order:1},{id:cat2,name:'Family',sort_order:1}],",
-" household_contacts:[],management_audit:[],food_claims:[],rsvp_submissions:[],household_session_defaults:[{household_id:h1,session_id:s1,is_invited:true}],event_content:[]",
+" guest_session_overrides:[],household_contacts:[],management_audit:[],food_claims:[],rsvp_submissions:[],household_session_defaults:[{household_id:h1,session_id:s1,is_invited:true}],event_content:[]",
 "};",
 "const client={auth:{getUser:async()=>({data:{user:{email:'test-admin@example.invalid'}}}),signOut:async()=>({error:null})},rpc:async(name,args)=>{if(window.__managementRpc){const r=window.__managementRpc(name,args);if(r)return r;}if(name==='admin_update_guest'){window.__lastGuestUpdate=args;const guest=fixtures.guests.find(g=>g.id===args.p_guest_id);if(!guest)return {data:null,error:{message:'No guest'}};Object.assign(guest,{first_name:args.p_first_name,last_name:args.p_last_name,courtesy_title:args.p_courtesy_title,relation:args.p_relation,language:args.p_language,is_child:args.p_is_child,dietary_requirements:args.p_dietary_requirements,notes:args.p_notes});return {data:null,error:null};}return name==='is_admin'?{data:true}:name==='admin_list_members'?{data:[{name:'Example admin',email:'test-admin@example.invalid',user_id:h1}]}:{data:null,error:null};},from(name){return {select(){if(name==='event_settings')window.__fetchCount++;const query={eq(){return query;},order(){return query;},limit(){return query;},then(resolve){return Promise.resolve({data:fixtures[name]||[],error:null}).then(resolve);}};return query;}}}};",
 "window.__fixtures=fixtures;window.__calls=[];",
-"window.__managementRpc=(name,args)=>{window.__calls.push({name,args});if(window.__failNext){window.__failNext=false;return {error:{message:'Simulated save failure'}};}let data=null;if(name==='admin_save_household'){if(args.p_id)Object.assign(fixtures.households.find(h=>h.id===args.p_id),args.p_values);else{data=crypto.randomUUID();fixtures.households.push({id:data,...args.p_values,invite_code:'TESTABCD',rsvp_state:'open'});}}else if(name==='admin_create_guest'){data=crypto.randomUUID();fixtures.guests.push({id:data,household_id:args.p_household_id,...args.p_values,rsvp_status:'pending'});}else if(name==='admin_move_guest'){fixtures.guests.find(g=>g.id===args.p_guest_id).household_id=args.p_household_id;}else if(name==='admin_set_archived'){fixtures[args.p_entity].find(x=>x.id===args.p_id).archived_at=args.p_archived?new Date().toISOString():null;}else if(name==='admin_save_contact'){if(args.p_id)Object.assign(fixtures.household_contacts.find(c=>c.id===args.p_id),args.p_values);else{data=crypto.randomUUID();fixtures.household_contacts.push({id:data,household_id:args.p_household_id,...args.p_values});}}else return null;return {data,error:null};};",
+"window.__managementRpc=(name,args)=>{window.__calls.push({name,args});if(window.__failNext){window.__failNext=false;return {error:{message:'Simulated save failure'}};}let data=null;if(name==='admin_save_household'){if(args.p_id)Object.assign(fixtures.households.find(h=>h.id===args.p_id),args.p_values);else{data=crypto.randomUUID();fixtures.households.push({id:data,...args.p_values,invite_code:'TESTABCD',rsvp_state:'open'});}}else if(name==='admin_create_guest'){data=crypto.randomUUID();fixtures.guests.push({id:data,household_id:args.p_household_id,...args.p_values,rsvp_status:'pending'});}else if(name==='admin_move_guest'){fixtures.guests.find(g=>g.id===args.p_guest_id).household_id=args.p_household_id;}else if(name==='admin_set_archived'){fixtures[args.p_entity].find(x=>x.id===args.p_id).archived_at=args.p_archived?new Date().toISOString():null;}else if(name==='admin_save_contact'){if(args.p_id)Object.assign(fixtures.household_contacts.find(c=>c.id===args.p_id),args.p_values);else{data=crypto.randomUUID();fixtures.household_contacts.push({id:data,household_id:args.p_household_id,...args.p_values});}}else if(name==='admin_save_venue'){if(args.p_id)Object.assign(fixtures.event_locations.find(v=>v.id===args.p_id),args.p_values);else{data=crypto.randomUUID();fixtures.event_locations.push({id:data,...args.p_values});}}else if(name==='admin_save_session'){if(args.p_id)Object.assign(fixtures.event_sessions.find(v=>v.id===args.p_id),args.p_values);else{data=crypto.randomUUID();fixtures.event_sessions.push({id:data,...args.p_values});}}else if(name==='admin_save_session_assignments'){window.__lastAssignments=args;for(const a of args.p_assignments){const table=a.guest_id?fixtures.guest_session_overrides:fixtures.household_session_defaults;const key=a.guest_id?'guest_id':'household_id';const id=a.guest_id||args.p_household_id;const i=table.findIndex(x=>x[key]===id&&x.session_id===a.session_id);if(i>=0)table.splice(i,1);if(a.is_invited!==null)table.push({[key]:id,session_id:a.session_id,is_invited:a.is_invited});}}else return null;return {data,error:null};};",
 "window.supabase={createClient:()=>client};"
 ].join('\n');
 async function openSection(scope,label){const summary=scope.locator('summary').filter({hasText:new RegExp('^'+label+'$')});if(!await summary.evaluate(el=>el.parentElement.open))await summary.click();}
@@ -188,6 +188,35 @@ async function run(){
    await page.screenshot({path:path.join(root,'artifacts','household-management-mobile.png'),fullPage:true});
 
 
+
+   await page.locator('#settingsToggle').click();
+   await openSection(page,'Venues');await openSection(page,'Add venue');
+   const newVenue=page.locator('#newVenueForm form');
+   await newVenue.getByLabel('Venue name',{exact:true}).fill('Faroe test venue');
+   await newVenue.getByLabel('Country code').fill('FO');
+   await newVenue.getByLabel('Venue timezone').fill('Atlantic/Faroe');
+   await newVenue.getByLabel('Venue address').fill('Synthetic Faroe address');
+   await newVenue.getByRole('button',{name:'Create venue'}).click();
+   await page.waitForFunction(()=>window.__fixtures.event_locations.length===1);
+   await newVenue.getByLabel('Venue name',{exact:true}).fill('Germany test venue');
+   await newVenue.getByLabel('Country code').fill('DE');
+   await newVenue.getByLabel('Venue timezone').fill('Europe/Berlin');
+   await newVenue.getByRole('button',{name:'Create venue'}).click();
+   await page.waitForFunction(()=>window.__fixtures.event_locations.length===2);
+   const venueIds=await page.evaluate(()=>window.__fixtures.event_locations.map(v=>v.id));
+   await openSection(page,'Sessions & scheduling');await openSection(page,'Add session');
+   const newSession=page.locator('#newSessionEditor form');
+   for(const [name,key,id] of [['Faroe celebration','faroe-celebration',venueIds[0]],['German celebration','german-celebration',venueIds[1]]]){
+     await newSession.getByLabel('Session name',{exact:true}).fill(name);
+     await newSession.getByLabel('Session key').fill(key);
+     await newSession.getByLabel('Session venue').selectOption(id);
+     await newSession.getByLabel('Starts (venue local time)').fill('2027-02-20T18:00');
+     await newSession.getByLabel('Ends (venue local time)').fill('2027-02-20T23:00');
+     await newSession.getByRole('button',{name:'Create session'}).click();
+     await page.waitForFunction(key=>window.__fixtures.event_sessions.some(s=>s.session_key===key),key);
+   }
+   assert.equal(await page.evaluate(()=>window.__fixtures.event_sessions.find(s=>s.session_key==='german-celebration').starts_at),'2027-02-20T17:00:00.000Z');
+   await page.locator('#closeSettings').click();
    await page.locator('[data-tab="invites"]').click();
    assert.equal(new URL(page.url()).hash,'#invites');
    assert.equal(await page.locator('#householdRows button[title*=Copy]').count(),0,'copy controls only in Manage Invites');
@@ -198,6 +227,16 @@ async function run(){
    await page.getByRole('button',{name:'Copy invitation link',exact:true}).first().click();
    assert.ok((await page.evaluate(()=>window.__copied)).includes('?='));
    assert.equal(await page.locator('#inviteRows').getByText('New test family',{exact:true}).count(),0,'empty households omitted');
+
+   const invitations=page.locator('.invite-item').filter({hasText:'Example child'});
+   await openSection(invitations,'Session invitations');
+   await invitations.getByLabel('Faroe celebration · Faroe test venue — household',{exact:true}).selectOption('true');
+   await invitations.getByLabel('German celebration · Germany test venue — household',{exact:true}).selectOption('false');
+   await invitations.getByLabel('Edited Guest — German celebration',{exact:true}).selectOption('true');
+   await invitations.getByRole('button',{name:'Save session invitations'}).click();
+   await page.waitForFunction(()=>!!window.__lastAssignments);
+   assert.ok(await page.evaluate(()=>window.__lastAssignments.p_assignments.some(a=>a.guest_id&&a.is_invited===true)));
+   await page.screenshot({path:path.join(root,'artifacts','manage-invites-venues.png'),fullPage:true});
    await page.locator('[data-tab="food"]').click();
    assert.equal(await page.locator('.food-category').count(),2,'food grouped by category');
    await page.locator('.food-category').last().locator('summary').click();
@@ -216,6 +255,19 @@ async function run(){
    assert.equal(await page.locator('html').getAttribute('data-theme'),'dark');
    await page.emulateMedia({colorScheme:'light'});await page.waitForTimeout(100);
    assert.equal(await page.locator('html').getAttribute('data-theme'),'light');
+
+   const guestData={event:{event_name:'Two venue celebration',default_language:'en',timezone:'Atlantic/Faroe'},sessions:[{id:'fo-session',name:'Faroe celebration',location_id:'fo-venue',starts_at:'2027-02-20T18:00:00Z',requires_rsvp:true},{id:'de-session',name:'German celebration',location_id:'de-venue',starts_at:'2027-02-27T17:00:00Z',requires_rsvp:true}],locations:[{id:'fo-venue',name:'Faroe venue',address:'Faroe address',timezone:'Atlantic/Faroe'},{id:'de-venue',name:'German venue',address:'German address',timezone:'Europe/Berlin'}],content:{}};
+   const guestInvitation={household:{name:'Two venue household',language:'en',rsvp_state:'open'},guests:[{id:'one',first_name:'Invited',last_name:'Guest'}],invitations:[{guest_id:'one',session_id:'fo-session',requires_rsvp:true},{guest_id:'one',session_id:'de-session',requires_rsvp:true}]};
+   const guestMock=`window.supabase={createClient:()=>({rpc:async()=>({data:${JSON.stringify(guestData)}}),functions:{invoke:async(name,options)=>({data:options.body.action==='get_invitation_v2'?${JSON.stringify(guestInvitation)}:null})}})};`;
+   await page.route('**/supabase.min.js',route=>route.fulfill({status:200,contentType:'application/javascript',body:guestMock}));
+   await page.emulateMedia({colorScheme:'dark'});
+   await page.goto(url.replace('/admin/','/?=ABCDEFGH'),{waitUntil:'load'});
+   await page.locator('#invitationCard:not(.hidden)').waitFor();
+   assert.equal(await page.locator('.session-venue').count(),2);
+   assert.ok((await page.locator('#rsvpRows').innerText()).includes('Atlantic/Faroe'));
+   assert.ok((await page.locator('#rsvpRows').innerText()).includes('Europe/Berlin'));
+   assert.equal(await page.locator('#rsvpRows input[type=radio]').count(),4);
+   await page.screenshot({path:path.join(root,'artifacts','guest-two-venues-dark.png'),fullPage:true});
    await page.route('**/supabase.min.js',route=>route.fulfill({status:200,contentType:'application/javascript',body:"window.supabase={createClient:()=>({auth:{getUser:async()=>({data:{user:null}})}})}"}));
    await page.emulateMedia({colorScheme:'dark'});
    await page.goto(url,{waitUntil:'load'});

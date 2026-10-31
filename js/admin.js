@@ -1,7 +1,7 @@
 (function(){
  'use strict';
  const R=window.RSVP,$=R.byId;
- let db=null,user=null,store={settings:null,sessions:[],locations:[],households:[],guests:[],food:[],claims:[],submissions:[],defaults:[],content:[],admins:[],relationGroups:[],foodCategories:[],contacts:[]};
+ let db=null,user=null,store={settings:null,sessions:[],locations:[],households:[],guests:[],food:[],claims:[],submissions:[],defaults:[],content:[],admins:[],relationGroups:[],foodCategories:[],contacts:[],overrides:[]};
  let activeTab='dashboard',lastMainTab='dashboard',activeSettingsTab='event',editMode=false;
  const expandedGroups=new Map();
  const qs=(s)=>document.querySelector(s);
@@ -37,8 +37,8 @@
  async function reload(){
    show('Loading event data…');
    try{
-     const keys=['settings','sessions','locations','households','guests','food','claims','submissions','defaults','content','relationGroups','foodCategories','contacts'];
-     const jobs=[fetchTable('event_settings'),fetchTable('event_sessions'),fetchTable('event_locations'),fetchTable('households','id,household_name,invite_code,language,side,relation_group_id,email,phone,food,food_confirmed,rsvp_state,sort_order,parent_id,notes,archived_at,whatsapp,postal_address,preferred_contact_method'),fetchTable('guests','id,household_id,first_name,last_name,courtesy_title,relation,language,is_child,rsvp_status,dietary_requirements,notes,archived_at'),fetchTable('food_items'),fetchTable('food_claims'),fetchTable('rsvp_submissions','id,household_id,submitted_at'),fetchTable('household_session_defaults'),fetchTable('event_content'),fetchTable('relation_groups'),fetchTable('food_categories'),fetchTable('household_contacts')];
+     const keys=['settings','sessions','locations','households','guests','food','claims','submissions','defaults','content','relationGroups','foodCategories','contacts','overrides'];
+     const jobs=[fetchTable('event_settings'),fetchTable('event_sessions'),fetchTable('event_locations'),fetchTable('households','id,household_name,invite_code,language,side,relation_group_id,email,phone,food,food_confirmed,rsvp_state,sort_order,parent_id,notes,archived_at,whatsapp,postal_address,preferred_contact_method'),fetchTable('guests','id,household_id,first_name,last_name,courtesy_title,relation,language,is_child,rsvp_status,dietary_requirements,notes,archived_at'),fetchTable('food_items'),fetchTable('food_claims'),fetchTable('rsvp_submissions','id,household_id,submitted_at'),fetchTable('household_session_defaults'),fetchTable('event_content'),fetchTable('relation_groups'),fetchTable('food_categories'),fetchTable('household_contacts'),fetchTable('guest_session_overrides')];
      const values=await Promise.all(jobs);keys.forEach((key,i)=>store[key]=values[i]);store.settings=store.settings[0]||null;
      const {data:admins,error:adminsError}=await db.rpc('admin_list_members');
      store.admins=adminsError?[]:(admins||[]);
@@ -319,7 +319,7 @@
      for(const [label,value] of [['Copy invite code',h.invite_code],['Copy invitation link',R.invitationURL(h.invite_code)]]){
        const button=R.dom('button',{type:'button',class:'small-tool'},label);
        button.addEventListener('click',async()=>{try{await navigator.clipboard.writeText(value);show(label==='Copy invite code'?'Invitation code copied.':'Invitation link copied.','success');}catch(error){show(R.safeError(error),'error');}});actions.append(button);
-     }row.append(actions);box.append(row);
+     }row.append(actions);const item=R.dom('div',{class:'invite-item'});item.append(row,sessionAssignmentForm(h));box.append(item);
    }
    if(!box.children.length)box.append(R.dom('p',{class:'muted'},'No matching invitations. Empty and archived households have no active invitation.'));
  }
@@ -559,25 +559,61 @@
    $('publishEventButton').disabled=!!e.is_published;
    $('unpublishEventButton').disabled=!e.is_published;
  }
- function renderSessions(){
-   const div=$('sessionsList');div.replaceChildren();
-   for(const s of store.sessions.sort((a,b)=>a.sort_order-b.sort_order)){
-     const assigned=store.defaults.filter(d=>d.session_id===s.id&&d.is_invited).length;
-     const wrap=R.dom('div',{class:'session-row'}),left=R.dom('div');
-     left.append(R.dom('strong',{},s.name),R.dom('small',{},`${s.session_key} · ${assigned} households invited · ${s.requires_rsvp?'RSVP required':'No RSVP'}${s.starts_at?' · '+R.formatDate(s.starts_at,'en',store.settings?.timezone):''}`));
-     const addAll=R.dom('button',{class:'btn secondary edit-only',type:'button'},'Invite all households');
-     addAll.disabled=assigned>=store.households.length;
-     addAll.addEventListener('click',async()=>{
-       if(!confirm(`Invite all ${store.households.length} existing households to ${s.name}?`))return;
-       const data=store.households.map(h=>({household_id:h.id,session_id:s.id,is_invited:true}));
-       addAll.disabled=true;
-       const {error}=await db.from('household_session_defaults').upsert(data,{onConflict:'household_id,session_id'});
-       if(error)show(R.safeError(error),'error');else{show('Household invitations assigned.','success');await reload();}
-       addAll.disabled=false;
-     });
-     wrap.append(left,addAll);div.append(wrap);
+ function venueForm(v){
+   const f=managementForm();const name=field(f,'Venue name',v.name,null,'text',true,140);
+   const country=field(f,'Country code',v.country_code,null,'text',false,2);country.placeholder='FO or DE';
+   const address=field(f,'Venue address',v.address,null,'textarea',false,1000);
+   const timezone=field(f,'Venue timezone',v.timezone||store.settings?.timezone||'Atlantic/Faroe',null,'text',true,100);
+   timezone.placeholder='Atlantic/Faroe or Europe/Berlin';
+   const map=field(f,'Map link (HTTPS)',v.map_url,null,'url',false,2000);
+   const notes=field(f,'Guest venue notes',v.notes,null,'textarea');
+   const archived=field(f,'Archived venue',!!v.archived_at,null,'checkbox');
+   return saveForm(f,v.id?'Save venue':'Create venue',()=>managementRpc('admin_save_venue',{p_id:v.id||null,p_values:{name:name.value.trim(),country_code:country.value.trim().toUpperCase()||null,address:address.value.trim(),timezone:timezone.value.trim(),map_url:map.value.trim(),notes:notes.value.trim(),archived:archived.checked}}));
+ }
+ function sessionForm(s){
+   const f=managementForm();const name=field(f,'Session name',s.name,null,'text',true,140);
+   const key=field(f,'Session key',s.session_key,null,'text',true,80);key.pattern='[a-z0-9_-]+';
+   const venue=field(f,'Session venue',s.location_id,[['','No venue'],...ordered(store.locations,'name').filter(v=>!v.archived_at).map(v=>[v.id,v.name+(v.country_code?' · '+v.country_code:'')])]);
+   const zone=()=>store.locations.find(v=>v.id===venue.value)?.timezone||store.settings?.timezone||'UTC';
+   const starts=field(f,'Starts (venue local time)',R.zonedInput(s.starts_at,zone()),null,'datetime-local');
+   const ends=field(f,'Ends (venue local time)',R.zonedInput(s.ends_at,zone()),null,'datetime-local');
+   const hint=R.dom('p',{class:'micro span-2'});const updateHint=()=>{hint.textContent='Times are entered in '+zone()+'. Changing venue keeps the typed local time; review before saving.';};updateHint();venue.addEventListener('change',updateHint);f.append(hint);
+   const rsvp=field(f,'RSVP required',s.requires_rsvp!==false,null,'checkbox');
+   const active=field(f,'Active session',s.is_active!==false,null,'checkbox');
+   const order=field(f,'Display order',s.sort_order||0,null,'number');order.min='0';order.step='1';
+   return saveForm(f,s.id?'Save session':'Create session',()=>managementRpc('admin_save_session',{p_id:s.id||null,p_values:{name:name.value.trim(),session_key:key.value.trim(),location_id:venue.value||null,starts_at:R.zonedInstant(starts.value,zone()),ends_at:R.zonedInstant(ends.value,zone()),requires_rsvp:rsvp.checked,is_active:active.checked,sort_order:Number(order.value)}}));
+ }
+ function sessionAssignmentForm(h){
+   const d=disclosure('Session invitations');
+   d.append(R.dom('p',{class:'micro'},'Household defaults apply to each guest unless an individual exception is selected. Language does not determine invitations.'));
+   const f=managementForm();const fields=[];const guests=store.guests.filter(g=>g.household_id===h.id&&!g.archived_at);
+   const locked=h.rsvp_state!=='open'||store.submissions.some(x=>x.household_id===h.id);
+   for(const s of ordered(store.sessions,'name')){
+     const venue=store.locations.find(v=>v.id===s.location_id);const title=s.name+(venue?' · '+venue.name:'')+(s.is_active?'':' (inactive)');
+     const invited=!!store.defaults.find(x=>x.household_id===h.id&&x.session_id===s.id)?.is_invited;
+     const household=field(f,title+' — household',String(invited),[['false','Not invited'],['true','Invited']]);fields.push({session_id:s.id,guest_id:null,control:household});
+     for(const g of guests){
+       const existing=store.overrides.find(x=>x.guest_id===g.id&&x.session_id===s.id);
+       const control=field(f,[g.first_name,g.last_name].filter(Boolean).join(' ')+' — '+s.name,existing?String(existing.is_invited):'inherit',[['inherit','Follow household'],['true','Invited'],['false','Not invited']]);
+       fields.push({session_id:s.id,guest_id:g.id,control});
+     }
+     const summary=R.dom('p',{class:'micro view-only'},title+': '+(invited?'Household invited':'Household not invited'));d.append(summary);
+     for(const g of guests){const o=store.overrides.find(x=>x.guest_id===g.id&&x.session_id===s.id);if(o)d.append(R.dom('p',{class:'micro view-only'},g.first_name+': '+(o.is_invited?'Invited':'Not invited')));}
    }
-   if(!store.sessions.length)div.append(R.dom('p',{class:'muted'},'No sessions configured yet.'));
+   if(locked){d.append(R.dom('p',{class:'notice'},'Invitations are protected because this household has RSVP history.'));return d;}
+   saveForm(f,'Save session invitations',()=>managementRpc('admin_save_session_assignments',{p_household_id:h.id,p_assignments:fields.map(x=>({session_id:x.session_id,guest_id:x.guest_id,is_invited:x.control.value==='inherit'?null:x.control.value==='true'}))}));
+   if(fields.length)d.append(f);else d.append(R.dom('p',{},'Create sessions in Settings first.'));return d;
+ }
+ function renderSessions(){
+   const venues=$('venueList');venues.replaceChildren();
+   for(const v of ordered(store.locations,'name')){const d=disclosure(v.name+(v.archived_at?' · Archived':''));d.append(R.dom('p',{},[v.address,v.country_code,v.timezone].filter(Boolean).join(' · ')),venueForm(v));venues.append(d);}
+   $('newVenueForm').replaceChildren(venueForm({}));
+   const div=$('sessionsList');div.replaceChildren();
+   for(const s of ordered(store.sessions,'name')){
+     const v=store.locations.find(v=>v.id===s.location_id);const d=disclosure(s.name+(s.is_active?'':' · Inactive'));
+     d.append(R.dom('p',{class:'micro'},[v?.name,s.starts_at?R.formatDate(s.starts_at,'en',v?.timezone||store.settings?.timezone):'Unscheduled',v?.timezone,s.requires_rsvp?'RSVP required':'Information only'].filter(Boolean).join(' · ')),sessionForm(s));div.append(d);
+   }
+   $('newSessionEditor').replaceChildren(sessionForm({sort_order:store.sessions.length+1}));
  }
  function renderContent(){
    for(const lang of ['fo','en','de']){
@@ -670,12 +706,6 @@
      const {error}=await db.from('event_settings').update({is_published:false,updated_at:new Date().toISOString()}).eq('id',1);
      if(error)show(R.safeError(error),'error');else{show('Event unpublished.','success');await reload();}
      button.disabled=false;
-   });
-   $('newSessionForm').addEventListener('submit',async e=>{
-     e.preventDefault();const data={session_key:$('newSessionKey').value.toLowerCase().trim(),name:$('newSessionName').value.trim(),requires_rsvp:true,is_active:true,sort_order:store.sessions.length+1};
-     if(!/^[a-z0-9_-]+$/.test(data.session_key)){show('Session key may contain only lowercase letters, numbers, - and _.','error');return;}
-     const {error}=await db.from('event_sessions').insert(data);
-     if(error)show(R.safeError(error),'error');else{e.target.reset();show('New session created. Assign households before launch.','success');await reload();}
    });
    $('welcomeForm').addEventListener('submit',async e=>{
      e.preventDefault();const values=['fo','en','de'].map(lang=>({content_key:'welcome',language_code:lang,content_value:$("welcome"+lang[0].toUpperCase()+lang.slice(1)).value.trim()})).filter(r=>r.content_value);

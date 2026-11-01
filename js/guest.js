@@ -6,8 +6,8 @@
   const $=R.byId;
   function t(k){return window.RSVP_I18N.t(dict[k]||k,{},language);}
   function status(s,type='info'){R.showStatus('guestStatus',s,type);}
-  function setLanguage(lang,save=false){ language=['fo','en','de'].includes(lang)?lang:'en';window.RSVP_I18N.setLanguage(language,save);
-    document.querySelectorAll('[data-language]').forEach(b=>b.classList.toggle('selected',b.dataset.language===language));
+  function setLanguage(lang,save=false){ language=window.RSVP_I18N.enabled(lang)?lang:window.RSVP_I18N.defaultLanguage;window.RSVP_I18N.setLanguage(language,save);
+    document.querySelectorAll('[data-language]').forEach(b=>{b.classList.toggle('selected',b.dataset.language===language);b.setAttribute('aria-pressed',String(b.dataset.language===language));});
     $('invitationDescription').textContent=t('who');
     $('codeCard').querySelector('h2').textContent=t('enter');$('codeCard').querySelector('p').textContent=t('codeHelp');
     $('codeForm').querySelector('button').textContent=t('open');$('saveRsvp').textContent=t('submit');$('confirmFood').textContent=t('confirmFood');
@@ -15,6 +15,7 @@
     const answers=Array.from($('rsvpRows').querySelectorAll('input:checked')).map(n=>[n.name,n.value]);
     renderEvent();if(invitation){renderInvitation();for(const [name,value] of answers){const n=Array.from($('rsvpRows').querySelectorAll('input')).find(n=>n.name===name&&n.value===value);if(n)n.checked=true;}}if(foodState)renderFood();
   }
+  function translated(key,legacy={},last=''){const values={...legacy};for(const c of eventData?.translations||[])if(c.content_key===key)values[c.language_code]=c.content_value;return window.RSVP_I18N.resolve(values,language)||last;}
   function renderEvent(){
     const event=eventData?.event;
     if(!event)return;
@@ -23,7 +24,7 @@
     $('eventDate').textContent=R.formatDate(event.event_date,language,event.timezone);
     document.title=name+' | '+window.RSVP_I18N.t("Invitation");
     const content=eventData.content||{};
-    $('welcomeMessage').textContent=content[language]||t('welcome');
+    $('welcomeMessage').textContent=window.RSVP_I18N.resolve(content,language)||t('welcome');
   }
   function renderInvitation(){
     const h=invitation.household || {}, sessions=eventData?.sessions||[];
@@ -38,12 +39,12 @@
       entry.append(R.dom('h3',{},[guest.courtesy_title,guest.first_name,guest.last_name].filter(Boolean).join(' ')||window.RSVP_I18N.t("Guest")));
       items.forEach(link=>{
         const session=sessions.find(s=>s.id===link.session_id);if(!session)return;
-        entry.append(R.dom('div',{class:'session-name'},session.name));
+        entry.append(R.dom('div',{class:'session-name'},translated('session:'+session.id+':name',{},session.name)));
         const venue=eventData?.locations?.find(v=>v.id===session.location_id);
         const zone=venue?.timezone||eventData?.event?.timezone||'UTC';
         const details=[venue?.name,venue?.address,session.starts_at?R.formatDate(session.starts_at,language,zone):null,session.ends_at?'– '+R.formatDate(session.ends_at,language,zone):null,session.starts_at?zone:null].filter(Boolean);
         entry.append(R.dom('p',{class:'micro session-venue'},details.join(' · ')));
-        const welcome=venue?.['welcome_'+language]||venue?.['welcome_'+(eventData?.event?.default_language||'en')];if(welcome)entry.append(R.dom('p',{class:'venue-welcome'},welcome));
+        const welcome=translated('venue:'+venue?.id+':welcome',{fo:venue?.welcome_fo,en:venue?.welcome_en,de:venue?.welcome_de});if(welcome)entry.append(R.dom('p',{class:'venue-welcome'},welcome));
         if(venue?.notes)entry.append(R.dom('p',{class:'micro'},venue.notes));
         if(venue?.map_url){try{const url=new URL(venue.map_url);if(url.protocol==='https:'){const a=R.dom('a',{class:'quiet-link'},'↗ '+venue.name);a.href=url.href;a.target='_blank';a.rel='noopener noreferrer';entry.append(a);}}catch(_){} }
         if(!link.requires_rsvp)return;
@@ -72,7 +73,7 @@
     code=inviteCode;invitation=data;pendingRequestId=null;
     $('codeCard').classList.add('hidden');$('invitationCard').classList.remove('hidden');
     const guestLang=invitation.household?.language;
-    if(!window.RSVP_I18N.hasPreference()&&['fo','en','de'].includes(guestLang))language=guestLang;
+    if(!window.RSVP_I18N.hasPreference()&&window.RSVP_I18N.enabled(guestLang))language=guestLang;
     setLanguage(language);
     await loadFood();
   }
@@ -110,8 +111,9 @@
       const mine=claimed.find(c=>c.food_item_id===item.id)?.quantity||0;
       const remain=Math.max(0,(item.quantity_needed||0)-(item.claimed_total||0)+mine);
       const wrap=R.dom('div',{class:'food-item'}),left=R.dom('div');
-      const label=item['name_'+language]||item.name_en||item.name_fo||item.name_de||window.RSVP_I18N.t("Food item");
+      const label=translated('food:'+item.id+':name',{fo:item.name_fo,en:item.name_en,de:item.name_de},window.RSVP_I18N.t('Food item'));
       left.append(R.dom('strong',{},label),R.dom('span',{class:'food-item-meta'},`${t('available')}: ${Math.max(0,(item.quantity_needed||0)-(item.claimed_total||0))}`));
+      const description=translated('food:'+item.id+':description',{fo:item.description_fo,en:item.description_en,de:item.description_de});if(description)left.append(R.dom('p',{class:'small muted'},description));
       const qty=R.dom('input',{type:'number',min:'0',max:String(remain),value:String(mine)});
       qty.dataset.itemId=item.id;qty.disabled=confirmed;
       qty.setAttribute('aria-label',window.RSVP_I18N.t(window.RSVP_I18N.t("Quantity for {item}"),{item:label}));
@@ -141,7 +143,8 @@
     // Clean the query before any network calls, even when the event is unpublished.
     $('languageSwitcher').classList.toggle('hidden',!rawCode);$('adminLink').classList.toggle('hidden',!!rawCode);
     if(window.location.search)history.replaceState(history.state,'',window.location.pathname+window.location.hash);
-    document.querySelectorAll('[data-language]').forEach(b=>b.addEventListener('click',()=>setLanguage(b.dataset.language,true)));
+    await window.RSVP_I18N.load();language=window.RSVP_I18N.language;
+    $('languageSwitcher').addEventListener('click',e=>{const button=e.target.closest('[data-language]');if(button)setLanguage(button.dataset.language,true);});
     $('codeForm').addEventListener('submit',e=>{e.preventDefault();const candidate=$('inviteCode').value.toUpperCase().trim();if(!R.codePattern.test(candidate)){status(window.RSVP_I18N.t("Invalid invitation code"),'warning');return;}window.location.assign(R.invitationURL(candidate));});
     $('rsvpForm').addEventListener('submit',submitRsvp);$('confirmFood').addEventListener('click',confirmFood);
     setLanguage(language);

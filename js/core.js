@@ -104,14 +104,15 @@
     node.classList.remove('error','warning','success');
     if(type!=='info') node.classList.add(type);
   }
+  function dateLocale(lang){try{const code={fo:'fo-FO',en:'en-GB',de:'de-DE'}[lang]||lang||'en-GB';return Intl.DateTimeFormat.supportedLocalesOf(code).length?code:'en-GB';}catch(_){return 'en-GB';}}
   function formatDate(date,lang='en',tz) {
     if(!date) return '';
     // YYYY-MM-DD must not shift a calendar day when the browser's timezone differs.
     if(/^\d{4}-\d\d-\d\d$/.test(date)){
       const [y,m,d]=date.split('-').map(Number);
-      return new Intl.DateTimeFormat({fo:'fo-FO',en:'en-GB',de:'de-DE'}[lang]||'en-GB',{dateStyle:'long',timeZone:'UTC'}).format(new Date(Date.UTC(y,m-1,d)));
+      return new Intl.DateTimeFormat(dateLocale(lang),{dateStyle:'long',timeZone:'UTC'}).format(new Date(Date.UTC(y,m-1,d)));
     }
-    return new Intl.DateTimeFormat({fo:'fo-FO',en:'en-GB',de:'de-DE'}[lang]||'en-GB',{dateStyle:'medium',timeStyle:'short',timeZone:tz||'UTC'}).format(new Date(date));
+    return new Intl.DateTimeFormat(dateLocale(lang),{dateStyle:'medium',timeStyle:'short',timeZone:tz||'UTC'}).format(new Date(date));
   }
 
   function zonedInput(value,timezone){
@@ -130,8 +131,8 @@
   }
 
   function safeError(error) {return error && typeof error.message==='string' ? error.message : T("Something went wrong.");}
-  function dl(filename,contents) {
-    const blob=new Blob([contents],{type:'text/javascript;charset=utf-8'});
+  function dl(filename,contents,type='text/javascript;charset=utf-8') {
+    const blob=new Blob([contents],{type});
     const url=URL.createObjectURL(blob);const link=document.createElement('a');link.href=url;link.download=filename;document.body.append(link);link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(url),500);
   }
   function configSource() {

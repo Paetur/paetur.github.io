@@ -424,3 +424,13 @@ html[data-theme="dark"] code{background:#253b32;color:var(--ink)}
 #adminApp .admin-management:not([open]){padding:0}
 #adminApp .admin-management:not([open])>summary{margin:0}
 #adminApp .hierarchy-view,#adminApp .food-admin-list{align-content:start;align-items:start}
+
+.language-rows{display:grid;gap:12px;margin-top:20px}
+.language-row{padding:12px 0;border-top:1px solid var(--line);align-items:center}
+.language-enabled,.restore-ack{display:flex!important;align-items:center;gap:9px}
+.language-enabled input,.restore-ack input{width:auto;min-height:0}
+.backup-preview{margin:16px 0;overflow-wrap:anywhere}
+#previewBackup{margin-top:12px}
+#restoreBackupForm{border-top:1px solid var(--line);padding-top:16px}
+.language-switch{flex-wrap:wrap}
+@media(max-width:600px){.language-switch button{padding:4px 7px}}

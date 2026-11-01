@@ -1,30 +1,25 @@
-# Interface languages and customization
+# Languages, fallback and translations
 
-The guest, administration and setup pages share `js/translations.js`, with English source phrases and Faroese/German translations. Static labels, hints, accessibility labels, appearance controls, confirmation dialogs, validation and dynamic administrative summaries use the catalog. Technical identifiers, Supabase dashboard navigation, provider/database diagnostics and user-entered data remain as supplied.
+Settings → Languages supports adding language codes (for example `sv` or `pt-BR`), choosing display names/order, enabling/disabling languages and selecting separate event default and fallback languages. English is the final built-in fallback for interface phrases. Language codes use canonical BCP-47-style tags, up to 16 characters; the interface validates their structure with Intl.
 
-## Language preferences
+The selected language wins. Missing interface text follows selected language → configured fallback → English source. Missing event/venue/food/session translations follow the same language chain, then the existing canonical session name or generic label where appropriate. Selecting English uses the English source directly, not another language's translation.
 
-- Administration and setup have a compact FO/EN/DE selector in the top bar. The selection is saved in this browser. Switching languages reloads the page; a confirmation protects unsaved form input.
-- Guest pages use their existing language buttons. A saved visitor preference takes precedence; otherwise the household language, then event default, selects the language. Switching retains checked RSVP answers.
-- Language selection never changes household languages, invitation assignments or publication state.
-- Dates use the selected interface language; venue-local session timezones remain authoritative.
+FO/EN/DE remain bundled translations. Additional languages are editable translations, not automatically generated translations. Until their texts are entered, the configured fallback appears. Dates use the selected locale; venue-local timezones remain authoritative.
 
-## Welcome messages
+The default and fallback must be enabled; they cannot be disabled until replacement choices are saved. Disabling a language hides it from visitor selectors and new assignments but retains its translations and existing household/guest/contact values. Codes cannot be renamed or deleted. Existing profiles can retain their disabled language while other fields are edited. Guest invitation eligibility is independent of language.
 
-In Settings → Event settings, enter Edit mode to save the Faroese, English and German welcome messages. They are written together to the existing `event_content` table with `content_key='welcome'`. A blank welcome uses the built-in welcome for that language. Venue-specific welcome messages remain in the venue editor.
+Administration and setup use a browser language preference. Guest preferences take precedence over the household language, then the event default. Guest language buttons preserve checked RSVP answers. The language configuration endpoint exposes only enabled language metadata and public interface phrases while the event is unpublished; invitation details and event content remain behind the publication gate.
 
-This uses existing administrator-only SELECT/INSERT/UPDATE RLS policies. No migration, Edge Function deployment or publication change is needed. Changes become visible to invited guests when the event is eventually published.
+## Translation editing
 
-## Custom interface wording
+The Languages translation editor covers interface phrases, event introductions, venue welcomes, session names, food names and descriptions. Blank text removes the translation and uses the fallback. Placeholder sets such as `{item}` and `{count}` must be preserved; the database validates them. All output is plain text.
 
-Settings → Event settings → Customize interface wording lets an administrator choose an English source phrase, a language and replacement wording. Apply wording previews the selected phrase. Download wording file exports all currently applied overrides as `interface-overrides.js`.
+FO/EN/DE venue welcomes and food labels continue to use their existing columns, so the existing venue/food editors and the translation editor edit the same values. Additional languages and per-language session names use `event_content`. Event introductions use its `welcome` key. Additional languages can also be assigned to households, guests and contacts.
 
-Commit that file at `js/interface-overrides.js` in the repository, using the normal pull request/deployment workflow. It is loaded by all three interfaces. Downloaded wording is public; do not include private data. The editor does not automatically commit or deploy the file. Reopen the editor from the current deployment before making additional changes so the download includes the latest overrides.
+The existing Event settings welcome editors and interface wording preview remain available. Applying interface wording now saves it in the database. Downloading `interface-overrides.js` is an optional file-based customization mechanism; previously committed overrides retain precedence over database/bundled text. Remove an old file override if you want the database editor to control that phrase. Keep `{placeholders}` intact.
 
-Placeholders such as `{count}`, `{time}` and `{item}` must be preserved. Blank wording restores the built-in translation. Overrides are plain text, with a 12,000-character limit; HTML is never interpreted. Unknown phrases, unsupported languages and invalid placeholder sets are ignored when loading an override file. Interface overrides are independent of guest names, venue names, food labels, invitation messages and event data.
+Language preferences, profiles and translations are part of application backups. Source code and an optional deployed interface-overrides.js file are backed up separately with the repository. None of these operations changes event publication.
 
 ## Validation
 
-`node tests/interface-localization.cjs` checks all catalog translations and placeholder sets, then exercises FO/EN/DE guest, administrator and setup pages in Chromium and WebKit at mobile width. It checks administrator welcome saves, unpublished-state preservation, customization escaping/export, placeholder rejection, guest language preferences, localized food actions and retained RSVP answers. It uses only synthetic data.
-
-Run the existing authentication, administrator invitation, timezone and layout regressions as well. The GitHub Actions workflow runs the browser checks before release. Language review by native speakers remains part of launch acceptance, especially for event-specific wording entered by administrators.
+The browser suites cover FO/EN/DE, adding Swedish, selector updates, saved language preferences, German fallback for missing Swedish text, English source precedence, protected default/fallback disabling, translation persistence and backup/import screens. Database tests cover enabled-language assignment, placeholders, authorization and restoration. Native-speaker review remains part of acceptance for administrator-entered translations.

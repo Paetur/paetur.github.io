@@ -1,3 +1,6 @@
+-- Fresh projects only. Generated from migrations in filename order. Never run on an existing event.
+
+-- Migration: 001_legacy_schema.sql
 -- RSVP Manager 001: fresh destination only. Do not apply to source project.
 BEGIN;
 CREATE TABLE public.relation_groups (id uuid PRIMARY KEY DEFAULT gen_random_uuid(),name text NOT NULL UNIQUE,sort_order integer NOT NULL DEFAULT 0,created_at timestamptz NOT NULL DEFAULT now());
@@ -54,6 +57,8 @@ CREATE INDEX food_claims_item_idx ON public.food_claims(food_item_id);
 -- Avoid recreating old generate_invite_code default until audited replacement exists.
 -- Import explicit original invite_code values; new-household creation uses a trusted RPC later.
 COMMIT;
+
+-- Migration: 002_rsvp_schema.sql
 -- RSVP Manager 002: new reusable single-event schema.
 BEGIN;
 CREATE TABLE public.event_languages (language_code text PRIMARY KEY CHECK(length(language_code) BETWEEN 2 AND 16),display_name text NOT NULL,enabled boolean NOT NULL DEFAULT true,sort_order integer NOT NULL DEFAULT 0);
@@ -161,6 +166,8 @@ CREATE INDEX rsvp_household_audit_household_time_idx ON public.rsvp_household_au
 CREATE INDEX invitation_queue_household_status_idx ON public.invitation_send_queue(household_id,status);
 CREATE INDEX invitation_delivery_audit_queue_idx ON public.invitation_delivery_audit(queue_id,created_at DESC);
 COMMIT;
+
+-- Migration: 003_security_and_rpcs.sql
 -- RSVP Manager 003: SECURITY AND CORE RPCs. Fresh destination only.
 -- Review all function bodies and run 004 tests before exposing a public website.
 BEGIN;
@@ -388,6 +395,8 @@ GRANT EXECUTE ON FUNCTION public.admin_authorize_late_rsvp(uuid,timestamptz,text
 GRANT EXECUTE ON FUNCTION public.admin_correct_rsvp(uuid,uuid,text,text) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.admin_confirm_invitation_sent(uuid,text) TO authenticated;
 COMMIT;
+
+-- Migration: 004_food_rpcs.sql
 -- RSVP Manager 004: protected food RPCs and validation queries.
 BEGIN;
 CREATE FUNCTION public.get_household_food(p_code text) RETURNS jsonb LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path = '' AS $$
@@ -437,10 +446,13 @@ GRANT EXECUTE ON FUNCTION public.set_household_food_claim(text,uuid,integer,text
 GRANT EXECUTE ON FUNCTION public.confirm_household_food(text) TO anon,authenticated;
 COMMIT;
 
+-- Migration: 005_event_date_support.sql
 -- Fresh-project installation: migration already installed on the existing RSVP database.
 ALTER TABLE public.event_settings ADD COLUMN IF NOT EXISTS event_date date;
 COMMENT ON COLUMN public.event_settings.event_date IS
 'Primary calendar date of the event, without an assumed time of day; session times are separate.';
+
+-- Migration: 006_admin_management.sql
 -- RSVP Manager: administrator membership via existing verified Supabase Auth accounts.
 -- Never call Supabase Auth admin endpoints from the browser or expose service_role.
 -- Apply AFTER 001-005. Uses explicit grants and no table write access for clients.
@@ -544,6 +556,8 @@ GRANT EXECUTE ON FUNCTION public.admin_add_existing_user(text,text) TO authentic
 GRANT EXECUTE ON FUNCTION public.admin_remove_member(uuid) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.admin_rename_member(uuid,text) TO authenticated;
 COMMIT;
+
+-- Migration: 007_public_read_api.sql
 -- Additional public event read API for the standalone RSVP Manager.
 -- Public content is shown only when the event is published.
 BEGIN;
@@ -586,6 +600,8 @@ END $$;
 REVOKE ALL ON FUNCTION public.get_household_food(text) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.get_household_food(text) TO anon,authenticated;
 COMMIT;
+
+-- Migration: 008_seed_new_event_defaults.sql
 -- Safe first-time defaults. Existing event settings and language choices are never overwritten.
 -- New project owners may change these values after first admin login.
 BEGIN;
@@ -597,7 +613,7 @@ VALUES(1,'My event','other','en','UTC',false)
 ON CONFLICT(id) DO NOTHING;
 COMMIT;
 
--- ---- Security / hierarchy update 009 ----
+-- Migration: 009_household_food_ordering.sql
 -- RSVP Manager 009: authenticated-admin hierarchy and ordering controls.
 -- Idempotent, non-destructive. Leaves existing parent links and sort_order values unchanged.
 BEGIN;
@@ -728,7 +744,7 @@ GRANT EXECUTE ON FUNCTION public.admin_set_food_category(uuid,text) TO authentic
 GRANT EXECUTE ON FUNCTION public.admin_rename_food_category(uuid,text) TO authenticated;
 COMMIT;
 
--- ---- Security / hierarchy update 010 ----
+-- Migration: 010_guest_food_category_order.sql
 -- RSVP Manager 010: order guest food by admin category and item sort order.
 -- Safe on populated projects: no guest, food, or claim data is rewritten.
 BEGIN;
@@ -758,7 +774,7 @@ REVOKE ALL ON FUNCTION public.get_household_food(text) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.get_household_food(text) TO anon,authenticated;
 COMMIT;
 
--- ---- Security / hierarchy update 011 ----
+-- Migration: 011_enforce_publication_on_guest_rpcs.sql
 -- Migration 011: public invitation, RSVP and food functions require event publication.
 -- Deployed in the existing wedding project and tested with anonymous role.
 -- Keep per-code rate limiting as a separate edge/API requirement.
@@ -836,7 +852,7 @@ RETURN jsonb_build_object('submission_id',v_id,'submission_number',v_number,'alr
 END $function$;
 COMMIT;
 
--- ---- Migration 012: guest gateway throttling and direct-RPC protections ----
+-- Migration: 012_guest_gateway_rate_limits.sql
 -- Migration 012/013: restrict guest calls to the throttled Edge Function and create atomic counters.
 -- The Edge Function uses a server-only service-role key; public browser code never receives it.
 BEGIN;
@@ -889,7 +905,7 @@ GRANT EXECUTE ON FUNCTION public.set_household_food_claim(text,uuid,integer,text
 GRANT EXECUTE ON FUNCTION public.confirm_household_food(text) TO service_role;
 COMMIT;
 
--- ---- Migration 014: administrator guest editing ----
+-- Migration: 014_admin_guest_edit.sql
 -- 014: Restore administrator guest editing inside the expandable household tree.
 -- Only profile fields are editable; RSVP status, household ownership, and submission locks are untouched.
 BEGIN;
@@ -959,7 +975,7 @@ GRANT EXECUTE ON FUNCTION public.admin_update_guest(uuid,text,text,text,text,tex
   TO authenticated;
 COMMIT;
 
-
+-- Migration: 20261030235507_household_guest_management.sql
 -- Household/guest lifecycle. No imported identities, codes or responses are changed.
 BEGIN;
 ALTER TABLE public.households ADD COLUMN archived_at timestamptz;
@@ -1151,6 +1167,7 @@ CREATE TRIGGER management_parent_guard BEFORE INSERT OR UPDATE OF parent_id,side
 
 COMMIT;
 
+-- Migration: 20261031002431_invitation_management_and_household_contacts.sql
 -- Empty/group-only households have no invitation. Retired codes are never reassigned.
 BEGIN;
 ALTER TABLE public.households ALTER COLUMN invite_code DROP NOT NULL;
@@ -1236,6 +1253,7 @@ END $$;
 
 COMMIT;
 
+-- Migration: 20261031003119_venues_and_session_invitations.sql
 -- Independent venues, timezone-aware sessions and audited invitation exceptions.
 BEGIN;
 ALTER TABLE public.event_locations ADD COLUMN timezone text;
@@ -1327,6 +1345,8 @@ REVOKE INSERT,UPDATE,DELETE ON public.event_locations,public.event_sessions,publ
 REVOKE ALL ON FUNCTION public.admin_save_venue(uuid,jsonb),public.admin_save_session(uuid,jsonb),public.admin_save_session_assignments(uuid,jsonb) FROM PUBLIC,anon,authenticated;
 GRANT EXECUTE ON FUNCTION public.admin_save_venue(uuid,jsonb),public.admin_save_session(uuid,jsonb),public.admin_save_session_assignments(uuid,jsonb) TO authenticated;
 COMMIT;
+
+-- Migration: 20261031101548_admin_delivery_rsvp_food_controls.sql
 -- Audited manual delivery tracking, RSVP administration and food permissions.
 BEGIN;
 ALTER TABLE public.invitation_send_queue ADD COLUMN revision integer NOT NULL DEFAULT 1;
@@ -1458,6 +1478,7 @@ REVOKE ALL ON FUNCTION public.admin_save_delivery(uuid,uuid,jsonb,integer),publi
 GRANT EXECUTE ON FUNCTION public.admin_save_delivery(uuid,uuid,jsonb,integer),public.admin_record_delivery_sent(uuid,integer,text),public.admin_set_food_access(uuid,boolean,boolean,text),public.admin_reopen_household_rsvp(uuid,text),public.admin_authorize_late_rsvp(uuid,timestamptz,text),public.admin_correct_rsvp(uuid,uuid,text,text) TO authenticated;
 COMMIT;
 
+-- Migration: 20261031135203_venue_welcome_messages.sql
 BEGIN;
 ALTER TABLE public.event_locations ADD COLUMN welcome_fo text CHECK(length(welcome_fo)<=4000);
 ALTER TABLE public.event_locations ADD COLUMN welcome_en text CHECK(length(welcome_en)<=4000);
@@ -1485,6 +1506,8 @@ REVOKE ALL ON FUNCTION public.admin_save_venue(uuid,jsonb) FROM PUBLIC,anon;
 GRANT EXECUTE ON FUNCTION public.admin_save_venue(uuid,jsonb),public.admin_save_household(uuid,jsonb) TO authenticated;
 NOTIFY pgrst, 'reload schema';
 COMMIT;
+
+-- Migration: 20261031212201_unified_administration_logs.sql
 BEGIN;
 CREATE TABLE public.invitation_access_audit(id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,household_id uuid NOT NULL REFERENCES public.households(id),created_at timestamptz NOT NULL DEFAULT clock_timestamp());
 CREATE INDEX invitation_access_time ON public.invitation_access_audit(household_id,created_at DESC);
@@ -1575,6 +1598,7 @@ GRANT EXECUTE ON FUNCTION public.get_invitation_logged(text) TO service_role;
 
 COMMIT;
 
+-- Migration: 20261031215758_guest_linked_household_contacts.sql
 BEGIN;
 ALTER TABLE public.household_contacts ADD COLUMN guest_id uuid REFERENCES public.guests(id) ON DELETE RESTRICT;
 CREATE INDEX household_contact_guest ON public.household_contacts(guest_id) WHERE guest_id IS NOT NULL;
@@ -1603,8 +1627,7 @@ GRANT EXECUTE ON FUNCTION public.admin_save_contact(uuid,uuid,jsonb) TO authenti
 NOTIFY pgrst, 'reload schema';
 COMMIT;
 
-
--- Administrator invitations (20261031230121)
+-- Migration: 20261031230121_administrator_invitations.sql
 BEGIN;
 CREATE TABLE public.admin_invitations (
  id uuid PRIMARY KEY DEFAULT gen_random_uuid(), email text NOT NULL UNIQUE,
@@ -1738,4 +1761,468 @@ UNION ALL SELECT 'app-session:'||a.id,a.created_at,'login',a.action,NULL::uuid,a
 UNION ALL SELECT 'auth:'||a.id,a.created_at,'login',coalesce(a.payload->>'action','auth_event'),NULL::uuid,u.id,'Authentication',jsonb_build_object('source','Auth service','provider',a.payload->>'provider') FROM auth.audit_log_entries a LEFT JOIN auth.users u ON u.id::text=a.payload->>'actor_id' WHERE a.created_at IS NOT NULL
 UNION ALL SELECT 'admin-invitation:'||a.id,a.created_at,'administrators',a.action,NULL::uuid,a.actor_user_id,a.email,a.details FROM public.admin_invitation_audit a;
 
+COMMIT;
+
+-- Migration: 20261101105008_language_management.sql
+BEGIN;
+ALTER TABLE public.event_languages ADD CONSTRAINT event_language_code_format CHECK(language_code ~ '^[a-z]{2,3}(-[A-Za-z0-9]{2,8})*$');
+ALTER TABLE public.event_settings ADD COLUMN fallback_language text NOT NULL DEFAULT 'en' REFERENCES public.event_languages(language_code);
+ALTER TABLE public.households DROP CONSTRAINT IF EXISTS households_language_check;
+ALTER TABLE public.guests DROP CONSTRAINT IF EXISTS guests_language_check;
+ALTER TABLE public.households ADD CONSTRAINT households_language_fk FOREIGN KEY(language) REFERENCES public.event_languages(language_code);
+ALTER TABLE public.guests ADD CONSTRAINT guests_language_fk FOREIGN KEY(language) REFERENCES public.event_languages(language_code);
+CREATE INDEX households_language ON public.households(language);
+CREATE INDEX guests_language ON public.guests(language);
+
+CREATE FUNCTION app_private.guard_language_preferences() RETURNS trigger LANGUAGE plpgsql SET search_path='' AS $$
+BEGIN
+ PERFORM 1 FROM public.event_languages WHERE language_code IN(NEW.default_language,NEW.fallback_language) ORDER BY language_code FOR SHARE;
+ IF NOT EXISTS(SELECT 1 FROM public.event_languages WHERE language_code=NEW.default_language AND enabled)
+ OR NOT EXISTS(SELECT 1 FROM public.event_languages WHERE language_code=NEW.fallback_language AND enabled) THEN
+ RAISE EXCEPTION 'Default and fallback languages must be enabled';END IF;
+ RETURN NEW;
+END $$;
+REVOKE ALL ON FUNCTION app_private.guard_language_preferences() FROM PUBLIC,anon,authenticated;
+CREATE TRIGGER language_preferences_guard BEFORE INSERT OR UPDATE OF default_language,fallback_language ON public.event_settings FOR EACH ROW EXECUTE FUNCTION app_private.guard_language_preferences();
+CREATE FUNCTION app_private.guard_language_removal() RETURNS trigger LANGUAGE plpgsql SET search_path='' AS $$
+BEGIN
+ IF TG_OP='DELETE' THEN RAISE EXCEPTION 'Disable languages instead of deleting their translations';END IF;
+ IF NEW.language_code IS DISTINCT FROM OLD.language_code THEN RAISE EXCEPTION 'Language codes cannot be renamed';END IF;
+ IF NOT NEW.enabled AND EXISTS(SELECT 1 FROM public.event_settings WHERE default_language=OLD.language_code OR fallback_language=OLD.language_code) THEN RAISE EXCEPTION 'Choose another default and fallback before disabling this language';END IF;
+ RETURN NEW;
+END $$;
+REVOKE ALL ON FUNCTION app_private.guard_language_removal() FROM PUBLIC,anon,authenticated;
+CREATE TRIGGER language_removal_guard BEFORE UPDATE OR DELETE ON public.event_languages FOR EACH ROW EXECUTE FUNCTION app_private.guard_language_removal();
+CREATE FUNCTION app_private.guard_profile_language() RETURNS trigger LANGUAGE plpgsql SET search_path='' AS $$
+DECLARE code text;old_code text;
+BEGIN
+ code:=to_jsonb(NEW)->>TG_ARGV[0];IF TG_OP='UPDATE' THEN old_code:=to_jsonb(OLD)->>TG_ARGV[0];END IF;
+ IF code IS NOT NULL AND code IS DISTINCT FROM old_code THEN PERFORM 1 FROM public.event_languages WHERE language_code=code FOR SHARE;END IF;
+ IF code IS NOT NULL AND code IS DISTINCT FROM old_code AND NOT EXISTS(SELECT 1 FROM public.event_languages WHERE language_code=code AND enabled) THEN RAISE EXCEPTION 'Choose an enabled language';END IF;RETURN NEW;
+END $$;
+REVOKE ALL ON FUNCTION app_private.guard_profile_language() FROM PUBLIC,anon,authenticated;
+CREATE TRIGGER household_language_guard BEFORE INSERT OR UPDATE OF language ON public.households FOR EACH ROW EXECUTE FUNCTION app_private.guard_profile_language('language');
+CREATE TRIGGER guest_language_guard BEFORE INSERT OR UPDATE OF language ON public.guests FOR EACH ROW EXECUTE FUNCTION app_private.guard_profile_language('language');
+CREATE TRIGGER contact_language_guard BEFORE INSERT OR UPDATE OF language_code ON public.household_contacts FOR EACH ROW EXECUTE FUNCTION app_private.guard_profile_language('language_code');
+
+CREATE FUNCTION public.admin_save_language(p_code text,p_name text,p_enabled boolean,p_order integer) RETURNS void LANGUAGE plpgsql SECURITY DEFINER SET search_path='' AS $$
+BEGIN
+ IF auth.uid() IS NULL OR NOT public.is_admin() THEN RAISE EXCEPTION 'Administrator access required' USING ERRCODE='42501';END IF;
+ IF p_code IS NULL OR p_code !~ '^[a-z]{2,3}(-[A-Za-z0-9]{2,8})*$' OR length(p_code)>16 OR nullif(btrim(p_name),'') IS NULL OR length(p_name)>80 OR p_enabled IS NULL OR p_order IS NULL THEN RAISE EXCEPTION 'Enter a language code, name, enabled state and order';END IF;
+ PERFORM pg_advisory_xact_lock(19421,7744);
+ INSERT INTO public.event_languages(language_code,display_name,enabled,sort_order) VALUES(p_code,btrim(p_name),p_enabled,p_order)
+ ON CONFLICT(language_code) DO UPDATE SET display_name=excluded.display_name,enabled=excluded.enabled,sort_order=excluded.sort_order;
+END $$;
+REVOKE ALL ON FUNCTION public.admin_save_language(text,text,boolean,integer) FROM PUBLIC,anon;
+GRANT EXECUTE ON FUNCTION public.admin_save_language(text,text,boolean,integer) TO authenticated;
+
+CREATE FUNCTION public.get_language_configuration() RETURNS jsonb LANGUAGE sql STABLE SECURITY DEFINER SET search_path='' AS $$
+ SELECT jsonb_build_object('languages',(SELECT coalesce(jsonb_agg(to_jsonb(l) ORDER BY sort_order,language_code),'[]') FROM public.event_languages l WHERE enabled),
+ 'default_language',e.default_language,'fallback_language',e.fallback_language,
+ 'translations',(SELECT coalesce(jsonb_agg(to_jsonb(c)),'[]') FROM public.event_content c JOIN public.event_languages l USING(language_code) WHERE l.enabled AND c.content_key LIKE 'ui:%'))
+ FROM public.event_settings e WHERE e.id=1
+$$;
+REVOKE ALL ON FUNCTION public.get_language_configuration() FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.get_language_configuration() TO anon,authenticated;
+CREATE OR REPLACE FUNCTION public.get_public_event_v2() RETURNS jsonb LANGUAGE sql STABLE SECURITY DEFINER SET search_path='' AS $$
+ SELECT jsonb_build_object('event',to_jsonb(e),
+ 'sessions',(SELECT coalesce(jsonb_agg(to_jsonb(s) ORDER BY s.sort_order),'[]') FROM public.event_sessions s WHERE s.is_active),
+ 'locations',(SELECT coalesce(jsonb_agg(to_jsonb(l) ORDER BY l.sort_order),'[]') FROM public.event_locations l WHERE l.archived_at IS NULL),
+ 'content',(SELECT coalesce(jsonb_object_agg(c.language_code,c.content_value),'{}') FROM public.event_content c WHERE c.content_key='welcome'),
+ 'translations',(SELECT coalesce(jsonb_agg(to_jsonb(c)),'[]') FROM public.event_content c WHERE c.content_key NOT LIKE 'ui:%'))
+ FROM public.event_settings e WHERE e.id=1 AND e.is_published
+$$;
+REVOKE ALL ON FUNCTION public.get_public_event_v2() FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.get_public_event_v2() TO anon,authenticated;
+
+CREATE OR REPLACE FUNCTION public.admin_update_guest(
+  p_guest_id uuid,
+  p_first_name text,
+  p_last_name text,
+  p_courtesy_title text,
+  p_relation text,
+  p_language text,
+  p_is_child boolean,
+  p_dietary_requirements text,
+  p_notes text
+)
+RETURNS void
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path TO ''
+AS $function$
+DECLARE
+  v_first text := NULLIF(pg_catalog.btrim(p_first_name), '');
+  v_last text := NULLIF(pg_catalog.btrim(p_last_name), '');
+  v_title text := NULLIF(pg_catalog.btrim(p_courtesy_title), '');
+  v_relation text := NULLIF(pg_catalog.btrim(p_relation), '');
+  v_dietary text := NULLIF(pg_catalog.btrim(p_dietary_requirements), '');
+  v_notes text := NULLIF(pg_catalog.btrim(p_notes), '');
+BEGIN
+  IF auth.uid() IS NULL OR NOT public.is_admin() THEN
+    RAISE EXCEPTION 'Administrator access required' USING ERRCODE='42501';
+  END IF;
+  IF p_guest_id IS NULL OR v_first IS NULL OR pg_catalog.char_length(v_first)>120 THEN
+    RAISE EXCEPTION 'A first name of at most 120 characters is required';
+  END IF;
+  IF pg_catalog.char_length(COALESCE(v_last,''))>120 OR
+     pg_catalog.char_length(COALESCE(v_relation,''))>160 OR
+     pg_catalog.char_length(COALESCE(v_dietary,''))>1000 OR
+     pg_catalog.char_length(COALESCE(v_notes,''))>2000 THEN
+    RAISE EXCEPTION 'Guest field exceeds maximum length';
+  END IF;
+  IF v_title IS NOT NULL AND v_title NOT IN ('Mr.','Ms.','Son','Daughter') THEN
+    RAISE EXCEPTION 'Invalid courtesy title';
+  END IF;
+  IF p_language IS NOT NULL AND NOT EXISTS(SELECT 1 FROM public.event_languages WHERE language_code=p_language) THEN
+    RAISE EXCEPTION 'Invalid guest language';
+  END IF;
+  IF p_is_child IS NULL THEN
+    RAISE EXCEPTION 'Guest child flag is required';
+  END IF;
+
+  UPDATE public.guests
+  SET first_name=v_first, last_name=v_last,
+      courtesy_title=v_title, relation=v_relation,
+      language=p_language, is_child=p_is_child,
+      dietary_requirements=v_dietary, notes=v_notes,
+      updated_at=pg_catalog.now()
+  WHERE id=p_guest_id;
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'Guest not found';
+  END IF;
+END
+$function$;
+
+CREATE FUNCTION public.admin_set_language_preferences(p_default text,p_fallback text) RETURNS void LANGUAGE plpgsql SECURITY DEFINER SET search_path='' AS $$
+BEGIN
+ IF auth.uid() IS NULL OR NOT public.is_admin() THEN RAISE EXCEPTION 'Administrator access required' USING ERRCODE='42501';END IF;
+ PERFORM pg_advisory_xact_lock(19421,7744);
+ UPDATE public.event_settings SET default_language=p_default,fallback_language=p_fallback,updated_at=now() WHERE id=1;
+ IF NOT FOUND THEN RAISE EXCEPTION 'Event settings not found';END IF;
+END $$;
+REVOKE ALL ON FUNCTION public.admin_set_language_preferences(text,text) FROM PUBLIC,anon;
+GRANT EXECUTE ON FUNCTION public.admin_set_language_preferences(text,text) TO authenticated;
+CREATE FUNCTION public.admin_save_translation(p_key text,p_language text,p_value text) RETURNS void LANGUAGE plpgsql SECURITY DEFINER SET search_path='' AS $$
+DECLARE source_tokens text[];value_tokens text[];parts text[];target uuid;
+BEGIN
+ IF auth.uid() IS NULL OR NOT public.is_admin() THEN RAISE EXCEPTION 'Administrator access required' USING ERRCODE='42501';END IF;
+ IF p_key IS NULL OR length(p_key)>800 OR p_key !~ '^(welcome|ui:.+|venue:[0-9a-f-]{36}:welcome|food:[0-9a-f-]{36}:(name|description)|session:[0-9a-f-]{36}:name)$' OR p_value IS NULL OR length(p_value)>12000 THEN RAISE EXCEPTION 'Invalid translation key or text';END IF;
+ IF NOT EXISTS(SELECT 1 FROM public.event_languages WHERE language_code=p_language AND enabled) THEN RAISE EXCEPTION 'Choose an enabled language';END IF;
+ IF p_key LIKE 'ui:%' THEN
+  SELECT array_agg(m[1] ORDER BY m[1]) INTO source_tokens FROM regexp_matches(substr(p_key,4),'\{([A-Za-z][A-Za-z0-9_]*)\}','g') m;
+  SELECT array_agg(m[1] ORDER BY m[1]) INTO value_tokens FROM regexp_matches(p_value,'\{([A-Za-z][A-Za-z0-9_]*)\}','g') m;
+  IF btrim(p_value)<>'' AND source_tokens IS DISTINCT FROM value_tokens THEN RAISE EXCEPTION 'Keep the same placeholders as the original phrase';END IF;
+ END IF;
+ parts:=string_to_array(p_key,':');
+ IF parts[1] IN ('venue','food','session') THEN
+  target:=parts[2]::uuid;
+  IF parts[1]='venue' AND NOT EXISTS(SELECT 1 FROM public.event_locations WHERE id=target) OR parts[1]='food' AND NOT EXISTS(SELECT 1 FROM public.food_items WHERE id=target) OR parts[1]='session' AND NOT EXISTS(SELECT 1 FROM public.event_sessions WHERE id=target) THEN RAISE EXCEPTION 'Translation target not found';END IF;
+ END IF;
+ IF parts[1] IN ('venue','food') AND p_language IN ('fo','en','de') THEN
+  target:=parts[2]::uuid;
+  IF parts[1]='venue' THEN
+   EXECUTE format('UPDATE public.event_locations SET %I=$1 WHERE id=$2','welcome_'||p_language) USING nullif(btrim(p_value),''),target;
+  ELSE
+   IF parts[3]='name' AND p_language='fo' AND btrim(p_value)='' THEN RAISE EXCEPTION 'Faroese name is required';END IF;
+   EXECUTE format('UPDATE public.food_items SET %I=$1 WHERE id=$2',parts[3]||'_'||p_language) USING nullif(btrim(p_value),''),target;
+  END IF;
+  DELETE FROM public.event_content WHERE content_key=p_key AND language_code=p_language;RETURN;
+ END IF;
+ IF btrim(p_value)='' THEN DELETE FROM public.event_content WHERE content_key=p_key AND language_code=p_language;
+ ELSE INSERT INTO public.event_content(content_key,language_code,content_value) VALUES(p_key,p_language,p_value) ON CONFLICT(content_key,language_code) DO UPDATE SET content_value=excluded.content_value;END IF;
+END $$;
+REVOKE ALL ON FUNCTION public.admin_save_translation(text,text,text) FROM PUBLIC,anon;
+GRANT EXECUTE ON FUNCTION public.admin_save_translation(text,text,text) TO authenticated;
+
+NOTIFY pgrst, 'reload schema';
+COMMIT;
+
+-- Migration: 20261101105111_application_backup_restore.sql
+BEGIN;
+CREATE TABLE public.backup_restore_audit(id uuid PRIMARY KEY DEFAULT gen_random_uuid(),actor_user_id uuid NOT NULL REFERENCES auth.users(id),checksum text NOT NULL,source_created_at timestamptz,restored_counts jsonb NOT NULL,created_at timestamptz NOT NULL DEFAULT clock_timestamp());
+ALTER TABLE public.backup_restore_audit ENABLE ROW LEVEL SECURITY;
+REVOKE ALL ON public.backup_restore_audit FROM PUBLIC,anon,authenticated;
+GRANT SELECT ON public.backup_restore_audit TO authenticated;
+CREATE INDEX backup_restore_actor ON public.backup_restore_audit(actor_user_id);
+CREATE POLICY admin_read ON public.backup_restore_audit FOR SELECT TO authenticated USING((SELECT public.is_admin()));
+CREATE TRIGGER immutable_backup_restore_audit BEFORE UPDATE OR DELETE ON public.backup_restore_audit FOR EACH ROW EXECUTE FUNCTION public.prevent_history_mutation();
+-- Fixed allowlist: no schema, table or SQL identifiers are accepted from backup files.
+CREATE FUNCTION app_private.backup_tables() RETURNS text[] LANGUAGE sql IMMUTABLE SET search_path='' AS $$
+ SELECT ARRAY['public.event_languages','public.event_settings','public.relation_groups','public.food_categories',
+ 'public.event_content','public.event_locations','public.event_sessions','public.households','public.guests',
+ 'public.household_contacts','public.household_session_defaults','public.guest_session_overrides','public.food_items',
+ 'public.food_claims','public.stuff_to_bring','public.things_to_do','public.message_templates','public.rsvp_submissions',
+ 'public.guest_session_responses','public.rsvp_household_audit','public.rsvp_response_audit','public.invitation_send_queue',
+ 'public.invitation_deliveries','public.invitation_delivery_audit','public.management_audit','public.event_configuration_audit',
+ 'public.invitation_access_audit','public.admin_membership_audit','public.admin_invitations','public.admin_invitation_audit','public.backup_restore_audit',
+ 'app_private.invitation_code_registry']::text[]
+$$;
+REVOKE ALL ON FUNCTION app_private.backup_tables() FROM PUBLIC,anon,authenticated;
+CREATE FUNCTION app_private.backup_columns(t text) RETURNS jsonb LANGUAGE sql STABLE SET search_path='' AS $$
+ SELECT jsonb_agg(jsonb_build_object('name',attname,'type',format_type(atttypid,atttypmod),'required',attnotnull,'identity',attidentity) ORDER BY attnum)
+ FROM pg_attribute WHERE attrelid=t::regclass AND attnum>0 AND NOT attisdropped
+$$;
+REVOKE ALL ON FUNCTION app_private.backup_columns(text) FROM PUBLIC,anon,authenticated;
+CREATE FUNCTION app_private.backup_payload() RETURNS jsonb LANGUAGE plpgsql STABLE SET search_path='' AS $$
+DECLARE tables jsonb:='{}';columns jsonb:='{}';counts jsonb:='{}';t text;rows jsonb;identities jsonb;ids text[]:=ARRAY[]::text[];fk record;one jsonb;
+BEGIN
+ FOREACH t IN ARRAY app_private.backup_tables() LOOP
+  -- Convert bigint values to strings so JavaScript cannot round audit/identity IDs.
+  EXECUTE format('SELECT coalesce(jsonb_agg(to_jsonb(r)),''[]''::jsonb) FROM %s r',t) INTO rows;
+  DECLARE a record;i integer;BEGIN
+   FOR a IN SELECT attname FROM pg_attribute WHERE attrelid=t::regclass AND atttypid='bigint'::regtype AND attnum>0 AND NOT attisdropped LOOP
+    FOR i IN 0..jsonb_array_length(rows)-1 LOOP
+     IF rows->i->a.attname IS NOT NULL AND rows->i->a.attname<>'null'::jsonb THEN rows:=jsonb_set(rows,ARRAY[i::text,a.attname],to_jsonb(rows->i->>a.attname));END IF;
+    END LOOP;
+   END LOOP;
+  END;
+  FOR fk IN SELECT a.attname FROM pg_constraint c JOIN pg_attribute a ON a.attrelid=c.conrelid AND a.attnum=ANY(c.conkey) WHERE c.conrelid=t::regclass AND c.confrelid='auth.users'::regclass AND c.contype='f' LOOP
+   FOR one IN SELECT value FROM jsonb_array_elements(rows) LOOP IF one->>fk.attname IS NOT NULL THEN ids:=array_append(ids,one->>fk.attname);END IF;END LOOP;
+  END LOOP;
+  tables:=tables||jsonb_build_object(t,rows);columns:=columns||jsonb_build_object(t,app_private.backup_columns(t));counts:=counts||jsonb_build_object(t,jsonb_array_length(rows));
+ END LOOP;
+ -- Only identity metadata, never passwords, tokens, Auth identities or sessions.
+ SELECT coalesce(jsonb_agg(jsonb_build_object('id',id,'email',email)),'[]') INTO identities FROM auth.users WHERE id::text=ANY(ids) OR id IN(SELECT user_id FROM public.admins);
+ RETURN jsonb_build_object('schema_version','20261101105111','created_at',clock_timestamp(),'tables',tables,'columns',columns,'counts',counts,'identities',identities,
+ 'sign_in_log_reference',(SELECT coalesce(jsonb_agg(to_jsonb(a)||jsonb_build_object('id',a.id::text)),'[]') FROM public.admin_session_audit a),
+ 'administrator_reference',(SELECT coalesce(jsonb_agg(to_jsonb(a)),'[]') FROM public.admins a));
+END $$;
+REVOKE ALL ON FUNCTION app_private.backup_payload() FROM PUBLIC,anon,authenticated;
+CREATE FUNCTION public.admin_export_backup() RETURNS jsonb LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path='' AS $$
+DECLARE payload jsonb;
+BEGIN
+ PERFORM app_private.require_live_session();IF NOT public.is_admin() THEN RAISE EXCEPTION 'Administrator access required' USING ERRCODE='42501';END IF;
+ payload:=app_private.backup_payload();
+ IF octet_length(payload::text)>20000000 THEN RAISE EXCEPTION 'Application backup exceeds the 20 MB import limit; use managed database backup tools';END IF;
+ RETURN jsonb_build_object('format','rsvp-application-backup','version',1,'payload',payload,'checksum',encode(sha256(convert_to(payload::text,'UTF8')),'hex'));
+END $$;
+REVOKE ALL ON FUNCTION public.admin_export_backup() FROM PUBLIC,anon;
+GRANT EXECUTE ON FUNCTION public.admin_export_backup() TO authenticated;
+
+CREATE FUNCTION app_private.validate_backup(b jsonb) RETURNS jsonb LANGUAGE plpgsql STABLE SET search_path='' AS $$
+DECLARE t text;row jsonb;k text;cols text[];payload jsonb:=b->'payload';n bigint:=0;
+BEGIN
+ IF b->>'format' IS DISTINCT FROM 'rsvp-application-backup' OR b->>'version' IS DISTINCT FROM '1' OR jsonb_typeof(payload) IS DISTINCT FROM 'object' THEN RAISE EXCEPTION 'Unsupported backup format or version';END IF;
+ IF payload->>'schema_version' IS DISTINCT FROM '20261101105111' THEN RAISE EXCEPTION 'Unsupported backup schema version';END IF;
+ IF octet_length(b::text)>20971520 THEN RAISE EXCEPTION 'Backup exceeds 20 MB';END IF;
+ IF b->>'checksum' IS DISTINCT FROM encode(sha256(convert_to(payload::text,'UTF8')),'hex') THEN RAISE EXCEPTION 'Backup checksum mismatch';END IF;
+ IF jsonb_typeof(payload->'tables') IS DISTINCT FROM 'object' OR jsonb_typeof(payload->'columns') IS DISTINCT FROM 'object' OR jsonb_typeof(payload->'counts') IS DISTINCT FROM 'object' OR jsonb_typeof(payload->'identities') IS DISTINCT FROM 'array' THEN RAISE EXCEPTION 'Incomplete backup manifest';END IF;
+ IF (SELECT array_agg(x ORDER BY x) FROM jsonb_object_keys(payload->'tables') x) IS DISTINCT FROM (SELECT array_agg(x ORDER BY x) FROM unnest(app_private.backup_tables()) x) THEN RAISE EXCEPTION 'Backup table set does not match this application';END IF;
+ FOREACH t IN ARRAY app_private.backup_tables() LOOP
+  IF payload->'columns'->t IS DISTINCT FROM app_private.backup_columns(t) THEN RAISE EXCEPTION 'Schema mismatch for %. Install matching application migrations first',t;END IF;
+  IF jsonb_typeof(payload->'tables'->t) IS DISTINCT FROM 'array' THEN RAISE EXCEPTION 'Invalid table data: %',t;END IF;
+  IF payload->'counts'->>t IS DISTINCT FROM jsonb_array_length(payload->'tables'->t)::text THEN RAISE EXCEPTION 'Row count mismatch: %',t;END IF;
+  SELECT array_agg(attname::text) INTO cols FROM pg_attribute WHERE attrelid=t::regclass AND attnum>0 AND NOT attisdropped;
+  FOR row IN SELECT value FROM jsonb_array_elements(payload->'tables'->t) LOOP
+   IF jsonb_typeof(row) IS DISTINCT FROM 'object' OR (SELECT count(*) FROM jsonb_object_keys(row))<>cardinality(cols) THEN RAISE EXCEPTION 'Missing fields in %',t;END IF;
+   FOR k IN SELECT jsonb_object_keys(row) LOOP IF NOT k=ANY(cols) THEN RAISE EXCEPTION 'Unknown field in %',t;END IF;END LOOP;
+  END LOOP;
+  n:=n+jsonb_array_length(payload->'tables'->t);
+ END LOOP;
+ IF jsonb_array_length(payload->'tables'->'public.event_settings')<>1 THEN RAISE EXCEPTION 'Exactly one event settings record is required';END IF;
+ IF EXISTS(SELECT 1 FROM jsonb_array_elements(payload->'identities') u WHERE nullif(u->>'id','') IS NULL OR nullif(u->>'email','') IS NULL)
+ OR (SELECT count(*) FROM jsonb_array_elements(payload->'identities'))<>(SELECT count(DISTINCT u->>'id') FROM jsonb_array_elements(payload->'identities') u) THEN RAISE EXCEPTION 'Invalid identity manifest';END IF;
+ RETURN jsonb_build_object('rows',n,'counts',payload->'counts','event_name',payload->'tables'->'public.event_settings'->0->>'event_name','created_at',payload->>'created_at');
+END $$;
+REVOKE ALL ON FUNCTION app_private.validate_backup(jsonb) FROM PUBLIC,anon,authenticated;
+
+CREATE FUNCTION app_private.restore_backup(b jsonb) RETURNS jsonb LANGUAGE plpgsql SET search_path='' AS $$
+DECLARE t text;row jsonb;rows jsonb;payload jsonb:=b->'payload';report jsonb;has_rows boolean;cols text;fk record;source_id text;target_id uuid;identity jsonb;mapping jsonb:='{}';rec record;seq text;next_id bigint;changed integer:=0;
+BEGIN
+ report:=app_private.validate_backup(b);
+ -- Consistent lock order, shared with existing management operations. Keep the event closed.
+ PERFORM pg_advisory_xact_lock(19421,7744);
+ FOREACH t IN ARRAY app_private.backup_tables() LOOP EXECUTE format('LOCK TABLE %s IN ACCESS EXCLUSIVE MODE',t);END LOOP;
+ IF EXISTS(SELECT 1 FROM public.event_settings WHERE is_published) THEN RAISE EXCEPTION 'Restore destination must be unpublished';END IF;
+ FOREACH t IN ARRAY app_private.backup_tables() LOOP
+  IF t IN ('public.event_languages','public.event_settings') THEN CONTINUE;END IF;
+  EXECUTE format('SELECT EXISTS(SELECT 1 FROM %s)',t) INTO has_rows;
+  IF has_rows THEN RAISE EXCEPTION 'Restore requires an empty application destination; % contains records',t;END IF;
+ END LOOP;
+ -- Map foreign-key actors by the original verified email, never by user-supplied privileges.
+ FOREACH t IN ARRAY app_private.backup_tables() LOOP
+  FOR fk IN SELECT a.attname FROM pg_constraint c JOIN pg_attribute a ON a.attrelid=c.conrelid AND a.attnum=ANY(c.conkey)
+   WHERE c.conrelid=t::regclass AND c.confrelid='auth.users'::regclass AND c.contype='f' LOOP
+   FOR row IN SELECT value FROM jsonb_array_elements(payload->'tables'->t) LOOP
+    source_id:=row->>fk.attname;IF source_id IS NULL OR mapping ? source_id THEN CONTINUE;END IF;
+    SELECT u INTO identity FROM jsonb_array_elements(payload->'identities') u WHERE u->>'id'=source_id;
+    IF identity IS NULL THEN RAISE EXCEPTION 'Missing actor identity metadata';END IF;
+    SELECT id INTO target_id FROM auth.users WHERE lower(email)=lower(identity->>'email') AND email_confirmed_at IS NOT NULL;
+    IF target_id IS NULL THEN RAISE EXCEPTION 'Recreate and verify the historical actor account % before restoring',identity->>'email';END IF;
+    mapping:=mapping||jsonb_build_object(source_id,target_id);
+   END LOOP;
+  END LOOP;
+ END LOOP;
+ -- Disable only application triggers, transactionally, so imports do not regenerate
+ -- invitation codes, create synthetic history, or reject valid out-of-order parents.
+ -- Foreign keys, types, unique constraints and CHECK constraints stay enforced.
+ FOREACH t IN ARRAY app_private.backup_tables() LOOP EXECUTE format('ALTER TABLE %s DISABLE TRIGGER USER',t);END LOOP;
+ DELETE FROM public.event_settings;DELETE FROM public.event_languages;
+ FOREACH t IN ARRAY app_private.backup_tables() LOOP
+  rows:='[]';
+  FOR row IN SELECT value FROM jsonb_array_elements(payload->'tables'->t) LOOP
+   FOR fk IN SELECT a.attname FROM pg_constraint c JOIN pg_attribute a ON a.attrelid=c.conrelid AND a.attnum=ANY(c.conkey)
+    WHERE c.conrelid=t::regclass AND c.confrelid='auth.users'::regclass AND c.contype='f' LOOP
+    source_id:=row->>fk.attname;IF source_id IS NOT NULL THEN row:=jsonb_set(row,ARRAY[fk.attname],mapping->source_id);END IF;
+   END LOOP;
+   IF t='public.admin_membership_audit' THEN FOREACH source_id IN ARRAY ARRAY['actor_id','subject_id'] LOOP IF mapping ? (row->>source_id) THEN row:=jsonb_set(row,ARRAY[source_id],mapping->(row->>source_id));END IF;END LOOP;END IF;
+   IF t='public.households' THEN row:=row||'{"parent_id":null,"latest_rsvp_submission_id":null}'::jsonb;END IF;
+   IF t='public.event_settings' THEN row:=row||'{"is_published":false}'::jsonb;END IF;
+   IF t='public.admin_invitations' AND row->>'status'='pending' THEN row:=row||jsonb_build_object('status','cancelled','expires_at',clock_timestamp(),'attempt_id',gen_random_uuid());END IF;
+   rows:=rows||jsonb_build_array(row);
+  END LOOP;
+  SELECT string_agg(format('%I',attname),',' ORDER BY attnum) INTO cols FROM pg_attribute WHERE attrelid=t::regclass AND attnum>0 AND NOT attisdropped;
+  EXECUTE format('INSERT INTO %s (%s) OVERRIDING SYSTEM VALUE SELECT %s FROM jsonb_populate_recordset(NULL::%s,$1)',t,cols,cols,t) USING rows;
+ END LOOP;
+ -- Resolve circular household/submission references once every row exists.
+ FOR row IN SELECT value FROM jsonb_array_elements(payload->'tables'->'public.households') LOOP
+  UPDATE public.households SET parent_id=(row->>'parent_id')::uuid,latest_rsvp_submission_id=(row->>'latest_rsvp_submission_id')::uuid WHERE id=(row->>'id')::uuid;
+ END LOOP;
+ FOREACH t IN ARRAY app_private.backup_tables() LOOP EXECUTE format('ALTER TABLE %s ENABLE TRIGGER USER',t);END LOOP;
+ -- Re-run hierarchy and language guards without changing profile values or history.
+ UPDATE public.households SET parent_id=parent_id;
+ UPDATE public.event_settings SET default_language=default_language,fallback_language=fallback_language;
+ IF EXISTS(SELECT 1 FROM public.households h WHERE (h.archived_at IS NOT NULL OR NOT EXISTS(SELECT 1 FROM public.guests g WHERE g.household_id=h.id AND g.archived_at IS NULL)) AND h.invite_code IS NOT NULL) THEN RAISE EXCEPTION 'Backup contains an invalid invitation code assignment';END IF;
+ IF EXISTS(SELECT 1 FROM public.households h WHERE h.invite_code IS NOT NULL AND NOT EXISTS(SELECT 1 FROM app_private.invitation_code_registry r WHERE r.code=h.invite_code AND r.household_id=h.id)) THEN RAISE EXCEPTION 'Invitation code registry mismatch';END IF;
+ IF EXISTS(SELECT 1 FROM public.food_items f WHERE (SELECT coalesce(sum(quantity),0) FROM public.food_claims WHERE food_item_id=f.id)>f.quantity_needed) THEN RAISE EXCEPTION 'Food claims exceed available quantities';END IF;
+ -- Restart identity sequences with transactional ALTER, not nontransactional setval.
+ FOREACH t IN ARRAY app_private.backup_tables() LOOP
+  FOR rec IN SELECT attname FROM pg_attribute WHERE attrelid=t::regclass AND attidentity<>'' LOOP
+   seq:=pg_get_serial_sequence(t,rec.attname);EXECUTE format('SELECT coalesce(max(%I),0)+1 FROM %s',rec.attname,t) INTO next_id;
+   EXECUTE format('ALTER SEQUENCE %s RESTART WITH %s',seq,next_id);
+  END LOOP;
+ END LOOP;
+ INSERT INTO public.backup_restore_audit(actor_user_id,checksum,source_created_at,restored_counts) VALUES(auth.uid(),b->>'checksum',(payload->>'created_at')::timestamptz,payload->'counts');
+ RETURN report||jsonb_build_object('restored',true,'is_published',false,'identity_mapping',mapping,'administrator_access_restored',false);
+END $$;
+REVOKE ALL ON FUNCTION app_private.restore_backup(jsonb) FROM PUBLIC,anon,authenticated;
+CREATE FUNCTION public.admin_preview_backup(p_backup jsonb) RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path='' AS $$
+DECLARE report jsonb;result jsonb;
+BEGIN
+ PERFORM app_private.require_live_session();IF NOT public.is_admin() THEN RAISE EXCEPTION 'Administrator access required' USING ERRCODE='42501';END IF;
+ report:=app_private.validate_backup(p_backup);
+ -- Exercise the actual restore inside a rolled-back subtransaction, including all
+ -- constraints and identity checks. No imported data, trigger changes or sequence
+ -- restarts survive preview, regardless of success or failure.
+ BEGIN
+  result:=app_private.restore_backup(p_backup);
+  RAISE EXCEPTION USING ERRCODE='P0199',MESSAGE='restore_preview_rollback';
+ EXCEPTION WHEN SQLSTATE 'P0199' THEN RETURN report||jsonb_build_object('can_restore',true);
+ WHEN OTHERS THEN RETURN report||jsonb_build_object('can_restore',false,'reason',SQLERRM);
+ END;
+END $$;
+REVOKE ALL ON FUNCTION public.admin_preview_backup(jsonb) FROM PUBLIC,anon;
+GRANT EXECUTE ON FUNCTION public.admin_preview_backup(jsonb) TO authenticated;
+CREATE FUNCTION public.admin_restore_backup(p_backup jsonb,p_confirmation text) RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path='' AS $$
+DECLARE result jsonb;
+BEGIN
+ PERFORM app_private.require_live_session();IF NOT public.is_admin() THEN RAISE EXCEPTION 'Administrator access required' USING ERRCODE='42501';END IF;
+ IF p_confirmation IS DISTINCT FROM 'RESTORE '||coalesce(p_backup->'payload'->'tables'->'public.event_settings'->0->>'event_name','') THEN RAISE EXCEPTION 'Type RESTORE followed by the source event name';END IF;
+ result:=app_private.restore_backup(p_backup);
+ RETURN result;
+END $$;
+REVOKE ALL ON FUNCTION public.admin_restore_backup(jsonb,text) FROM PUBLIC,anon;
+GRANT EXECUTE ON FUNCTION public.admin_restore_backup(jsonb,text) TO authenticated;
+NOTIFY pgrst,'reload schema';
+COMMIT;
+
+-- Migration: 20261101113552_backup_language_prerequisite.sql
+BEGIN;
+-- Keep exports usable if backend migrations are approved in separate steps.
+CREATE OR REPLACE FUNCTION public.admin_export_backup() RETURNS jsonb LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path='' AS $$
+DECLARE payload jsonb;
+BEGIN
+ PERFORM app_private.require_live_session();IF NOT public.is_admin() THEN RAISE EXCEPTION 'Administrator access required' USING ERRCODE='42501';END IF;
+ IF NOT EXISTS(SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='event_settings' AND column_name='fallback_language') THEN RAISE EXCEPTION 'Apply the language management migration before exporting a version 1 backup';END IF;
+ payload:=app_private.backup_payload();
+ IF octet_length(payload::text)>20000000 THEN RAISE EXCEPTION 'Application backup exceeds the 20 MB import limit; use managed database backup tools';END IF;
+ RETURN jsonb_build_object('format','rsvp-application-backup','version',1,'payload',payload,'checksum',encode(sha256(convert_to(payload::text,'UTF8')),'hex'));
+END $$;
+REVOKE ALL ON FUNCTION public.admin_export_backup() FROM PUBLIC,anon;
+GRANT EXECUTE ON FUNCTION public.admin_export_backup() TO authenticated;
+NOTIFY pgrst,'reload schema';
+COMMIT;
+
+-- Migration: 20261101114104_restore_hierarchy_validation.sql
+BEGIN;
+CREATE OR REPLACE FUNCTION app_private.restore_backup(b jsonb) RETURNS jsonb LANGUAGE plpgsql SET search_path='' AS $$
+DECLARE t text;row jsonb;rows jsonb;payload jsonb:=b->'payload';report jsonb;has_rows boolean;cols text;fk record;source_id text;target_id uuid;identity jsonb;mapping jsonb:='{}';rec record;seq text;next_id bigint;changed integer:=0;
+BEGIN
+ report:=app_private.validate_backup(b);
+ -- Validate reachability before loading rows with application triggers suspended.
+ -- UNION deduplicates IDs: malformed cycles (including a branch pointing into a
+ -- cycle) cannot make the older recursive parent trigger loop indefinitely.
+ WITH RECURSIVE h AS (SELECT id,parent_id FROM jsonb_populate_recordset(NULL::public.households,payload->'tables'->'public.households')),
+ reachable(id) AS (SELECT id FROM h WHERE parent_id IS NULL UNION SELECT h.id FROM h JOIN reachable p ON h.parent_id=p.id)
+ SELECT (SELECT count(*) FROM h)<>(SELECT count(*) FROM reachable) INTO has_rows;
+ IF has_rows THEN RAISE EXCEPTION 'Household hierarchy cycle, duplicate ID or missing parent';END IF;
+
+ -- Consistent lock order, shared with existing management operations. Keep the event closed.
+ PERFORM pg_advisory_xact_lock(19421,7744);
+ FOREACH t IN ARRAY app_private.backup_tables() LOOP EXECUTE format('LOCK TABLE %s IN ACCESS EXCLUSIVE MODE',t);END LOOP;
+ IF EXISTS(SELECT 1 FROM public.event_settings WHERE is_published) THEN RAISE EXCEPTION 'Restore destination must be unpublished';END IF;
+ FOREACH t IN ARRAY app_private.backup_tables() LOOP
+  IF t IN ('public.event_languages','public.event_settings') THEN CONTINUE;END IF;
+  EXECUTE format('SELECT EXISTS(SELECT 1 FROM %s)',t) INTO has_rows;
+  IF has_rows THEN RAISE EXCEPTION 'Restore requires an empty application destination; % contains records',t;END IF;
+ END LOOP;
+ -- Map foreign-key actors by the original verified email, never by user-supplied privileges.
+ FOREACH t IN ARRAY app_private.backup_tables() LOOP
+  FOR fk IN SELECT a.attname FROM pg_constraint c JOIN pg_attribute a ON a.attrelid=c.conrelid AND a.attnum=ANY(c.conkey)
+   WHERE c.conrelid=t::regclass AND c.confrelid='auth.users'::regclass AND c.contype='f' LOOP
+   FOR row IN SELECT value FROM jsonb_array_elements(payload->'tables'->t) LOOP
+    source_id:=row->>fk.attname;IF source_id IS NULL OR mapping ? source_id THEN CONTINUE;END IF;
+    SELECT u INTO identity FROM jsonb_array_elements(payload->'identities') u WHERE u->>'id'=source_id;
+    IF identity IS NULL THEN RAISE EXCEPTION 'Missing actor identity metadata';END IF;
+    SELECT id INTO target_id FROM auth.users WHERE lower(email)=lower(identity->>'email') AND email_confirmed_at IS NOT NULL;
+    IF target_id IS NULL THEN RAISE EXCEPTION 'Recreate and verify the historical actor account % before restoring',identity->>'email';END IF;
+    mapping:=mapping||jsonb_build_object(source_id,target_id);
+   END LOOP;
+  END LOOP;
+ END LOOP;
+ -- Disable only application triggers, transactionally, so imports do not regenerate
+ -- invitation codes, create synthetic history, or reject valid out-of-order parents.
+ -- Foreign keys, types, unique constraints and CHECK constraints stay enforced.
+ FOREACH t IN ARRAY app_private.backup_tables() LOOP EXECUTE format('ALTER TABLE %s DISABLE TRIGGER USER',t);END LOOP;
+ DELETE FROM public.event_settings;DELETE FROM public.event_languages;
+ FOREACH t IN ARRAY app_private.backup_tables() LOOP
+  rows:='[]';
+  FOR row IN SELECT value FROM jsonb_array_elements(payload->'tables'->t) LOOP
+   FOR fk IN SELECT a.attname FROM pg_constraint c JOIN pg_attribute a ON a.attrelid=c.conrelid AND a.attnum=ANY(c.conkey)
+    WHERE c.conrelid=t::regclass AND c.confrelid='auth.users'::regclass AND c.contype='f' LOOP
+    source_id:=row->>fk.attname;IF source_id IS NOT NULL THEN row:=jsonb_set(row,ARRAY[fk.attname],mapping->source_id);END IF;
+   END LOOP;
+   IF t='public.admin_membership_audit' THEN FOREACH source_id IN ARRAY ARRAY['actor_id','subject_id'] LOOP IF mapping ? (row->>source_id) THEN row:=jsonb_set(row,ARRAY[source_id],mapping->(row->>source_id));END IF;END LOOP;END IF;
+   IF t='public.households' THEN row:=row||'{"parent_id":null,"latest_rsvp_submission_id":null}'::jsonb;END IF;
+   IF t='public.event_settings' THEN row:=row||'{"is_published":false}'::jsonb;END IF;
+   IF t='public.admin_invitations' AND row->>'status'='pending' THEN row:=row||jsonb_build_object('status','cancelled','expires_at',clock_timestamp(),'attempt_id',gen_random_uuid());END IF;
+   rows:=rows||jsonb_build_array(row);
+  END LOOP;
+  SELECT string_agg(format('%I',attname),',' ORDER BY attnum) INTO cols FROM pg_attribute WHERE attrelid=t::regclass AND attnum>0 AND NOT attisdropped;
+  EXECUTE format('INSERT INTO %s (%s) OVERRIDING SYSTEM VALUE SELECT %s FROM jsonb_populate_recordset(NULL::%s,$1)',t,cols,cols,t) USING rows;
+ END LOOP;
+ -- Resolve circular household/submission references once every row exists.
+ FOR row IN SELECT value FROM jsonb_array_elements(payload->'tables'->'public.households') LOOP
+  UPDATE public.households SET parent_id=(row->>'parent_id')::uuid,latest_rsvp_submission_id=(row->>'latest_rsvp_submission_id')::uuid WHERE id=(row->>'id')::uuid;
+ END LOOP;
+ FOREACH t IN ARRAY app_private.backup_tables() LOOP EXECUTE format('ALTER TABLE %s ENABLE TRIGGER USER',t);END LOOP;
+ -- Re-run hierarchy and language guards without changing profile values or history.
+ UPDATE public.households SET parent_id=parent_id;
+ UPDATE public.event_settings SET default_language=default_language,fallback_language=fallback_language;
+ IF EXISTS(SELECT 1 FROM public.households h WHERE (h.archived_at IS NOT NULL OR NOT EXISTS(SELECT 1 FROM public.guests g WHERE g.household_id=h.id AND g.archived_at IS NULL)) AND h.invite_code IS NOT NULL) THEN RAISE EXCEPTION 'Backup contains an invalid invitation code assignment';END IF;
+ IF EXISTS(SELECT 1 FROM public.households h WHERE h.invite_code IS NOT NULL AND NOT EXISTS(SELECT 1 FROM app_private.invitation_code_registry r WHERE r.code=h.invite_code AND r.household_id=h.id)) THEN RAISE EXCEPTION 'Invitation code registry mismatch';END IF;
+ IF EXISTS(SELECT 1 FROM public.food_items f WHERE (SELECT coalesce(sum(quantity),0) FROM public.food_claims WHERE food_item_id=f.id)>f.quantity_needed) THEN RAISE EXCEPTION 'Food claims exceed available quantities';END IF;
+ -- Restart identity sequences with transactional ALTER, not nontransactional setval.
+ FOREACH t IN ARRAY app_private.backup_tables() LOOP
+  FOR rec IN SELECT attname FROM pg_attribute WHERE attrelid=t::regclass AND attidentity<>'' LOOP
+   seq:=pg_get_serial_sequence(t,rec.attname);EXECUTE format('SELECT coalesce(max(%I),0)+1 FROM %s',rec.attname,t) INTO next_id;
+   EXECUTE format('ALTER SEQUENCE %s RESTART WITH %s',seq,next_id);
+  END LOOP;
+ END LOOP;
+ INSERT INTO public.backup_restore_audit(actor_user_id,checksum,source_created_at,restored_counts) VALUES(auth.uid(),b->>'checksum',(payload->>'created_at')::timestamptz,payload->'counts');
+ RETURN report||jsonb_build_object('restored',true,'is_published',false,'identity_mapping',mapping,'administrator_access_restored',false);
+END $$;
+REVOKE ALL ON FUNCTION app_private.restore_backup(jsonb) FROM PUBLIC,anon,authenticated;
+NOTIFY pgrst,'reload schema';
 COMMIT;

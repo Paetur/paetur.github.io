@@ -1,5 +1,6 @@
 (function () {
   'use strict';
+ const T=(text,params)=>window.RSVP_I18N?.t(text,params)||text;
   const coreScript = document.querySelector('script[data-app-core]');
   const siteRoot = new URL('../', coreScript ? coreScript.src : window.location.href);
   const CLIENT_STORAGE_KEY = 'rsvp-manager-setup-preview-v1';
@@ -15,21 +16,21 @@
   function normalizeUrl(url) {
     const parsed = new URL(String(url || '').trim());
     if (parsed.protocol !== 'https:' && !(parsed.protocol === 'http:' && ['localhost','127.0.0.1'].includes(parsed.hostname))) {
-      throw new Error('Supabase URL must use HTTPS (except localhost).');
+      throw new Error(T("Supabase URL must use HTTPS (except localhost)."));
     }
-    if (parsed.username || parsed.password || parsed.search || parsed.hash) throw new Error('Use only the Supabase project URL, with no credentials or query string.');
+    if (parsed.username || parsed.password || parsed.search || parsed.hash) throw new Error(T("Use only the Supabase project URL, with no credentials or query string."));
     return parsed.origin;
   }
   function validateKey(key) {
     const clean = String(key || '').trim();
-    if (!clean || clean.includes(' ') || clean.startsWith('sb_secret_')) throw new Error('Use only a publishable or anon key, never a secret key.');
+    if (!clean || clean.includes(' ') || clean.startsWith('sb_secret_')) throw new Error(T("Use only a publishable or anon key, never a secret key."));
     if (clean.split('.').length === 3) {
       try {
         const part = clean.split('.')[1].replace(/-/g,'+').replace(/_/g,'/');
         const claims = JSON.parse(atob(part));
-        if (claims.role && claims.role !== 'anon') throw new Error('This JWT is not an anon key.');
-      } catch (e) { if (e.message.includes('not an anon key')) throw e; throw new Error('The supplied JWT key is malformed.'); }
-    } else if (!clean.startsWith('sb_publishable_')) throw new Error('Expected a publishable key or legacy anon JWT.');
+        if (claims.role && claims.role !== 'anon') {const error=new Error(T("This JWT is not an anon key."));error.code='INVALID_KEY_ROLE';throw error;}
+      } catch (e) { if (e.code==='INVALID_KEY_ROLE') throw e; throw new Error(T("The supplied JWT key is malformed.")); }
+    } else if (!clean.startsWith('sb_publishable_')) throw new Error(T("Expected a publishable key or legacy anon JWT."));
     return clean;
   }
   function savePreview(url,key) {
@@ -42,16 +43,16 @@
     if (client) return client;
     const cfg=config();
     if (!cfg.supabaseUrl || !cfg.supabaseKey) return null;
-    if (!window.supabase || typeof window.supabase.createClient!=='function') throw new Error('Supabase JavaScript library did not load. Check the network connection.');
+    if (!window.supabase || typeof window.supabase.createClient!=='function') throw new Error(T("Supabase JavaScript library did not load. Check the network connection."));
     client=window.supabase.createClient(normalizeUrl(cfg.supabaseUrl),validateKey(cfg.supabaseKey),{
       auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}
     });
     return client;
   }
   async function adminRpc(name,args={}) {
-    if(!/^(admin_[a-z_]+|is_admin)$/.test(name))return {data:null,error:{message:'Invalid administrator action'}};
-    const db=getClient();if(!db)return {data:null,error:{message:'Database not configured'}};
-    const expired=()=>({data:null,error:{code:'AUTH_SESSION_MISSING',message:'Your sign-in has expired. Sign in again before saving. Your edits have not been submitted.'}});
+    if(!/^(admin_[a-z_]+|is_admin)$/.test(name))return {data:null,error:{message:T("Invalid administrator action")}};
+    const db=getClient();if(!db)return {data:null,error:{message:T("Database not configured")}};
+    const expired=()=>({data:null,error:{code:'AUTH_SESSION_MISSING',message:T("Your sign-in has expired. Sign in again before saving. Your edits have not been submitted.")}});
     let sessionResult=await db.auth.getSession();
     let session=sessionResult.data?.session;
     if(sessionResult.error||!session?.access_token){sessionResult=await db.auth.refreshSession();session=sessionResult.data?.session;}
@@ -59,8 +60,8 @@
     const cfg=config();
     async function send(token){
       const response=await fetch(normalizeUrl(cfg.supabaseUrl)+'/rest/v1/rpc/'+name,{method:'POST',headers:{apikey:validateKey(cfg.supabaseKey),Authorization:'Bearer '+token,'Content-Type':'application/json'},body:JSON.stringify(args)});
-      const body=await response.text();let value=null;try{value=body?JSON.parse(body):null;}catch(_){return {data:null,error:{message:'The server returned an unreadable response.'},status:response.status};}
-      return response.ok?{data:value,error:null,status:response.status}:{data:null,error:typeof value==='object'&&value?value:{message:'Administrator request failed.'},status:response.status};
+      const body=await response.text();let value=null;try{value=body?JSON.parse(body):null;}catch(_){return {data:null,error:{message:T("The server returned an unreadable response.")},status:response.status};}
+      return response.ok?{data:value,error:null,status:response.status}:{data:null,error:typeof value==='object'&&value?value:{message:T("Administrator request failed.")},status:response.status};
     }
     let result=await send(session.access_token);
     if(result.status===401||(result.error?.code==='42501'&&/permission denied for function/i.test(result.error.message||''))){
@@ -72,7 +73,7 @@
   }
   async function guestRpc(action,args) {
     const client=getClient();
-    if(!client)return {data:null,error:new Error('Database not configured')};
+    if(!client)return {data:null,error:new Error(T("Database not configured"))};
     const {data,error}=await client.functions.invoke('guest-gateway',{body:{action,args}});
     return {data,error};
   }
@@ -120,15 +121,15 @@
   }
   function zonedInstant(value,timezone){
     if(!value)return null;
-    if(!/^\d{4}-\d\d-\d\dT\d\d:\d\d$/.test(value))throw Error('Enter a complete date and time.');
-    const wall=Date.parse(value+'Z');if(!Number.isFinite(wall))throw Error('Invalid date and time.');
+    if(!/^\d{4}-\d\d-\d\dT\d\d:\d\d$/.test(value))throw Error(T("Enter a complete date and time."));
+    const wall=Date.parse(value+'Z');if(!Number.isFinite(wall))throw Error(T("Invalid date and time."));
     const offsets=new Set([-36,0,36].map(hours=>{const t=wall+hours*3600000;return Date.parse(zonedInput(t,timezone)+'Z')-t;}));
     const matches=[...offsets].map(offset=>wall-offset).filter(t=>zonedInput(t,timezone)===value);
-    if(matches.length!==1)throw Error('This local time is ambiguous or does not exist because clocks change. Choose a time outside the clock change.');
+    if(matches.length!==1)throw Error(T("This local time is ambiguous or does not exist because clocks change. Choose a time outside the clock change."));
     return new Date(matches[0]).toISOString();
   }
 
-  function safeError(error) {return error && typeof error.message==='string' ? error.message : 'Something went wrong.';}
+  function safeError(error) {return error && typeof error.message==='string' ? error.message : T("Something went wrong.");}
   function dl(filename,contents) {
     const blob=new Blob([contents],{type:'text/javascript;charset=utf-8'});
     const url=URL.createObjectURL(blob);const link=document.createElement('a');link.href=url;link.download=filename;document.body.append(link);link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(url),500);

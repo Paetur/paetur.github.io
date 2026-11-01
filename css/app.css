@@ -404,3 +404,8 @@ html[data-theme="dark"] code{background:#253b32;color:var(--ink)}
 
 /* Administrator invitations retain the member-card hierarchy at narrow widths. */
 .admin-invite-form{padding:18px 14px}.admin-invite-form p{margin:0}.admin-invitation-card{flex-wrap:wrap}.admin-invitation-details{min-width:0;flex:1 1 240px}.admin-invitation-details .email{overflow-wrap:anywhere}.admin-invitation-details p{margin:5px 0 0}.admin-invitation-actions{display:flex;gap:8px;flex-wrap:wrap}.admin-invitation-status{flex-basis:100%;margin:0}.admin-invitation-status:empty{display:none}#invitationPasswordFields{display:grid;gap:16px}#acceptInvitationStatus:empty,#adminInviteStatus:empty{display:none}
+
+/* Interface preferences stay compact in the desktop and mobile toolbars. */
+.interface-language{width:auto;min-width:3.75rem;max-width:5rem;padding:.45rem;font-size:.8rem;flex-shrink:0}
+#interfaceWordingForm select{max-width:100%;min-width:0}
+.wording-preview{display:block;white-space:pre-wrap;overflow-wrap:anywhere;padding:.75rem;border:1px solid var(--line);border-radius:.5rem}

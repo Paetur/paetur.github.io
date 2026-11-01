@@ -6,6 +6,7 @@ on:
       - 'admin/**'
       - 'css/**'
       - 'index.html'
+      - 'setup.html'
       - 'supabase/**'
       - '.github/workflows/rsvp-security-smoke.yml'
       - 'tests/**'
@@ -77,6 +78,8 @@ jobs:
         run: node --check js/admin.js && node --check tests/admin-layout.cjs
       - name: Test administrator credentials with real SDK in Chromium and WebKit
         run: node tests/admin-auth-browser.cjs
+      - name: Test FO/EN/DE interfaces and customization in Chromium and WebKit
+        run: node tests/interface-localization.cjs
       - name: Test compact admin layout with mocked data
         run: node tests/admin-layout.cjs
       - name: Upload light and dark browser previews

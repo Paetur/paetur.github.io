@@ -28,7 +28,9 @@ The source files in this archive do **not** contain guest data, invitation codes
 
 **Logs:** Settings → Logs provides searchable, filtered history across households, guests, RSVP, invitations, venues, food permissions and administrator sessions. See [Administration logs](docs/ADMINISTRATION_LOGS.md).
 
-**Still incomplete:** automatic guest-message sending, broader language customization, and full launch acceptance testing.
+**Interface languages and customization:** FO/EN/DE cover the guest, administration and setup interfaces. Select a language in the toolbar; Settings → Event settings contains welcome-message editors and interface wording customization. See [Interface languages](docs/INTERFACE_LANGUAGES.md).
+
+**Still incomplete:** automatic guest-message sending and full launch acceptance testing.
 
 ## Install without terminal or Python
 

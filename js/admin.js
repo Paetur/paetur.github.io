@@ -445,7 +445,7 @@
    const active=guests.filter(g=>!g.archived_at).length;
    const descendants=store.households.filter(x=>!x.archived_at&&isDescendantOf(x.id,h.id));
    const nestedGuests=store.guests.filter(g=>!g.archived_at&&descendants.some(x=>x.id===g.household_id)).length;
-   return [active?T('{count} guests',{count:active}):null,descendants.length||!active?T('{count} sub-households · {guests} guests in sub-households',{count:descendants.length,guests:nestedGuests}):null,h.language?.toUpperCase(),h.archived_at?T("Archived"):active?'RSVP '+T(h.rsvp_state==='locked'?'Locked after submission':'Open for responses'):T("Grouping household")].filter(Boolean).join(' · ');
+   return [active?T(active===1?'{count} guest':'{count} guests',{count:active}):null,descendants.length||!active?T(descendants.length===1?'{count} sub-household':'{count} sub-households',{count:descendants.length})+' · '+T(nestedGuests===1?'{count} guest in sub-households':'{count} guests in sub-households',{count:nestedGuests}):null,h.language?.toUpperCase(),h.archived_at?T("Archived"):active?'RSVP '+T(h.rsvp_state==='locked'?'Locked after submission':'Open for responses'):T("Grouping household")].filter(Boolean).join(' · ');
  }
  function renderInvites(){
    const box=$('inviteRows');box.replaceChildren();const search=$('inviteSearch').value.trim().toLowerCase();

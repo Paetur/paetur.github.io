@@ -2407,5 +2407,25 @@ window.RSVP_TRANSLATIONS = {
   "Download": {
     "fo": "Tak niður",
     "de": "Herunterladen"
+  },
+  "{count} guest": {
+    "fo": "{count} gestur",
+    "de": "{count} Gast"
+  },
+  "{count} sub-household": {
+    "fo": "{count} undirhúski",
+    "de": "{count} Unterhaushalt"
+  },
+  "{count} sub-households": {
+    "fo": "{count} undirhúski",
+    "de": "{count} Unterhaushalte"
+  },
+  "{count} guest in sub-households": {
+    "fo": "{count} gestur í undirhúskjum",
+    "de": "{count} Gast in Unterhaushalten"
+  },
+  "{count} guests in sub-households": {
+    "fo": "{count} gestir í undirhúskjum",
+    "de": "{count} Gäste in Unterhaushalten"
   }
 };

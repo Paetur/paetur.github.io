@@ -255,7 +255,8 @@ async function run(){
    await waitForApp(page,()=>window.__fixtures.event_locations.length===1);
    await waitForApp(page,()=>document.querySelector('#newVenueForm [aria-label="Venue name"]').value==='');
    assert.equal(await page.evaluate(()=>window.__fixtures.event_locations[0].welcome_en),'Welcome to our Faroese celebration.');
-   assert.equal(await page.getByText('Welcome messages',{exact:true}).count(),0,'global welcome editor removed');
+   assert.equal(await page.locator('#eventContentForm textarea').count(),3,'event introduction has three language editors');
+   assert.equal(await newVenue.locator('.venue-welcome-editor textarea').count(),3,'venue welcome messages remain separate from the event introduction');
    await newVenue.getByLabel('Venue name',{exact:true}).fill('Germany test venue');
    await newVenue.getByLabel('Country code').fill('DE');
    await newVenue.getByLabel('Venue timezone').fill('Europe/Berlin');

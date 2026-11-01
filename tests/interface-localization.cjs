@@ -43,7 +43,8 @@ async function run(browserType){
    assert.equal(await page.locator('#wordingPreview img').count(),0);assert.equal(await page.locator('#wordingPreview').textContent(),'<img src=x onerror=alert(1)>');
    const source=await page.evaluate(()=>window.RSVP_I18N.source());const custom={window:{}};vm.runInNewContext(source,custom);assert.equal(custom.window.RSVP_INTERFACE_OVERRIDES.Households[lang],'<img src=x onerror=alert(1)>');
    assert.equal(await page.evaluate(()=>{try{window.RSVP_I18N.applyWording('Quantity for {item}','de','Menge');return false;}catch{return true;}}),true);
-   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),true,'Mobile admin overflow');
+   const overflow=await page.evaluate(()=>Array.from(document.querySelectorAll('body *')).filter(n=>n.getBoundingClientRect().right>innerWidth+1).map(n=>n.tagName+'#'+n.id+'.'+n.className).slice(0,12));
+   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),true,'Mobile admin overflow: '+overflow.join(', '));
    await page.goto(base+'/setup.html');assert.equal(await page.locator('h1').textContent(),lang==='en'?'Make this event yours.':catalog['Make this event yours.'][lang]);
    await page.goto(base+'/?ABCDEFGH');await page.locator('#invitationCard:not(.hidden)').waitFor();
    assert.equal(await page.locator('#eventTitle').textContent(),'Settings');assert.equal(await page.locator('#householdName').textContent(),'Food');

@@ -21,7 +21,7 @@
     const name=event.event_name||window.RSVP_I18N.t("Your event");
     $('eventTitle').textContent=name;
     $('eventDate').textContent=R.formatDate(event.event_date,language,event.timezone);
-    document.title=name+' | '+window.RSVP_I18N.t(window.RSVP_I18N.t("Invitation"));
+    document.title=name+' | '+window.RSVP_I18N.t("Invitation");
     const content=eventData.content||{};
     $('welcomeMessage').textContent=content[language]||t('welcome');
   }

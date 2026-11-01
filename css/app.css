@@ -409,3 +409,12 @@ html[data-theme="dark"] code{background:#253b32;color:var(--ink)}
 .interface-language{width:auto;min-width:3.75rem;max-width:5rem;padding:.45rem;font-size:.8rem;flex-shrink:0}
 #interfaceWordingForm select{max-width:100%;min-width:0}
 .wording-preview{display:block;white-space:pre-wrap;overflow-wrap:anywhere;padding:.75rem;border:1px solid var(--line);border-radius:.5rem}
+/* Long translated phrases must not set a grid column's minimum width. */
+#adminApp .settings-page .form-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+#adminApp .settings-page .form-grid>label{min-width:0}
+#adminApp .settings-page input,#adminApp .settings-page select,#adminApp .settings-page textarea{min-width:0;max-width:100%}
+@media(max-width:600px){
+  #adminApp .settings-page .form-grid{grid-template-columns:minmax(0,1fr)}
+  .topbar:has(.admin-topbar-actions) .topbar-inner{flex-wrap:wrap;padding-top:8px;padding-bottom:8px;row-gap:7px}
+  .topbar .admin-topbar-actions{flex-basis:100%;justify-content:flex-end}
+}

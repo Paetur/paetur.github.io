@@ -54,7 +54,7 @@ async function run(){
    await page.setViewportSize({width:1100,height:1050});await page.screenshot({path:path.join(root,'artifacts','admin-invitations-desktop.png'),fullPage:true});
    await page.setViewportSize({width:390,height:1000});await page.screenshot({path:path.join(root,'artifacts','admin-invitations-mobile.png'),fullPage:true});
    assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+2),'invitation mobile layout fits');
-   await page.locator('#addAdminForm button[type="submit"]').click();await page.waitForFunction(()=>document.querySelector('#adminInviteStatus').textContent.includes('accepted'));
+   await page.locator('#addAdminForm button[type="submit"]').click();await page.waitForFunction(()=>document.querySelector('#adminInviteStatus').textContent.includes('email sent'));
    assert.equal(await page.locator('#adminInvitationsList .admin-member').count(),3);
    await page.locator('#adminInvitationsList .admin-member').filter({hasText:'sam@example.invalid'}).getByRole('button',{name:'Resend',exact:true}).click();
    await page.waitForFunction(()=>window.__invitationSends===2);

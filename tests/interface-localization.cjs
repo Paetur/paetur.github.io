@@ -40,6 +40,7 @@ async function run(browserType){
    assert.equal(await page.evaluate(()=>window.__contentSave.options.onConflict),'content_key,language_code');
    await page.locator('#wordingPhrase').selectOption('Households');await page.locator('#wordingValue').fill('<img src=x onerror=alert(1)>');
    await page.locator('#interfaceWordingForm button[type="submit"]').click();
+   await page.waitForFunction(()=>document.querySelector('#wordingPreview').textContent==='<img src=x onerror=alert(1)>');
    assert.equal(await page.locator('#wordingPreview img').count(),0);assert.equal(await page.locator('#wordingPreview').textContent(),'<img src=x onerror=alert(1)>');
    const source=await page.evaluate(()=>window.RSVP_I18N.source());const custom={window:{}};vm.runInNewContext(source,custom);assert.equal(custom.window.RSVP_INTERFACE_OVERRIDES.Households[lang],'<img src=x onerror=alert(1)>');
    assert.equal(await page.evaluate(()=>{try{window.RSVP_I18N.applyWording('Quantity for {item}','de','Menge');return false;}catch{return true;}}),true);

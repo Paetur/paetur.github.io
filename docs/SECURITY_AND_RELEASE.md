@@ -21,7 +21,7 @@ See [Security test results (30 October 2026)](SECURITY_TEST_RESULTS_2026-10-30.m
 4. Enable **Supabase Auth leaked-password protection**. See the security advisor and [Supabase Auth password guidance](https://supabase.com/docs/guides/auth/password-security#password-strength-and-leaked-password-protection).
 5. Test the **consolidated installer** (`supabase/install.sql`, including migrations 009–011) in a disposable blank Supabase project.
 6. Review remaining administrative CRUD, invitation delivery, session override, audit and guest capability controls. Do not assume a successful database test validates unrelated unfinished UI.
-7. Obtain a full destination backup and verify against the original dataset. Do not delete the original database.
+7. Retain structured backups of the current event and rehearse restoration in an empty destination. The former source database has been deleted; it is no longer a recovery option. See [Backup and restore](BACKUP_RESTORE.md).
 8. Have an administrator review the results before publication.
 
 ## Publishing

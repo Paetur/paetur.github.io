@@ -46,6 +46,7 @@ jobs:
           node tests/admin-invitations.cjs
           node tests/admin-auth.cjs
           node tests/timezones.cjs
+          node tests/languages-backup-db.cjs
           node tests/household-management-db.cjs
   browser-smoke:
     runs-on: ubuntu-latest
@@ -82,6 +83,8 @@ jobs:
         run: node tests/interface-localization.cjs
       - name: Test collapsed disclosure geometry in Chromium and WebKit
         run: node tests/disclosure-layout.cjs
+      - name: Test language management and backup/import UI
+        run: node tests/languages-backup-browser.cjs
       - name: Test compact admin layout with mocked data
         run: node tests/admin-layout.cjs
       - name: Upload light and dark browser previews

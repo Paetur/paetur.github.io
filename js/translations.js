@@ -2451,5 +2451,173 @@ window.RSVP_TRANSLATIONS = {
   "Restore contact": {
     "fo": "Endurstovna samband",
     "de": "Kontakt wiederherstellen"
+  },
+  "Languages": {
+    "fo": "Mál",
+    "de": "Sprachen"
+  },
+  "Backups": {
+    "fo": "Trygdaravrit",
+    "de": "Sicherungen"
+  },
+  "Fallback language": {
+    "fo": "Varamál",
+    "de": "Ausweichsprache"
+  },
+  "Choose enabled languages and the fallback used for missing translations. English is the final built-in fallback.": {
+    "fo": "Vel virkin mál og varamálið, ið verður nýtt, tá ein týðing vantar. Enskt er seinasta innbygda varamálið.",
+    "de": "Wähle aktive Sprachen und die Ausweichsprache für fehlende Übersetzungen. Englisch ist die letzte integrierte Ausweichsprache."
+  },
+  "Save language preferences": {
+    "fo": "Goym málstillingar",
+    "de": "Spracheinstellungen speichern"
+  },
+  "Add language": {
+    "fo": "Legg mál afturat",
+    "de": "Sprache hinzufügen"
+  },
+  "Language code": {
+    "fo": "Málkota",
+    "de": "Sprachcode"
+  },
+  "Save language": {
+    "fo": "Goym mál",
+    "de": "Sprache speichern"
+  },
+  "Language saved.": {
+    "fo": "Mál goymt.",
+    "de": "Sprache gespeichert."
+  },
+  "Language preferences saved.": {
+    "fo": "Málstillingar goymdar.",
+    "de": "Spracheinstellungen gespeichert."
+  },
+  "Translations": {
+    "fo": "Týðingar",
+    "de": "Übersetzungen"
+  },
+  "Add translations for interface phrases, event introductions, venue welcome messages, sessions and food. Missing text uses the fallback language.": {
+    "fo": "Legg týðingar afturat til brúkaramót, inngangstekst, vælkomstboð á støðum, samkomur og mat. Tá tekstur vantar, verður varamálið nýtt.",
+    "de": "Ergänze Übersetzungen für die Oberfläche, Einleitung, Begrüßungstexte an Orten, Programmpunkte und Speisen. Fehlender Text verwendet die Ausweichsprache."
+  },
+  "Text to translate": {
+    "fo": "Tekstur at týða",
+    "de": "Zu übersetzender Text"
+  },
+  "Translation": {
+    "fo": "Týðing",
+    "de": "Übersetzung"
+  },
+  "Save translation": {
+    "fo": "Goym týðing",
+    "de": "Übersetzung speichern"
+  },
+  "Translation saved.": {
+    "fo": "Týðing goymd.",
+    "de": "Übersetzung gespeichert."
+  },
+  "Fallback preview": {
+    "fo": "Undansýning av varamáli",
+    "de": "Vorschau der Ausweichsprache"
+  },
+  "Venue": {
+    "fo": "Stað",
+    "de": "Ort"
+  },
+  "Description": {
+    "fo": "Lýsing",
+    "de": "Beschreibung"
+  },
+  "Blank text uses the configured fallback language, then English.": {
+    "fo": "Tómur tekstur nýtir valda varamálið og síðani enskt.",
+    "de": "Leerer Text verwendet die eingestellte Ausweichsprache, danach Englisch."
+  },
+  "Choose a phrase and language, then save the translation. Downloading a wording file is optional. This does not publish the event.": {
+    "fo": "Vel orðing og mál, og goym síðani týðingina. Tú kanst eisini taka eina orðingarfílu niður. Hetta almannakunnger ikki tiltakið.",
+    "de": "Wähle Text und Sprache und speichere die Übersetzung. Der Download einer Textdatei ist optional. Dies veröffentlicht die Veranstaltung nicht."
+  },
+  "Download an application backup containing guest information, private invitation codes, settings, translations, contributions and historical records. Store it privately.": {
+    "fo": "Tak eitt trygdaravrit av skipanardátum niður við gestaupplýsingum, privatum innbjóðingarkotum, stillingum, týðingum, ískoytum og søgu. Goym tað privat.",
+    "de": "Lade eine Anwendungssicherung mit Gästedaten, privaten Einladungscodes, Einstellungen, Übersetzungen, Beiträgen und Verlauf herunter. Bewahre sie privat auf."
+  },
+  "Auth passwords, sessions, administrator access, deployment secrets, rate-limit counters and sign-in logs are not restored. Keep a separate copy of the repository and deployment configuration.": {
+    "fo": "Auth-loyniorð, setur, umsitaratgongd, loynilig uppseting, ferðavmarkingarteljarar og innritanarskrásetingar verða ikki endurstovnað. Goym eina serstaka útgávu av goymsluni og útleggingaruppsetingini.",
+    "de": "Auth-Passwörter, Sitzungen, Administratorzugriffe, Bereitstellungsgeheimnisse, Anfragelimits und Anmeldeprotokolle werden nicht wiederhergestellt. Bewahre Repository und Bereitstellungskonfiguration separat auf."
+  },
+  "Download application backup": {
+    "fo": "Tak trygdaravrit av skipanardátum niður",
+    "de": "Anwendungssicherung herunterladen"
+  },
+  "Validate and restore": {
+    "fo": "Kanna og endurstovna",
+    "de": "Prüfen und wiederherstellen"
+  },
+  "Choose a backup to inspect it. Full validation rehearses the restore and rolls it back. Import requires an empty, unpublished destination with matching migrations and verified historical actor accounts. Existing application records cannot be overwritten.": {
+    "fo": "Vel eitt trygdaravrit at kanna. Full kanning roynir endurstovningina og tekur hana aftur. Innlestur krevur ein tóman, óalmannakunngjørdan dátugrunn við samsvarandi dagføringum og váttaðum kontum hjá søguligum umsitarum. Verandi skrásetingar kunnu ikki yvirskrivast.",
+    "de": "Wähle eine Sicherung zur Prüfung. Die vollständige Prüfung probt die Wiederherstellung und rollt sie zurück. Der Import erfordert ein leeres, unveröffentlichtes Ziel mit passenden Migrationen und verifizierten Konten historischer Akteure. Bestehende Anwendungsdaten können nicht überschrieben werden."
+  },
+  "Backup file": {
+    "fo": "Trygdaravritsfíla",
+    "de": "Sicherungsdatei"
+  },
+  "Validate backup": {
+    "fo": "Kanna trygdaravrit",
+    "de": "Sicherung prüfen"
+  },
+  "Restore confirmation": {
+    "fo": "Váttan av endurstovning",
+    "de": "Wiederherstellungsbestätigung"
+  },
+  "I understand this restores application data into an empty destination and keeps the event unpublished.": {
+    "fo": "Eg skilji, at hetta endurstovnar skipanardátur í einum tómum dátugrunni og heldur tiltakið óalmannakunngjørt.",
+    "de": "Ich verstehe, dass dies Anwendungsdaten in einem leeren Ziel wiederherstellt und die Veranstaltung unveröffentlicht lässt."
+  },
+  "Restore application backup": {
+    "fo": "Endurstovna trygdaravrit av skipanardátum",
+    "de": "Anwendungssicherung wiederherstellen"
+  },
+  "Preparing backup…": {
+    "fo": "Geri trygdaravrit…",
+    "de": "Sicherung wird vorbereitet…"
+  },
+  "Backup export is unavailable. Install the matching migration first.": {
+    "fo": "Útlesing av trygdaravriti er ikki tøk. Legg fyrst samsvarandi dátugrunnsdagføring inn.",
+    "de": "Sicherungsexport nicht verfügbar. Installiere zuerst die passende Migration."
+  },
+  "Backup downloaded. Store it privately and rehearse restoration.": {
+    "fo": "Trygdaravrit tikið niður. Goym tað privat og royn endurstovning.",
+    "de": "Sicherung heruntergeladen. Bewahre sie privat auf und probe die Wiederherstellung."
+  },
+  "Backup exceeds 20 MB.": {
+    "fo": "Trygdaravritið er størri enn 20 MB.",
+    "de": "Die Sicherung überschreitet 20 MB."
+  },
+  "Unsupported backup format or version.": {
+    "fo": "Óstuðlað trygdaravritssnið ella útgáva.",
+    "de": "Nicht unterstütztes Sicherungsformat oder nicht unterstützte Version."
+  },
+  "Validating backup…": {
+    "fo": "Kanni trygdaravrit…",
+    "de": "Sicherung wird geprüft…"
+  },
+  "Backup validation is unavailable.": {
+    "fo": "Kanning av trygdaravriti er ikki tøk.",
+    "de": "Sicherungsprüfung nicht verfügbar."
+  },
+  "Restore rehearsal passed. No data was changed.": {
+    "fo": "Endurstovningarroynd eydnaðist. Ongar dátur vórðu broyttar.",
+    "de": "Wiederherstellungsprobe erfolgreich. Es wurden keine Daten geändert."
+  },
+  "This destination cannot be restored: ": {
+    "fo": "Hesin dátugrunnur kann ikki endurstovnast: ",
+    "de": "Dieses Ziel kann nicht wiederhergestellt werden: "
+  },
+  "Application restored. The event is unpublished. Review administrator access separately.": {
+    "fo": "Skipanardátur endurstovnaðar. Tiltakið er óalmannakunngjørt. Kanna umsitaratgongd serstakt.",
+    "de": "Anwendung wiederhergestellt. Die Veranstaltung ist unveröffentlicht. Prüfe den Administratorzugriff separat."
+  },
+  "RESTORE followed by the source event name": {
+    "fo": "RESTORE og síðani navnið á upprunatiltakinum",
+    "de": "RESTORE gefolgt vom Namen der Quellveranstaltung"
   }
 };

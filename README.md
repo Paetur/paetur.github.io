@@ -30,7 +30,11 @@ The source files in this archive do **not** contain guest data, invitation codes
 
 **Interface languages and customization:** FO/EN/DE cover the guest, administration and setup interfaces. Select a language in the toolbar; Settings → Event settings contains welcome-message editors and interface wording customization. See [Interface languages](docs/INTERFACE_LANGUAGES.md).
 
-**Still incomplete:** automatic guest-message sending and full launch acceptance testing.
+**Current work and optional backlog:** see [Roadmap](docs/ROADMAP.md). Automatic guest sending is an optional later decision; the manual-delivery baseline remains available. Full launch acceptance testing is still required.
+
+**Languages:** Settings → Languages manages enabled languages, event default/fallback and translations beyond FO/EN/DE. See [Language management](docs/INTERFACE_LANGUAGES.md).
+
+**Application backups:** Settings → Backups downloads versioned JSON and validates/restores it into an empty, unpublished destination. Auth and deployment configuration are handled separately. See [Backup and restore](docs/BACKUP_RESTORE.md).
 
 ## Install without terminal or Python
 
@@ -44,7 +48,7 @@ The source files in this archive do **not** contain guest data, invitation codes
 6. Test the connection, sign in with the already-created verified administrator account, and download the generated `config.js`.
 7. In the **new** GitHub repository, replace `js/config.js` with the downloaded file and commit. Only then can **other browsers** use your event website. The wizard's browser preview alone does not configure GitHub Pages for visitors.
 8. Visit `admin/` in the new repository's GitHub Pages deployment to view your migrated households and adjust settings.
-9. **Do not publish or delete the original Supabase database** until all release checklist items pass.
+9. **Keep the current event unpublished** until all release checklist items pass. The former source database has already been deleted; retain current backups instead.
 
 **Note:** GitHub's connector can inspect or update an existing repository, but cannot create a new repository through the currently connected tools. Creating the empty GitHub repository in GitHub's web UI is a one-time step. Once it exists, the files can also be committed through a connected GitHub workflow.
 
@@ -90,7 +94,7 @@ GitHub Pages is static hosting. A public page can **never** safely run arbitrary
 
 ## Original project
 
-Original website source is at `https://github.com/Paetur/paetur.github.io`. The new starter is a separate codebase; it does not modify or delete the original repository. The existing database retains its 61 households, 104 guests, 49 food items, 2 claims, and other imported records. The new wedding event is initially **unpublished**.
+Original website source is at `https://github.com/Paetur/paetur.github.io`. The new starter is a separate codebase; it does not modify or delete the original repository. Those original migration counts are historical, not a fresh verification of current records. The former source database has since been deleted. Keep the current event **unpublished** and retain tested backups of it.
 
 
 ## Guest Edge gateway (required for newly created projects)

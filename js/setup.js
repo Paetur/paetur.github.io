@@ -66,5 +66,5 @@
     $('copyConfig').addEventListener('click',()=>navigator.clipboard.writeText(R.configSource()).then(()=>stateMessage(T("Configuration copied."),'success')).catch(()=>stateMessage(T("Clipboard access denied. Download the file instead."),'warning')));
     displayStep(1);
   }
-  document.addEventListener('DOMContentLoaded',()=>{try{setup();}catch(e){stateMessage(R.safeError(e),'error');}});
+  document.addEventListener('DOMContentLoaded',()=>{window.RSVP_I18N.load().then(setup).catch(e=>stateMessage(R.safeError(e),'error'));});
 }());

@@ -2,7 +2,7 @@
  'use strict';
  const T=(text,params)=>window.RSVP_I18N?.t(text,params)||text;
  const R=window.RSVP,$=R.byId;
- let db=null,user=null,store={settings:null,sessions:[],locations:[],households:[],guests:[],food:[],claims:[],submissions:[],defaults:[],content:[],admins:[],adminInvitations:[],relationGroups:[],foodCategories:[],contacts:[],overrides:[],responses:[],queue:[],deliveries:[]};
+ let db=null,user=null,store={settings:null,sessions:[],locations:[],households:[],guests:[],food:[],claims:[],submissions:[],defaults:[],content:[],admins:[],adminInvitations:[],relationGroups:[],foodCategories:[],languages:[],contacts:[],overrides:[],responses:[],queue:[],deliveries:[]};
  let activeTab='dashboard',lastMainTab='dashboard',activeSettingsTab='event',editMode=false;
  const expandedGroups=new Map();
  const qs=(s)=>document.querySelector(s);
@@ -40,18 +40,19 @@
    }
  }
  function toggleSettings(){tab(activeTab==='settings'?lastMainTab:'settings');}
- function mode(isEditing){editMode=isEditing;$('adminApp').dataset.mode=isEditing?'edit':'view';const b=$('editModeButton');b.classList.toggle('active',isEditing);b.setAttribute('aria-pressed',String(isEditing));b.title=isEditing?T("Switch to View mode"):T("Switch to Edit mode");b.setAttribute('aria-label',b.title);$('adminModeLabel').textContent=isEditing?T("Edit mode · Changes are saved to the event database"):T("View mode · Manage invitations, food and event details");for(const id of ['eventSettingsForm','eventContentForm','interfaceWordingForm']){const form=$(id);for(const field of form.querySelectorAll('input,select,textarea'))field.disabled=!isEditing;}}
+ function mode(isEditing){editMode=isEditing;$('adminApp').dataset.mode=isEditing?'edit':'view';const b=$('editModeButton');b.classList.toggle('active',isEditing);b.setAttribute('aria-pressed',String(isEditing));b.title=isEditing?T("Switch to View mode"):T("Switch to Edit mode");b.setAttribute('aria-label',b.title);$('adminModeLabel').textContent=isEditing?T("Edit mode · Changes are saved to the event database"):T("View mode · Manage invitations, food and event details");for(const id of ['eventSettingsForm','eventContentForm','interfaceWordingForm','languagePreferences','addLanguageForm','translationForm']){const form=$(id);for(const field of form.querySelectorAll('input,select,textarea'))field.disabled=!isEditing;}window.RSVP_ADMIN_TOOLS?.mode();}
  async function fetchTable(name,columns='*',order){let q=db.from(name).select(columns);if(order)q=q.order(order);const {data,error}=await q;if(error)throw new Error(`${name}: ${R.safeError(error)}`);return data||[];}
  async function reload(){
    show(T("Loading event data…"));
    try{
-     const keys=['settings','sessions','locations','households','guests','food','claims','submissions','defaults','content','relationGroups','foodCategories','contacts','overrides','responses','queue','deliveries'];
-     const jobs=[fetchTable('event_settings'),fetchTable('event_sessions'),fetchTable('event_locations'),fetchTable('households','id,household_name,invite_code,language,side,relation_group_id,email,phone,food,food_confirmed,rsvp_state,rsvp_submitted_at,late_submission_until,sort_order,parent_id,notes,archived_at,whatsapp,postal_address,preferred_contact_method'),fetchTable('guests','id,household_id,first_name,last_name,courtesy_title,relation,language,is_child,rsvp_status,dietary_requirements,notes,archived_at'),fetchTable('food_items'),fetchTable('food_claims'),fetchTable('rsvp_submissions','id,household_id,submitted_at'),fetchTable('household_session_defaults'),fetchTable('event_content'),fetchTable('relation_groups'),fetchTable('food_categories'),fetchTable('household_contacts'),fetchTable('guest_session_overrides'),fetchTable('guest_session_responses'),fetchTable('invitation_send_queue'),fetchTable('invitation_deliveries')];
+     const keys=['languages','settings','sessions','locations','households','guests','food','claims','submissions','defaults','content','relationGroups','foodCategories','contacts','overrides','responses','queue','deliveries'];
+     const jobs=[fetchTable('event_languages'),fetchTable('event_settings'),fetchTable('event_sessions'),fetchTable('event_locations'),fetchTable('households','id,household_name,invite_code,language,side,relation_group_id,email,phone,food,food_confirmed,rsvp_state,rsvp_submitted_at,late_submission_until,sort_order,parent_id,notes,archived_at,whatsapp,postal_address,preferred_contact_method'),fetchTable('guests','id,household_id,first_name,last_name,courtesy_title,relation,language,is_child,rsvp_status,dietary_requirements,notes,archived_at'),fetchTable('food_items'),fetchTable('food_claims'),fetchTable('rsvp_submissions','id,household_id,submitted_at'),fetchTable('household_session_defaults'),fetchTable('event_content'),fetchTable('relation_groups'),fetchTable('food_categories'),fetchTable('household_contacts'),fetchTable('guest_session_overrides'),fetchTable('guest_session_responses'),fetchTable('invitation_send_queue'),fetchTable('invitation_deliveries')];
      const values=await Promise.all(jobs);keys.forEach((key,i)=>store[key]=values[i]);store.settings=store.settings[0]||null;
      const {data:admins,error:adminsError}=await R.adminRpc('admin_list_members');
      store.admins=adminsError?[]:(admins||[]);
      if(adminsError)show(T("Admin management API unavailable: ")+R.safeError(adminsError),'warning');else show('');
      const invitations=await R.adminRpc('admin_list_invitations');store.adminInvitations=invitations.data||[];invitationApiError=invitations.error?T("Administrator invitations are unavailable. The invitation service must be installed before sending."):'';
+     if(store.languages.length)window.RSVP_I18N.configure({languages:store.languages,default_language:store.settings?.default_language,fallback_language:store.settings?.fallback_language,translations:store.content});
      renderAll();return true;
    }catch(e){show(R.safeError(e),'error');return false;}
  }
@@ -64,7 +65,7 @@
    try{websiteConfigured=Boolean(deployed.supabaseUrl&&deployed.supabaseKey&&R.normalizeUrl(deployed.supabaseUrl)===R.normalizeUrl(R.config().supabaseUrl)&&R.validateKey(deployed.supabaseKey));}catch(_){websiteConfigured=false;}
    const checks=[[T("Admin account connected"),true],[T("Event name and date entered"),!!(store.settings?.event_name&&store.settings?.event_date)],[T("At least one session created"),store.sessions.some(s=>s.is_active)],[T("Invitations assigned"),store.defaults.some(d=>d.is_invited)],[T("Website connection in deployed config.js"),websiteConfigured],[T("Website address saved in event settings"),!!store.settings?.website_url],[T("Event published"),!!store.settings?.is_published]];
    $('launchChecklist').replaceChildren(...checks.map(([label,yes])=>{const li=R.dom('li');li.append(R.dom('span',{class:yes?'yes':'no'},yes?'✓':'○'),document.createTextNode(label));return li;}));
-   $('newHousehold').replaceChildren(householdForm({language:'fo',side:'paetur_hentze'}));renderHouseholds();renderInvites();renderDeliveryLog();renderFood();renderAdmins();renderSettings();renderSessions();renderContent();
+   $('newHousehold').replaceChildren(householdForm({language:store.settings?.default_language||'en',side:'paetur_hentze'}));renderHouseholds();renderInvites();renderDeliveryLog();renderFood();renderAdmins();renderSettings();renderSessions();renderContent();window.RSVP_ADMIN_TOOLS?.render();
  }
  function ordered(list, label){
    return [...list].sort((a,b)=>(a.sort_order||0)-(b.sort_order||0)||
@@ -154,7 +155,7 @@
      ['',T("None")],['Mr.','Mr.'],['Ms.','Ms.'],['Son',T("Son")],['Daughter',T("Daughter")]]);
    const relation=labeledInput(T("Relation"),guest.relation,160);
    const language=labeledSelect(T("Language"),guest.language,[
-     ['',T("Household default")],['fo',T("Faroese")],['en',T("English")],['de',T("German")]]);
+     ['',T("Household default")],...languages(guest.language)]);
    const childWrap=R.dom('label',{class:'guest-child-field'});
    const child=R.dom('input',{type:'checkbox'});child.checked=!!guest.is_child;
    childWrap.append(child,R.dom('span',{},T("Child guest")));fields.append(childWrap);
@@ -234,13 +235,13 @@
    });return form;
  }
  async function managementRpc(name,args){const {data,error}=await R.adminRpc(name,args);if(error)throw error;return data;}
- const languages=[['fo',T("Faroese")],['en',T("English")],['de',T("German")]];
+ function languages(current){const list=store.languages.length?store.languages:window.RSVP_I18N.languages;return list.filter(l=>l.enabled!==false||l.language_code===current).sort((a,b)=>(a.sort_order||0)-(b.sort_order||0)||a.language_code.localeCompare(b.language_code)).map(l=>[l.language_code,l.display_name]);}
  function householdForm(h){
    const f=managementForm();
    const name=field(f,T("Household name"),h.household_name,null,'text',true,140);
    const side=field(f,T("Side"),h.side,[['paetur_hentze','Pætur Hentze'],['maria_haass','Maria Haass']]);
    const group=field(f,T("Relation group"),h.relation_group_id,[['',T("Ungrouped")],...ordered(store.relationGroups,'name').map(g=>[g.id,g.name])]);
-   const lang=field(f,T("Household language"),h.language||'fo',languages);
+   const lang=field(f,T("Household language"),h.language||store.settings?.default_language||'en',languages(h.language));
    const parent=field(f,T("Parent household"),h.parent_id,[['',T("None (top level)")]]);
    function parents(){
      const selected=parent.value||h.parent_id||'';parent.replaceChildren(R.dom('option',{value:''},T("None (top level)")));
@@ -332,7 +333,7 @@
    const f=managementForm();f.classList.add('contact-form');let guestId=c.guest_id||null;const name=field(f,T("Contact name"),c.contact_name,null,'text',false,140);
    const type=field(f,T("Contact type"),c.contact_type||'email',[['email',T("Email")],['phone',T("Phone")],['postal',T("Postal address")],['other',T("Other")]]);
    const value=field(f,T("Contact details"),c.contact_value,null,'text',true,1000);value.closest('label').classList.add('span-2');
-   const lang=field(f,T("Contact language"),c.language_code,[['',T("Household default")],...languages]);
+   const lang=field(f,T("Contact language"),c.language_code,[['',T("Household default")],...languages(c.language_code)]);
    const method=field(f,T("Preferred delivery method"),c.preferred_method,[['',T("Unspecified")],['whatsapp','WhatsApp'],['sms','SMS'],['email',T("Email")],['postal',T("Postal")],['manual',T("Manual")]]);
    const primary=field(f,T("Primary contact for this type"),c.is_primary,null,'checkbox');primary.closest('label').classList.add('span-2','contact-primary');primary.closest('label').prepend(primary);
    const guestPicker=contactGuestPicker(guestId,g=>{guestId=g.id;name.value=[g.first_name,g.last_name].filter(Boolean).join(' ');lang.value=g.language||store.households.find(h=>h.id===g.household_id)?.language||'';value.focus();},()=>{guestId=null;});f.prepend(guestPicker);
@@ -340,8 +341,8 @@
    const actions=R.dom('div',{class:'span-2 contact-form-actions'});actions.append(f.querySelector('button[type=submit]'));
    if(onCancel){const cancel=R.dom('button',{type:'button',class:'btn secondary'},T("Cancel"));cancel.addEventListener('click',onCancel);actions.append(cancel);}f.append(actions);return f;
  }
- const logCategories={households:T("Households"),guests:T("Guests"),contacts:T("Contacts"),rsvp:'RSVP',invitations:T("Invitations"),login:T("Login"),venues:T("Venues"),sessions:T("Sessions"),food:T("Food access"),administrators:T("Administrators")};
- const logActions={add:T("Added"),insert:T("Added"),update:T("Updated"),delete:T("Deleted"),move:T("Moved"),archive:T("Archived"),restore:T("Restored"),assign:T("Assigned"),invitations_changed:T("Invitation assignments changed"),submitted:T("Household submitted"),reopened:T("RSVP reopened"),late_submission_authorized:T("Late response allowed"),response_submitted:T("Guest response submitted"),response_corrected:T("Guest response corrected"),created:T("Delivery created"),draft:T("Draft saved"),ready:T("Ready to send"),sent:T("Recorded sent"),failed:T("Failed delivery"),cancelled:T("Cancelled"),opened:T("Invitation opened"),login:T("Sign-in session"),logout:T("Signed out"),logout_requested:T("Sign-out requested"),email_requested:T("Administrator email requested"),email_sent:T("Administrator email accepted by service"),email_failed:T("Administrator email failed"),invitation_cancelled:T("Administrator invitation cancelled"),invitation_accepted:T("Administrator invitation accepted"),remove:T("Access removed"),rename:T("Renamed"),token_refreshed:T("Token refreshed")};
+ const logCategories={households:"Households",guests:"Guests",contacts:"Contacts",rsvp:'RSVP',invitations:"Invitations",login:"Login",venues:"Venues",sessions:"Sessions",food:"Food access",administrators:"Administrators"};
+ const logActions={add:"Added",insert:"Added",update:"Updated",delete:"Deleted",move:"Moved",archive:"Archived",restore:"Restored",assign:"Assigned",invitations_changed:"Invitation assignments changed",submitted:"Household submitted",reopened:"RSVP reopened",late_submission_authorized:"Late response allowed",response_submitted:"Guest response submitted",response_corrected:"Guest response corrected",created:"Delivery created",draft:"Draft saved",ready:"Ready to send",sent:"Recorded sent",failed:"Failed delivery",cancelled:"Cancelled",opened:"Invitation opened",login:"Sign-in session",logout:"Signed out",logout_requested:"Sign-out requested",email_requested:"Administrator email requested",email_sent:"Administrator email accepted by service",email_failed:"Administrator email failed",invitation_cancelled:"Administrator invitation cancelled",invitation_accepted:"Administrator invitation accepted",remove:"Access removed",rename:"Renamed",token_refreshed:"Token refreshed"};
  let logEntries=[],logCursor=null,logGeneration=0,logsLoaded=false;
  function logDateBoundary(value,next=false){if(!value)return null;let date=value;if(next){const d=new Date(value+'T00:00:00Z');d.setUTCDate(d.getUTCDate()+1);date=d.toISOString().slice(0,10);}return R.zonedInstant(date+'T00:00',store.settings?.timezone||'Atlantic/Faroe');}
  function formatLogValue(value){return value==null?'—':typeof value==='object'?JSON.stringify(value,null,2):String(value);}
@@ -350,7 +351,7 @@
    for(const e of logEntries){
      const d=R.dom('details',{class:'log-entry'});const summary=R.dom('summary');const date=new Date(e.occurred_at);const time=R.dom('time',{title:date.toISOString()},new Intl.DateTimeFormat(window.RSVP_I18N?.locale()||'en-GB',{dateStyle:'medium',timeStyle:'medium'}).format(date));time.dateTime=date.toISOString();
      const subject=R.dom('span',{class:'log-subject'});subject.append(R.dom('strong',{},e.subject),R.dom('small',{class:'muted'},e.household_name||''));
-     const kind=R.dom('span');kind.append(R.dom('span',{class:'tag'},logCategories[e.category]||e.category),R.dom('small',{},logActions[e.action]||e.action.replaceAll('_',' ')));
+     const kind=R.dom('span');kind.append(R.dom('span',{class:'tag'},T(logCategories[e.category]||e.category)),R.dom('small',{},T(logActions[e.action]||e.action.replaceAll('_',' '))));
      summary.append(time,subject,kind,R.dom('span',{class:'log-actor'},e.actor));d.append(summary);
      const content=R.dom('div',{class:'log-details'});content.append(R.dom('p',{class:'micro'},T("Reference: ")+e.event_key+' · '+date.toISOString()));
      const details=e.details||{};
@@ -369,7 +370,7 @@
      const filters={p_search:$('logSearch').value.trim(),p_category:$('logCategory').value,p_action:$('logAction').value,p_from:logDateBoundary($('logFrom').value),p_to:logDateBoundary($('logTo').value,true),p_before_at:reset?null:logCursor?.occurred_at||null,p_before_key:reset?null:logCursor?.event_key||null,p_limit:50};
      const {data,error}=await R.adminRpc('admin_query_logs',filters);if(error)throw error;if(generation!==logGeneration)return;
      const incoming=data?.entries||[];logEntries=reset?incoming:[...logEntries,...incoming];logCursor=logEntries.at(-1)||null;logsLoaded=true;renderLogs();
-     const selected=$('logAction').value;$('logAction').replaceChildren(R.dom('option',{value:''},T("All actions")));for(const action of data?.actions||[])$('logAction').append(R.dom('option',{value:action},logActions[action]||action.replaceAll('_',' ')));$('logAction').value=selected;
+     const selected=$('logAction').value;$('logAction').replaceChildren(R.dom('option',{value:''},T("All actions")));for(const action of data?.actions||[])$('logAction').append(R.dom('option',{value:action},T(logActions[action]||action.replaceAll('_',' '))));$('logAction').value=selected;
      $('logMore').classList.toggle('hidden',!data?.has_more);$('logStatus').textContent='';
    }catch(error){if(generation!==logGeneration)return;$('logStatus').textContent=R.safeError(error);if(reset){logEntries=[];renderLogs();}$('logMore').classList.add('hidden');}
    finally{if(generation===logGeneration){$('logMore').disabled=false;$('logApply').disabled=false;}}
@@ -747,7 +748,7 @@
    language.value=I.language;
    function load(){value.value=I.wording(phrase.value,language.value);value.placeholder=I.t(phrase.value,{},language.value);$('wordingPreview').textContent=I.t(phrase.value,{},language.value);}
    phrase.addEventListener('change',load);language.addEventListener('change',load);load();
-   $('interfaceWordingForm').addEventListener('submit',e=>{e.preventDefault();if(!editMode)return;try{I.applyWording(phrase.value,language.value,value.value);$('wordingPreview').textContent=I.t(phrase.value,{},language.value);show(T('Wording applied to this preview. Download and commit the file to share it.'),'success');}catch(error){show(R.safeError(error),'error');}});
+   $('interfaceWordingForm').addEventListener('submit',async e=>{e.preventDefault();if(!editMode)return;try{await managementRpc('admin_save_translation',{p_key:'ui:'+phrase.value,p_language:language.value,p_value:value.value});I.applyWording(phrase.value,language.value,value.value);$('wordingPreview').textContent=I.t(phrase.value,{},language.value);show(T('Translation saved.'),'success');}catch(error){show(R.safeError(error),'error');}});
    $('downloadWording').addEventListener('click',()=>R.dl('interface-overrides.js',I.source()));
    $('eventContentForm').addEventListener('submit',async e=>{
      e.preventDefault();if(!editMode)return;
@@ -761,6 +762,7 @@
 
  function renderSettings(){
    const e=store.settings||{};
+   for(const id of ['settingLanguage','wordingLanguage']){const select=$(id),previous=select.value;select.replaceChildren(...languages().filter(([code])=>!store.languages.length||store.languages.find(l=>l.language_code===code)?.enabled).map(([value,label])=>R.dom('option',{value},label)));select.value=Array.from(select.options).some(o=>o.value===previous)?previous:e.default_language;}
    $('settingName').value=e.event_name||'';$('settingType').value=e.event_type||'other';$('settingDate').value=e.event_date||'';
    $('settingLanguage').value=e.default_language||'en';$('settingTimezone').value=e.timezone||'UTC';
    $('settingUrl').value=e.website_url||'';$('settingDeadline').value=stamp(e.rsvp_deadline);
@@ -852,6 +854,7 @@
      const fragment=location.hash.slice(1);
      tab(['dashboard','households','invites','food','settings'].includes(fragment)?fragment:'dashboard',false);
    });
+   await window.RSVP_I18N.load();
    db=R.getClient();
    if(!db){$('loginPanel').classList.remove('hidden');show(T("Database not connected. Complete the setup wizard first."),'warning');$('loginForm').querySelector('button').disabled=true;return;}
    const {data:{user:current}}=await db.auth.getUser();if(current){user=current;try{await checkAccess();}catch(e){show(R.safeError(e),'error');}}
@@ -921,7 +924,7 @@
    $('eventSettingsForm').addEventListener('submit',async e=>{
      e.preventDefault();const deadline=$('settingDeadline').value;
      if(deadline&&!Number.isFinite(new Date(deadline).valueOf())){show(T("Invalid RSVP deadline."),'error');return;}
-     const settings={event_name:$('settingName').value.trim(),event_type:$('settingType').value.trim(),event_date:$('settingDate').value||null,default_language:$('settingLanguage').value,timezone:$('settingTimezone').value.trim(),website_url:$('settingUrl').value.trim()||null,rsvp_deadline:deadline?new Date(deadline).toISOString():null,updated_at:new Date().toISOString()};
+     const settings={event_name:$('settingName').value.trim(),event_type:$('settingType').value.trim(),event_date:$('settingDate').value||null,default_language:$('settingLanguage').value,fallback_language:store.settings?.fallback_language||'en',timezone:$('settingTimezone').value.trim(),website_url:$('settingUrl').value.trim()||null,rsvp_deadline:deadline?new Date(deadline).toISOString():null,updated_at:new Date().toISOString()};
      const {error}=await db.from('event_settings').upsert({id:1,...settings},{onConflict:'id'});
      if(error)show(R.safeError(error),'error');else{show(T("Event settings saved."),'success');await reload();}
    });
@@ -946,5 +949,5 @@
    });
 
  }
- document.addEventListener('DOMContentLoaded',()=>{(initContent(),init()).catch(e=>show(R.safeError(e),'error'));});
+ document.addEventListener('DOMContentLoaded',()=>{(window.RSVP_ADMIN_TOOLS?.init({R,getStore:()=>store,reload,isEditing:()=>editMode,show}),initContent(),init()).catch(e=>show(R.safeError(e),'error'));});
 }());

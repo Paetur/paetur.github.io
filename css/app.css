@@ -418,3 +418,9 @@ html[data-theme="dark"] code{background:#253b32;color:var(--ink)}
   .topbar:has(.admin-topbar-actions) .topbar-inner{flex-wrap:wrap;padding-top:8px;padding-bottom:8px;row-gap:7px}
   .topbar .admin-topbar-actions{flex-basis:100%;justify-content:flex-end}
 }
+
+/* Closed disclosures occupy only their summary, including in Safari. */
+#adminApp details:not([open])>:not(summary){display:none!important}
+#adminApp .admin-management:not([open]){padding:0}
+#adminApp .admin-management:not([open])>summary{margin:0}
+#adminApp .hierarchy-view,#adminApp .food-admin-list{align-content:start;align-items:start}

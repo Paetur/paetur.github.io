@@ -80,6 +80,8 @@ jobs:
         run: node tests/admin-auth-browser.cjs
       - name: Test FO/EN/DE interfaces and customization in Chromium and WebKit
         run: node tests/interface-localization.cjs
+      - name: Test collapsed disclosure geometry in Chromium and WebKit
+        run: node tests/disclosure-layout.cjs
       - name: Test compact admin layout with mocked data
         run: node tests/admin-layout.cjs
       - name: Upload light and dark browser previews

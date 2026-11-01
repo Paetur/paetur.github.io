@@ -259,7 +259,7 @@
  }
  function archiveButton(entity,record){
    const restoring=!!record.archived_at;
-   return iconAction(restoring?'restore':'archive',(restoring?T("Restore "):T("Archive "))+(entity==='households'?T('Household'):entity==='guests'?T('Guest'):T('Contact')),async()=>{
+   return iconAction(restoring?'restore':'archive',T((restoring?'Restore ':'Archive ')+(entity==='households'?'household':entity==='guests'?'guest':'contact')),async()=>{
      if(!editMode)return;
      const message=restoring?T("Restore this record?"):entity==='households'?T("Archive this household and disable its invitation link? Records and history are preserved."):T("Archive this record? It can be restored later.");
      if(!confirm(message))return;

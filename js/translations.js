@@ -2427,5 +2427,29 @@ window.RSVP_TRANSLATIONS = {
   "{count} guests in sub-households": {
     "fo": "{count} gestir í undirhúskjum",
     "de": "{count} Gäste in Unterhaushalten"
+  },
+  "Archive household": {
+    "fo": "Goym húski",
+    "de": "Haushalt archivieren"
+  },
+  "Restore household": {
+    "fo": "Endurstovna húski",
+    "de": "Haushalt wiederherstellen"
+  },
+  "Archive guest": {
+    "fo": "Goym gest",
+    "de": "Gast archivieren"
+  },
+  "Restore guest": {
+    "fo": "Endurstovna gest",
+    "de": "Gast wiederherstellen"
+  },
+  "Archive contact": {
+    "fo": "Goym samband",
+    "de": "Kontakt archivieren"
+  },
+  "Restore contact": {
+    "fo": "Endurstovna samband",
+    "de": "Kontakt wiederherstellen"
   }
 };

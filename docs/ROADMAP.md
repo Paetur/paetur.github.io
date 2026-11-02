@@ -24,9 +24,11 @@ Updated 1 November 2026. The former source database has been deleted. Implementa
 
 - [x] Compact Food rows, guest one-unit picks with capacity-based hiding, and separate public/private comments.
 - [x] Categorized content translations and consolidated settings language controls.
-- [x] Administrator Things to do spreadsheet (Task / Assigned to / Status); guest task workflows remain optional.
+- [x] Administrator Things to do spreadsheet (Task / Comment / Assigned to / Status); guest task workflows remain optional.
 
 - [x] Device-based email, SMS/Messages and WhatsApp invitations with administrator-initiated reminder drafts and existing manual sent history. Actual iPad/account handoff acceptance remains required; no background sending or automatic delivery/read receipts.
+
+- [x] Recipe groups containing existing and/or newly created food items, with category assignment and backup/restore coverage.
 
 ## Optional features — decide later
 

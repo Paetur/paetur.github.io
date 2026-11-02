@@ -34,6 +34,8 @@ async function checksum(db,b){b.checksum=await value(db,"SELECT encode(sha256(co
  await src.query('INSERT INTO public.invitation_access_audit(id,household_id) OVERRIDING SYSTEM VALUE VALUES(9007199254740993,$1)',[household]);
  await src.exec("INSERT INTO public.stuff_to_bring(item) VALUES('Chairs');INSERT INTO public.things_to_do(task) VALUES('Prepare venue');UPDATE public.event_settings SET is_published=false;SET ROLE authenticated;");
  await src.query("SELECT public.admin_prepare_invitation('invited@example.invalid','Recipient')");
+ await src.exec("RESET ROLE;INSERT INTO public.food_categories(name) VALUES('Recipe category');SET ROLE authenticated;");
+ await src.query('SELECT public.admin_save_recipe(null,$1,$2,$3,$4,null)',['Recovery recipe','Recipe category',[food],[{name:'Ingredient',quantity:1}]]);
  const backup=await value(src,'SELECT public.admin_export_backup() value');
  const outsider='33333333-3333-4333-8333-333333333333',otherSession='dddddddd-dddd-4ddd-8ddd-dddddddddddd';
  await src.exec('RESET ROLE');await src.query("INSERT INTO auth.users VALUES($1,'outsider@example.invalid',now(),'not-exported')",[outsider]);await src.query('INSERT INTO auth.sessions(id,user_id) VALUES($1,$2)',[otherSession,outsider]);await src.query("SELECT set_config('request.jwt.claim.sub',$1,false),set_config('request.jwt.claims',$2,false)",[outsider,JSON.stringify({sub:outsider,session_id:otherSession})]);await src.exec('SET ROLE authenticated');

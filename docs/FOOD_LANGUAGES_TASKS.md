@@ -19,10 +19,18 @@ The old event-settings editors are hidden in favor of the managed translation ed
 
 ## Things to do
 
-The administrator task sheet has three columns: Task, Assigned to and Status (Open, In progress, Done). Select Edit, use Add rows for additional tasks, then Save. Blank new rows are ignored. Existing notes and due dates are retained although they are not shown in these three columns. There is no deletion operation.
+The administrator task sheet has four columns: Task, Comment, Assigned to and Status (Open, In progress, Done). Select Edit, use Add rows for additional tasks, then Save. Blank new rows are ignored. Comment uses the existing task notes field; existing comments are shown and editable, and due dates are retained. There is no deletion operation.
 
 The save RPC requires a live administrator session, validates every row and commits the sheet atomically. A changed existing row causes the whole save to fail rather than overwrite another administrator’s change. Unsaved cells remain available after errors. Reload the page to discard/reload a conflicting draft. The sheet is administrator-only; guest task assignment workflows remain a future decision.
 
 ## Deployment
 
 Apply the additive food-comment/capacity and administrator-task-sheet migrations before deploying this frontend. The fresh-project installer includes both. Keep the current event unpublished. Backups taken after these migrations include the private food comment automatically; application imports still require an exact matching schema.
+
+## Recipes
+
+Add Food Category, Add Food Item and Add recipe are above the food list. Add recipe groups selected existing food items under a name and category; Create food item in recipe adds new rows in the same save. A recipe can contain both existing and new items. Existing item IDs, translations and claims remain intact. An item belongs to at most one recipe; remove it through Edit recipe before placing it in another.
+
+Recipes appear as expandable groups within their category. Edit recipe changes its name, category and item membership. Changing its category also moves its items through a database foreign-key cascade; an individual recipe item cannot be assigned a conflicting category. Guests still pick individual items, with the recipe name shown beside each item. Private comments remain private. Recipes and their memberships are included in application backups and tested restoration.
+
+Dish editing places Name and Quantity side by side, followed by User Comment and Admin Comment side by side.

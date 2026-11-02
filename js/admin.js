@@ -2,7 +2,7 @@
  'use strict';
  const T=(text,params)=>window.RSVP_I18N?.t(text,params)||text;
  const R=window.RSVP,$=R.byId;
- let db=null,user=null,store={settings:null,sessions:[],locations:[],households:[],guests:[],food:[],claims:[],submissions:[],defaults:[],content:[],admins:[],adminInvitations:[],relationGroups:[],foodCategories:[],languages:[],contacts:[],overrides:[],responses:[],queue:[],deliveries:[],tasks:[]};
+ let db=null,user=null,store={settings:null,sessions:[],locations:[],households:[],guests:[],food:[],claims:[],submissions:[],defaults:[],content:[],admins:[],adminInvitations:[],relationGroups:[],foodCategories:[],languages:[],contacts:[],overrides:[],responses:[],queue:[],deliveries:[],tasks:[],recipes:[]};
  let inviteDetail=null;
  let activeTab='dashboard',lastMainTab='dashboard',activeSettingsTab='event',editMode=false;
  const expandedGroups=new Map();
@@ -46,8 +46,8 @@
  async function reload(){
    show(T("Loading event data…"));
    try{
-     const keys=['languages','settings','sessions','locations','households','guests','food','claims','submissions','defaults','content','relationGroups','foodCategories','contacts','overrides','responses','queue','deliveries','tasks'];
-     const jobs=[fetchTable('event_languages'),fetchTable('event_settings'),fetchTable('event_sessions'),fetchTable('event_locations'),fetchTable('households','id,household_name,invite_code,language,side,relation_group_id,email,phone,food,food_confirmed,rsvp_state,rsvp_submitted_at,late_submission_until,sort_order,parent_id,notes,archived_at,whatsapp,postal_address,preferred_contact_method'),fetchTable('guests','id,household_id,first_name,last_name,courtesy_title,relation,language,is_child,rsvp_status,dietary_requirements,notes,archived_at'),fetchTable('food_items'),fetchTable('food_claims'),fetchTable('rsvp_submissions','id,household_id,submitted_at'),fetchTable('household_session_defaults'),fetchTable('event_content'),fetchTable('relation_groups'),fetchTable('food_categories'),fetchTable('household_contacts'),fetchTable('guest_session_overrides'),fetchTable('guest_session_responses'),fetchTable('invitation_send_queue'),fetchTable('invitation_deliveries'),fetchTable('things_to_do')];
+     const keys=['languages','settings','sessions','locations','households','guests','food','claims','submissions','defaults','content','relationGroups','foodCategories','contacts','overrides','responses','queue','deliveries','tasks','recipes'];
+     const jobs=[fetchTable('event_languages'),fetchTable('event_settings'),fetchTable('event_sessions'),fetchTable('event_locations'),fetchTable('households','id,household_name,invite_code,language,side,relation_group_id,email,phone,food,food_confirmed,rsvp_state,rsvp_submitted_at,late_submission_until,sort_order,parent_id,notes,archived_at,whatsapp,postal_address,preferred_contact_method'),fetchTable('guests','id,household_id,first_name,last_name,courtesy_title,relation,language,is_child,rsvp_status,dietary_requirements,notes,archived_at'),fetchTable('food_items'),fetchTable('food_claims'),fetchTable('rsvp_submissions','id,household_id,submitted_at'),fetchTable('household_session_defaults'),fetchTable('event_content'),fetchTable('relation_groups'),fetchTable('food_categories'),fetchTable('household_contacts'),fetchTable('guest_session_overrides'),fetchTable('guest_session_responses'),fetchTable('invitation_send_queue'),fetchTable('invitation_deliveries'),fetchTable('things_to_do'),fetchTable('food_recipes')];
      const values=await Promise.all(jobs);keys.forEach((key,i)=>store[key]=values[i]);store.settings=store.settings[0]||null;
      const {data:admins,error:adminsError}=await R.adminRpc('admin_list_members');
      store.admins=adminsError?[]:(admins||[]);
@@ -624,7 +624,7 @@
    const form=R.dom('form',{class:'food-edit-form hidden'});
    const fields=[[T("Name"),'name_en'],[T("User Comment"),'description_en'],[T("Admin Comment"),'admin_comment']];
    for(const [labelText,key] of fields){const label=R.dom('label');label.append(R.dom('span',{},labelText));const input=R.dom(key==='name_en'?'input':'textarea',{name:key});input.value=key==='name_en'?foodItemName(item):key==='description_en'?(item.description_en||item.description_fo||item.description_de||''):item[key]||'';input.maxLength=key==='name_en'?300:4000;input.required=key==='name_en';label.append(input);form.append(label);}
-   const quantityLabel=R.dom('label');quantityLabel.append(R.dom('span',{},T("Quantity needed")));const quantity=R.dom('input',{type:'number',min:'0',name:'quantity_needed'});quantity.value=String(item.quantity_needed);quantity.required=true;quantityLabel.append(quantity);form.append(quantityLabel);
+   const quantityLabel=R.dom('label');quantityLabel.append(R.dom('span',{},T("Quantity needed")));const quantity=R.dom('input',{type:'number',min:'0',name:'quantity_needed'});quantity.value=String(item.quantity_needed);quantity.required=true;quantityLabel.append(quantity);form.insertBefore(quantityLabel,form.children[1]);
    const activeLabel=R.dom('label',{class:'checkbox-label'});const active=R.dom('input',{type:'checkbox'});active.checked=item.active;activeLabel.append(active,R.dom('span',{},T("Available for guests")));form.append(activeLabel);
    const footer=R.dom('div',{class:'food-edit-buttons'});
    const save=R.dom('button',{type:'submit',class:'btn'},T("Save food item"));
@@ -644,8 +644,26 @@
    });
    return form;
  }
+ function recipeEditor(recipe={}){
+   const form=managementForm();const name=field(form,T('Recipe name'),recipe.name||'',null,'text',true,300);
+   const category=field(form,T('Category'),recipe.category||foodCategoriesSorted()[0]?.name||'',foodCategoriesSorted().map(c=>[c.name,c.name]),'text',true);
+   const existing=R.dom('fieldset',{class:'span-2 recipe-existing'});existing.append(R.dom('legend',{},T('Existing food items')));
+   const selected=[];
+   for(const item of ordered(store.food,'name_en').filter(f=>!f.recipe_id||f.recipe_id===recipe.id)){
+     const label=R.dom('label',{class:'checkbox-label'}),checkbox=R.dom('input',{type:'checkbox'});checkbox.checked=!!recipe.id&&item.recipe_id===recipe.id;selected.push([item.id,checkbox]);label.append(checkbox,document.createTextNode(foodItemName(item)+' · '+(item.category||T('Uncategorized'))));existing.append(label);
+   }
+   form.append(existing);
+   const rows=R.dom('div',{class:'span-2 recipe-new-items'}),add=R.dom('button',{type:'button',class:'small-tool'},T('Create food item in recipe'));const fresh=[];
+   add.addEventListener('click',()=>{
+     const row=R.dom('div',{class:'form-grid recipe-new-item'}),record={};
+     for(const [key,label,type,value] of [['name','Name','text',''],['quantity','Quantity needed','number','1'],['user_comment','User Comment','textarea',''],['admin_comment','Admin Comment','textarea','']]){record[key]=field(row,T(label),value,null,type,key==='name'||key==='quantity',key==='name'?300:4000);if(key==='quantity')record[key].min='0';}
+     const remove=R.dom('button',{type:'button',class:'small-tool'},T('Remove new item'));remove.addEventListener('click',()=>{fresh.splice(fresh.indexOf(record),1);row.remove();});row.append(remove);fresh.push(record);rows.append(row);record.name.focus();
+   });form.append(add,rows);
+   form.append(R.dom('p',{class:'micro span-2'},T('Existing items keep their selections. Recipe items use the recipe category.')));
+   return saveForm(form,T('Save recipe'),()=>managementRpc('admin_save_recipe',{p_id:recipe.id||null,p_name:name.value.trim(),p_category:category.value,p_items:selected.filter(([,c])=>c.checked).map(([id])=>id),p_new_items:fresh.map(r=>({name:r.name.value.trim(),quantity:Number(r.quantity.value),user_comment:r.user_comment.value.trim(),admin_comment:r.admin_comment.value.trim()})),p_expected_updated_at:recipe.updated_at||null}));
+ }
  function renderFood(){
-   const box=$('adminFoodList');box.replaceChildren();
+   const box=$('adminFoodList');box.replaceChildren();$('newRecipe').replaceChildren(recipeEditor());
    const categorySelect=$('newFoodCategory');categorySelect.replaceChildren();
    foodCategoryOptions(categorySelect,foodCategoriesSorted()[0]?.name||'');
    const search=$('foodSearch')?.value.trim().toLowerCase()||'';
@@ -655,7 +673,7 @@
      ...unregistered.map(name=>({name,id:null,registered:false}))];
    for(const [index,category] of list.entries()){
      const items=ordered(store.food.filter(f=>(f.category||'')===category.name),'name_fo');
-     const visible=items.filter(f=>!search||[f.name_fo,f.name_en,f.name_de,f.category]
+     const visible=items.filter(f=>!search||[f.name_fo,f.name_en,f.name_de,f.category,store.recipes.find(r=>r.id===f.recipe_id)?.name]
        .join(' ').toLowerCase().includes(search));
      if(search&&!visible.length)continue;
      const section=R.dom('details',{class:'food-category tree-disclosure'});
@@ -687,6 +705,7 @@
      }
      heading.append(controls);section.append(heading);
      const itemList=R.dom('div',{class:'food-category-items'});
+     const recipeGroups=new Map();
      for(const f of visible){
        const claim=claimedQuantity(f),pos=items.findIndex(x=>x.id===f.id);
        const wrapper=R.dom('details',{class:'food-manage-item food-compact-item'});setDisclosure(wrapper,'food:item:'+f.id,false,!!search);
@@ -718,10 +737,18 @@
          catch(error){change.value=f.category||'';show(R.safeError(error),'error');}
          finally{change.disabled=false;}
        });
-       changeLabel.append(change);buttons.append(changeLabel);
+       changeLabel.append(change);if(!f.recipe_id)buttons.append(changeLabel);
        main.append(info);
        const detail=R.dom('div',{class:'food-expanded'});detail.append(R.dom('p',{class:'small'},T('User Comment')+': '+(f.description_en||f.description_fo||f.description_de||'—')),R.dom('p',{class:'small'},T('Admin Comment')+': '+(f.admin_comment||'—')),buttons,edit);
-       wrapper.append(main,detail);itemList.append(wrapper);
+       wrapper.append(main,detail);
+       const recipe=store.recipes.find(r=>r.id===f.recipe_id);
+       if(recipe){
+         if(!recipeGroups.has(recipe.id)){
+           const group=R.dom('details',{class:'food-recipe tree-disclosure'});setDisclosure(group,'recipe:'+recipe.id,true,!!search);group.dataset.recipeId=recipe.id;
+           group.append(R.dom('summary',{class:'tree-group'},recipe.name));const inner=R.dom('div',{class:'tree-children'});group.append(inner);
+           const editor=disclosure(T('Edit recipe'),'edit-only');editor.append(recipeEditor(recipe));inner.append(editor);recipeGroups.set(recipe.id,inner);itemList.append(group);
+         }recipeGroups.get(recipe.id).append(wrapper);
+       }else itemList.append(wrapper);
      }
      section.append(itemList);box.append(section);
    }

@@ -2755,5 +2755,41 @@ window.RSVP_TRANSLATIONS = {
   "Name is required.": {
     "fo": "Navn krevst.",
     "de": "Name erforderlich."
+  },
+  "Comment": {
+    "fo": "Viðmerking",
+    "de": "Kommentar"
+  },
+  "Add recipe": {
+    "fo": "Legg uppskrift afturat",
+    "de": "Rezept hinzufügen"
+  },
+  "Recipe name": {
+    "fo": "Navn á uppskrift",
+    "de": "Rezeptname"
+  },
+  "Existing food items": {
+    "fo": "Verandi matvørur",
+    "de": "Vorhandene Speisen"
+  },
+  "Create food item in recipe": {
+    "fo": "Stovna matvøru í uppskrift",
+    "de": "Speise im Rezept erstellen"
+  },
+  "Remove new item": {
+    "fo": "Tak nýggja vøru burtur",
+    "de": "Neue Speise entfernen"
+  },
+  "Save recipe": {
+    "fo": "Goym uppskrift",
+    "de": "Rezept speichern"
+  },
+  "Edit recipe": {
+    "fo": "Rætta uppskrift",
+    "de": "Rezept bearbeiten"
+  },
+  "Existing items keep their selections. Recipe items use the recipe category.": {
+    "fo": "Verandi vørur varðveita síni val. Vørurnar í uppskriftini brúka bólkin hjá uppskriftini.",
+    "de": "Vorhandene Speisen behalten ihre Reservierungen. Speisen im Rezept verwenden dessen Kategorie."
   }
 };

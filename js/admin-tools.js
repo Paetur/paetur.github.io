@@ -33,10 +33,10 @@
   const body=$('taskRows');body.replaceChildren();
   for(const [index,row] of taskDraft.entries()){
    const tr=ctx.R.dom('tr');
-   for(const key of ['task','assigned_to','status']){
+   for(const key of ['task','notes','assigned_to','status']){
     const td=ctx.R.dom('td'),control=ctx.R.dom(key==='status'?'select':'input');
-    if(key==='status')options(control,[['open',T('Open')],['in_progress',T('In progress')],['done',T('Done')]],row.status||'open');else{control.value=row[key]||'';control.maxLength=key==='task'?1000:300;}
-    control.disabled=!taskEditing;control.setAttribute('aria-label',T(key==='task'?'Task':key==='assigned_to'?'Assigned to':'Status')+' · '+(index+1));
+    if(key==='status')options(control,[['open',T('Open')],['in_progress',T('In progress')],['done',T('Done')]],row.status||'open');else{control.value=row[key]||'';control.maxLength=key==='task'?1000:key==='notes'?4000:300;}
+    control.disabled=!taskEditing;control.setAttribute('aria-label',T(key==='task'?'Task':key==='notes'?'Comment':key==='assigned_to'?'Assigned to':'Status')+' · '+(index+1));
     control.addEventListener('input',()=>row[key]=control.value);control.addEventListener('change',()=>row[key]=control.value);td.append(control);tr.append(td);
    }body.append(tr);
   }
@@ -63,7 +63,7 @@
  function init(context){ctx=context;
   $('editTasks').addEventListener('click',()=>{taskEditing=true;renderTasks();$('taskRows input')?.focus();});
   $('addTaskRows').addEventListener('click',()=>{if(!taskEditing)return;taskDraft.push({task:'',assigned_to:'',status:'open'});renderTasks();$('taskRows tr:last-child input')?.focus();});
-  $('saveTasks').addEventListener('click',async()=>{if(!taskEditing)return;const button=$('saveTasks');button.disabled=true;try{await rpc('admin_save_tasks',{p_rows:taskDraft.filter(r=>r.id||r.task.trim()).map((r,i)=>({id:r.id||null,task:r.task.trim(),assigned_to:(r.assigned_to||'').trim(),status:r.status,expected_updated_at:r.updated_at||null,sort_order:i}))});taskDraft=null;taskEditing=false;await ctx.reload();ctx.show(T('Tasks saved.'),'success');}catch(error){$('tasksStatus').textContent=ctx.R.safeError(error);button.disabled=false;}});
+  $('saveTasks').addEventListener('click',async()=>{if(!taskEditing)return;const button=$('saveTasks');button.disabled=true;try{await rpc('admin_save_tasks',{p_rows:taskDraft.filter(r=>r.id||r.task.trim()).map((r,i)=>({id:r.id||null,task:r.task.trim(),notes:(r.notes||'').trim(),assigned_to:(r.assigned_to||'').trim(),status:r.status,expected_updated_at:r.updated_at||null,sort_order:i}))});taskDraft=null;taskEditing=false;await ctx.reload();ctx.show(T('Tasks saved.'),'success');}catch(error){$('tasksStatus').textContent=ctx.R.safeError(error);button.disabled=false;}});
 
   $('languagePreferences').addEventListener('submit',async e=>{e.preventDefault();if(!ctx.isEditing())return;try{await rpc('admin_set_language_preferences',{p_default:$('languageDefault').value,p_fallback:$('languageFallback').value});await ctx.reload();ctx.show(T('Language preferences saved.'),'success');}catch(error){ctx.show(ctx.R.safeError(error),'error');}});
   $('addLanguageForm').addEventListener('submit',async e=>{e.preventDefault();if(!ctx.isEditing())return;try{const code=Intl.getCanonicalLocales($('newLanguageCode').value.trim())[0];await rpc('admin_save_language',{p_code:code,p_name:$('newLanguageName').value.trim(),p_enabled:true,p_order:renderedLanguageCount+1});e.target.reset();await ctx.reload();ctx.show(T('Language saved.'),'success');}catch(error){ctx.show(ctx.R.safeError(error),'error');}});

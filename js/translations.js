@@ -2619,5 +2619,53 @@ window.RSVP_TRANSLATIONS = {
   "RESTORE followed by the source event name": {
     "fo": "RESTORE og síðani navnið á upprunatiltakinum",
     "de": "RESTORE gefolgt vom Namen der Quellveranstaltung"
+  },
+  "Open email": {
+    "fo": "Lat teldupost upp",
+    "de": "E-Mail öffnen"
+  },
+  "Open Messages": {
+    "fo": "Lat Boð upp",
+    "de": "Nachrichten öffnen"
+  },
+  "Open WhatsApp": {
+    "fo": "Lat WhatsApp upp",
+    "de": "WhatsApp öffnen"
+  },
+  "Copy the message, open Messages, then paste and send.": {
+    "fo": "Avrita boðini, lat Boð upp, set inn og send.",
+    "de": "Nachricht kopieren, Nachrichten öffnen, einfügen und senden."
+  },
+  "Review the message in your device app and tap Send.": {
+    "fo": "Kanna boðini í appini á tólinum og trýst á Send.",
+    "de": "Nachricht in der App prüfen und auf Senden tippen."
+  },
+  "Opening an app does not mark this message as sent. Return here to confirm sending. Delivery and read receipts remain in your messaging app.": {
+    "fo": "At lata eina app upp merkir ikki boðini sum send. Kom aftur higar og vátta sendingina. Kvittanir fyri móttøku og lesing eru í boðappini.",
+    "de": "Das Öffnen einer App markiert die Nachricht nicht als gesendet. Danach hier den Versand bestätigen. Zustell- und Lesebestätigungen bleiben in der Nachrichten-App."
+  },
+  "Enter one valid email address.": {
+    "fo": "Skriva eina gilduga teldupostadressu.",
+    "de": "Eine gültige E-Mail-Adresse eingeben."
+  },
+  "Use an international phone number, including country code.": {
+    "fo": "Brúka eitt altjóða telefonnummar við landakotu.",
+    "de": "Eine internationale Telefonnummer mit Landesvorwahl verwenden."
+  },
+  "Refresh and save this delivery again before sending.": {
+    "fo": "Dagfør og goym hesa sendingina aftur áðrenn tú sendir.",
+    "de": "Aktualisieren und diesen Versand vor dem Senden erneut speichern."
+  },
+  "Prepare reminder": {
+    "fo": "Ger áminning klára",
+    "de": "Erinnerung vorbereiten"
+  },
+  "Creates a separate draft using current contact details. Review the recipient and text before sending.": {
+    "fo": "Ger eitt nýtt uppskot við núverandi samskiftisupplýsingum. Kanna móttakara og tekst áðrenn tú sendir.",
+    "de": "Erstellt einen neuen Entwurf mit aktuellen Kontaktdaten. Empfänger und Text vor dem Senden prüfen."
+  },
+  "A friendly reminder to reply to our invitation:": {
+    "fo": "Ein vinarlig áminning um at svara innbjóðing okkara:",
+    "de": "Eine freundliche Erinnerung, auf unsere Einladung zu antworten:"
   }
 };

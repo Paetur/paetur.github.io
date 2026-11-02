@@ -1,0 +1,12 @@
+const assert=require('node:assert/strict'),vm=require('node:vm'),fs=require('node:fs');
+const context={window:{}};vm.runInNewContext(fs.readFileSync('js/device-delivery.js','utf8'),context);
+const compose=context.window.RSVP_DEVICE_DELIVERY.compose;
+const message='Hey Føroyskt & Deutsch?\nhttps://example.invalid/?ABCDEFGH';
+const q={channel:'email',recipient_snapshot:{contact_value:'person+event@example.invalid'},message_subject:'Invite & reminder',message_body:message,status:'ready'};
+const before=JSON.stringify(q),email=new URL(compose(q));assert.equal(email.protocol,'mailto:');assert.equal(email.searchParams.get('body'),message);assert.equal(email.searchParams.get('subject'),q.message_subject);assert.equal(JSON.stringify(q),before);
+for(const value of ['other@example.invalid?bcc=bad@example.invalid','a@example.invalid,b@example.invalid','a@example.invalid\r\nBcc: b@example.invalid','javascript:alert(1)'])assert.throws(()=>compose({...q,recipient_snapshot:{contact_value:value}}));
+assert.equal(compose({...q,channel:'sms',recipient_snapshot:{contact_value:'+298 123456'}}),'sms:+298123456');
+const wa=new URL(compose({...q,channel:'whatsapp',recipient_snapshot:{contact_value:'0049 (123) 456789'}}));assert.equal(wa.origin,'https://wa.me');assert.equal(wa.pathname,'/49123456789');assert.equal(wa.searchParams.get('text'),message);
+for(const value of ['123456','+298123456;123456','+123','+12345678901234567','+298123456?body=unexpected'])assert.throws(()=>compose({...q,channel:'sms',recipient_snapshot:{contact_value:value}}));
+assert.equal(compose({...q,channel:'postal'}),null);
+console.log('Device delivery: recipient validation, Unicode encoding and no state mutation passed.');

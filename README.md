@@ -58,6 +58,8 @@ Live workflow acceptance and an independent recovery rehearsal remain open below
 
 ## Implemented for next release
 
+- Compact food disclosures, one-unit guest selection without displayed quantities, public/private comments, categorized language tools and an administrator task sheet with comments. Recipes group existing or new items under a category. See [Food, language and task workflows](docs/FOOD_LANGUAGES_TASKS.md).
+
 - Device-based invitations and administrator-initiated reminders using existing Mail, Messages and WhatsApp accounts, with explicit manual sent confirmation. Opening a composer never means delivered. See [iPad sending instructions](docs/DELIVERY_RSVP_FOOD_CONTROLS.md#sending-from-an-ipad).
 
 ## To-do, process and wish list

@@ -1,6 +1,9 @@
 // Built-in interface catalog. Event and guest data are never translated by lookup.
 window.RSVP_TRANSLATIONS = {
-  "Back to households": {"fo":"Aftur til húski", "de":"Zurück zu Haushalten"},
+  "Back to households": {
+    "fo": "Aftur til húski",
+    "de": "Zurück zu Haushalten"
+  },
   "Administration": {
     "fo": "Umsiting",
     "de": "Verwaltung"
@@ -2102,8 +2105,8 @@ window.RSVP_TRANSLATIONS = {
     "de": "Gib den achtstelligen Einladungscode ein oder öffne den erhaltenen privaten Link."
   },
   "Open": {
-    "fo": "Opna",
-    "de": "Öffnen"
+    "fo": "Opin",
+    "de": "Offen"
   },
   "PERSONAL INVITATION": {
     "fo": "PERSÓNLIG INNBJÓÐING",
@@ -2668,5 +2671,125 @@ window.RSVP_TRANSLATIONS = {
   "A friendly reminder to reply to our invitation:": {
     "fo": "Ein vinarlig áminning um at svara innbjóðing okkara:",
     "de": "Eine freundliche Erinnerung, auf unsere Einladung zu antworten:"
+  },
+  "Invites": {
+    "fo": "Innbjóðingar",
+    "de": "Einladungen"
+  },
+  "Things to do": {
+    "fo": "Uppgávur",
+    "de": "Aufgaben"
+  },
+  "Task": {
+    "fo": "Uppgáva",
+    "de": "Aufgabe"
+  },
+  "Assigned to": {
+    "fo": "Ábyrgd",
+    "de": "Zuständig"
+  },
+  "Status": {
+    "fo": "Støða",
+    "de": "Status"
+  },
+  "Add rows": {
+    "fo": "Legg røð afturat",
+    "de": "Zeile hinzufügen"
+  },
+  "In progress": {
+    "fo": "Í gongd",
+    "de": "In Arbeit"
+  },
+  "Done": {
+    "fo": "Liðugt",
+    "de": "Erledigt"
+  },
+  "Tasks saved.": {
+    "fo": "Uppgávur goymdar.",
+    "de": "Aufgaben gespeichert."
+  },
+  "Edit cells, add rows, then save. Blank new rows are ignored.": {
+    "fo": "Rætta teigar, legg røðir afturat og goym. Tómar nýggjar røðir verða lopnar um.",
+    "de": "Zellen bearbeiten, Zeilen hinzufügen und speichern. Leere neue Zeilen werden übersprungen."
+  },
+  "Select Edit to update the task list.": {
+    "fo": "Vel Rætta fyri at dagføra uppgávurnar.",
+    "de": "Zum Aktualisieren Bearbeiten wählen."
+  },
+  "Name": {
+    "fo": "Navn",
+    "de": "Name"
+  },
+  "User Comment": {
+    "fo": "Viðmerking til gestir",
+    "de": "Kommentar für Gäste"
+  },
+  "Admin Comment": {
+    "fo": "Fyrisitara viðmerking",
+    "de": "Interner Kommentar"
+  },
+  "Amount: {claimed}/{needed}, Shown: {shown}": {
+    "fo": "Tal: {claimed}/{needed}, Víst: {shown}",
+    "de": "Menge: {claimed}/{needed}, Sichtbar: {shown}"
+  },
+  "Pick item": {
+    "fo": "Vel henda rætt",
+    "de": "Auswählen"
+  },
+  "Remove selection": {
+    "fo": "Tak valið burtur",
+    "de": "Auswahl entfernen"
+  },
+  "Selected": {
+    "fo": "Valt",
+    "de": "Ausgewählt"
+  },
+  "Find text": {
+    "fo": "Finn tekst",
+    "de": "Text suchen"
+  },
+  "Choose enabled languages": {
+    "fo": "Vel virkin mál",
+    "de": "Aktive Sprachen wählen"
+  },
+  "Name is required.": {
+    "fo": "Navn krevst.",
+    "de": "Name erforderlich."
+  },
+  "Comment": {
+    "fo": "Viðmerking",
+    "de": "Kommentar"
+  },
+  "Add recipe": {
+    "fo": "Legg uppskrift afturat",
+    "de": "Rezept hinzufügen"
+  },
+  "Recipe name": {
+    "fo": "Navn á uppskrift",
+    "de": "Rezeptname"
+  },
+  "Existing food items": {
+    "fo": "Verandi matvørur",
+    "de": "Vorhandene Speisen"
+  },
+  "Create food item in recipe": {
+    "fo": "Stovna matvøru í uppskrift",
+    "de": "Speise im Rezept erstellen"
+  },
+  "Remove new item": {
+    "fo": "Tak nýggja vøru burtur",
+    "de": "Neue Speise entfernen"
+  },
+  "Save recipe": {
+    "fo": "Goym uppskrift",
+    "de": "Rezept speichern"
+  },
+  "Edit recipe": {
+    "fo": "Rætta uppskrift",
+    "de": "Rezept bearbeiten"
+  },
+  "Existing items keep their selections. Recipe items use the recipe category.": {
+    "fo": "Verandi vørur varðveita síni val. Vørurnar í uppskriftini brúka bólkin hjá uppskriftini.",
+    "de": "Vorhandene Speisen behalten ihre Reservierungen. Speisen im Rezept verwenden dessen Kategorie."
   }
 };

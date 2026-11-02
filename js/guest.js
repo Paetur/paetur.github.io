@@ -1,7 +1,7 @@
 (function(){
   'use strict';
   const R=window.RSVP;
-  const dict={"invitation":"EVENT INVITATION","welcome":"We look forward to celebrating with you.","enter":"Open your invitation","codeHelp":"Enter the eight-character code from your invitation.","open":"Open","dear":"Dear guests","who":"Please let us know who will attend.","attending":"Attending","declined":"Not attending","submit":"Submit RSVP","locked":"Your response has been received and locked.","thanks":"Thank you! Your response is recorded.","missing":"No invitation was found for that code.","choose":"Choose a response for every invited guest and session.","offline":"Could not reach the database.","notPublished":"This event has not been published yet.","food":"What can you bring?","foodHelp":"Choose only what you would like to contribute. Quantities are limited.","confirmFood":"Confirm my selections","foodDone":"Thank you! Your food selection is confirmed.","saveFood":"Save","foodSaved":"Food selection saved.","available":"Available","all":"All invited guests are listed."};
+  const dict={"invitation":"EVENT INVITATION","welcome":"We look forward to celebrating with you.","enter":"Open your invitation","codeHelp":"Enter the eight-character code from your invitation.","open":"Open","dear":"Dear guests","who":"Please let us know who will attend.","attending":"Attending","declined":"Not attending","submit":"Submit RSVP","locked":"Your response has been received and locked.","thanks":"Thank you! Your response is recorded.","missing":"No invitation was found for that code.","choose":"Choose a response for every invited guest and session.","offline":"Could not reach the database.","notPublished":"This event has not been published yet.","food":"What can you bring?","foodHelp":"Pick an item you would like to bring. Selected items are reserved for your household.","confirmFood":"Confirm my selections","foodDone":"Thank you! Your food selection is confirmed.","saveFood":"Save","foodSaved":"Food selection saved.","available":"Available","all":"All invited guests are listed."};
   let language=window.RSVP_I18N.language,eventData=null,invitation=null,code=null,foodState=null,pendingRequestId=null;
   const $=R.byId;
   function t(k){return window.RSVP_I18N.t(dict[k]||k,{},language);}
@@ -104,33 +104,37 @@
   }
   function renderFood(){
     if(!foodState)return;
+    const expanded=new Set(Array.from($('foodList').querySelectorAll('details[open]')).map(n=>n.dataset.itemId));
     $('foodList').replaceChildren();
     const claimed=foodState.claims||[];
     const confirmed=!!foodState.confirmed;
     for(const item of foodState.items||[]){
       const mine=claimed.find(c=>c.food_item_id===item.id)?.quantity||0;
-      const remain=Math.max(0,(item.quantity_needed||0)-(item.claimed_total||0)+mine);
-      const wrap=R.dom('div',{class:'food-item'}),left=R.dom('div');
+      const available=Math.max(0,(item.quantity_needed||0)-(item.claimed_total||0));
+      if(!mine&&available===0)continue;
+      const wrap=R.dom('details',{class:'food-item guest-food-disclosure'}),heading=R.dom('summary');
       const label=translated('food:'+item.id+':name',{fo:item.name_fo,en:item.name_en,de:item.name_de},window.RSVP_I18N.t('Food item'));
-      left.append(R.dom('strong',{},label),R.dom('span',{class:'food-item-meta'},`${t('available')}: ${Math.max(0,(item.quantity_needed||0)-(item.claimed_total||0))}`));
-      const description=translated('food:'+item.id+':description',{fo:item.description_fo,en:item.description_en,de:item.description_de});if(description)left.append(R.dom('p',{class:'small muted'},description));
-      const qty=R.dom('input',{type:'number',min:'0',max:String(remain),value:String(mine)});
-      qty.dataset.itemId=item.id;qty.disabled=confirmed;
-      qty.setAttribute('aria-label',window.RSVP_I18N.t(window.RSVP_I18N.t("Quantity for {item}"),{item:label}));
-      const save=R.dom('button',{class:'btn secondary',type:'button'},t('saveFood'));save.disabled=confirmed;
-      save.addEventListener('click',()=>saveFood(item.id,qty,save));
-      const controls=R.dom('div',{class:'food-controls'});controls.append(qty,save);
-      wrap.append(left,controls);$('foodList').append(wrap);
+      wrap.dataset.itemId=item.id;wrap.open=expanded.has(item.id);heading.append(R.dom('strong',{},label));
+      if(item.recipe_name)heading.append(R.dom('span',{class:'food-recipe-label'},' · '+item.recipe_name));
+      if(mine)heading.append(R.dom('span',{class:'tag'},window.RSVP_I18N.t('Selected')));
+      const detail=R.dom('div',{class:'guest-food-details'});
+      const description=translated('food:'+item.id+':description',{fo:item.description_fo,en:item.description_en,de:item.description_de});
+      if(description)detail.append(R.dom('p',{class:'small'},window.RSVP_I18N.t('User Comment')+': '+description));
+      if(!confirmed){
+        const pick=R.dom('button',{class:'btn secondary',type:'button'},window.RSVP_I18N.t(mine?'Remove selection':'Pick item'));
+        pick.dataset.itemId=item.id;pick.addEventListener('click',()=>saveFood(item.id,mine?0:1,pick));detail.append(pick);
+      }
+      wrap.append(heading,detail);$('foodList').append(wrap);
     }
     $('confirmFood').classList.toggle('hidden',confirmed);
     $('foodHint').textContent=confirmed?t('foodDone'):'';
   }
-  async function saveFood(itemId,qty,button){
-    const quantity=Number(qty.value);if(!Number.isInteger(quantity)||quantity<0||quantity>Number(qty.max)){status(window.RSVP_I18N.t("Invalid quantity"),'warning');return;}
+  async function saveFood(itemId,quantity,button){
+    if(!Number.isInteger(quantity)||quantity<0)return;
     button.disabled=true;
     const {error}=await R.guestRpc('set_household_food_claim',{p_code:code,p_food_item_id:itemId,p_quantity:quantity,p_notes:null});
-    if(error)status(R.safeError(error),'error');else {status(t('foodSaved'),'success');await loadFood();}
-    button.disabled=false;
+    if(error)status(R.safeError(error),'error');else status(t('foodSaved'),'success');
+    await loadFood();button.disabled=false;
   }
   async function confirmFood(){if(!code||!window.confirm(window.RSVP_I18N.t("Confirm food selections? This will lock further edits.")))return;
     $('confirmFood').disabled=true;
@@ -146,6 +150,8 @@
     await window.RSVP_I18N.load();language=window.RSVP_I18N.language;
     $('languageSwitcher').addEventListener('click',e=>{const button=e.target.closest('[data-language]');if(button)setLanguage(button.dataset.language,true);});
     $('codeForm').addEventListener('submit',e=>{e.preventDefault();const candidate=$('inviteCode').value.toUpperCase().trim();if(!R.codePattern.test(candidate)){status(window.RSVP_I18N.t("Invalid invitation code"),'warning');return;}window.location.assign(R.invitationURL(candidate));});
+    const refreshFood=()=>{if(foodState&&!foodState.confirmed&&!document.hidden)loadFood();};
+    const foodRefresh=setInterval(refreshFood,30000);window.addEventListener('focus',refreshFood);document.addEventListener('visibilitychange',refreshFood);window.addEventListener('pagehide',()=>clearInterval(foodRefresh),{once:true});
     $('rsvpForm').addEventListener('submit',submitRsvp);$('confirmFood').addEventListener('click',confirmFood);
     setLanguage(language);
     const db=R.getClient();if(!db){$('connectNotice').classList.remove('hidden');return;}

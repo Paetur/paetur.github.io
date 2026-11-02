@@ -2,7 +2,7 @@
  'use strict';
  const T=(text,params)=>window.RSVP_I18N?.t(text,params)||text;
  const R=window.RSVP,$=R.byId;
- let db=null,user=null,store={settings:null,sessions:[],locations:[],households:[],guests:[],food:[],claims:[],submissions:[],defaults:[],content:[],admins:[],adminInvitations:[],relationGroups:[],foodCategories:[],languages:[],contacts:[],overrides:[],responses:[],queue:[],deliveries:[]};
+ let db=null,user=null,store={settings:null,sessions:[],locations:[],households:[],guests:[],food:[],claims:[],submissions:[],defaults:[],content:[],admins:[],adminInvitations:[],relationGroups:[],foodCategories:[],languages:[],contacts:[],overrides:[],responses:[],queue:[],deliveries:[],tasks:[],recipes:[]};
  let inviteDetail=null;
  let activeTab='dashboard',lastMainTab='dashboard',activeSettingsTab='event',editMode=false;
  const expandedGroups=new Map();
@@ -23,8 +23,8 @@
  function sessionName(id){return store.sessions.find(s=>s.id===id)?.name||T("Session");}
  function settingsTab(name){activeSettingsTab=name;document.querySelectorAll('[data-settings-tab]').forEach(b=>{const active=b.dataset.settingsTab===name;b.classList.toggle('active',active);b.setAttribute('aria-pressed',String(active));});document.querySelectorAll('[data-settings-panel]').forEach(n=>n.classList.toggle('hidden',n.dataset.settingsPanel!==name));if(name==='logs')loadLogs(true);}
  function tab(name,updateUrl=true){
-   if(!['dashboard','households','invites','food','settings'].includes(name))name='dashboard';
-   activeTab=name;if(name!=='settings')lastMainTab=name;
+   if(!['dashboard','households','invites','food','tasks','language','settings'].includes(name))name='dashboard';
+   activeTab=name;if(name!=='settings')lastMainTab=name;window.RSVP_ADMIN_TOOLS?.translationScope(name==='language'?'content':'settings');
    document.querySelectorAll('[data-tab]').forEach(b=>{
      const active=b.dataset.tab===name;b.classList.toggle('active',active);
      b.setAttribute('aria-selected',String(active));
@@ -46,8 +46,8 @@
  async function reload(){
    show(T("Loading event data…"));
    try{
-     const keys=['languages','settings','sessions','locations','households','guests','food','claims','submissions','defaults','content','relationGroups','foodCategories','contacts','overrides','responses','queue','deliveries'];
-     const jobs=[fetchTable('event_languages'),fetchTable('event_settings'),fetchTable('event_sessions'),fetchTable('event_locations'),fetchTable('households','id,household_name,invite_code,language,side,relation_group_id,email,phone,food,food_confirmed,rsvp_state,rsvp_submitted_at,late_submission_until,sort_order,parent_id,notes,archived_at,whatsapp,postal_address,preferred_contact_method'),fetchTable('guests','id,household_id,first_name,last_name,courtesy_title,relation,language,is_child,rsvp_status,dietary_requirements,notes,archived_at'),fetchTable('food_items'),fetchTable('food_claims'),fetchTable('rsvp_submissions','id,household_id,submitted_at'),fetchTable('household_session_defaults'),fetchTable('event_content'),fetchTable('relation_groups'),fetchTable('food_categories'),fetchTable('household_contacts'),fetchTable('guest_session_overrides'),fetchTable('guest_session_responses'),fetchTable('invitation_send_queue'),fetchTable('invitation_deliveries')];
+     const keys=['languages','settings','sessions','locations','households','guests','food','claims','submissions','defaults','content','relationGroups','foodCategories','contacts','overrides','responses','queue','deliveries','tasks','recipes'];
+     const jobs=[fetchTable('event_languages'),fetchTable('event_settings'),fetchTable('event_sessions'),fetchTable('event_locations'),fetchTable('households','id,household_name,invite_code,language,side,relation_group_id,email,phone,food,food_confirmed,rsvp_state,rsvp_submitted_at,late_submission_until,sort_order,parent_id,notes,archived_at,whatsapp,postal_address,preferred_contact_method'),fetchTable('guests','id,household_id,first_name,last_name,courtesy_title,relation,language,is_child,rsvp_status,dietary_requirements,notes,archived_at'),fetchTable('food_items'),fetchTable('food_claims'),fetchTable('rsvp_submissions','id,household_id,submitted_at'),fetchTable('household_session_defaults'),fetchTable('event_content'),fetchTable('relation_groups'),fetchTable('food_categories'),fetchTable('household_contacts'),fetchTable('guest_session_overrides'),fetchTable('guest_session_responses'),fetchTable('invitation_send_queue'),fetchTable('invitation_deliveries'),fetchTable('things_to_do'),fetchTable('food_recipes')];
      const values=await Promise.all(jobs);keys.forEach((key,i)=>store[key]=values[i]);store.settings=store.settings[0]||null;
      const {data:admins,error:adminsError}=await R.adminRpc('admin_list_members');
      store.admins=adminsError?[]:(admins||[]);
@@ -622,9 +622,9 @@
  }
  function buildFoodEditor(item){
    const form=R.dom('form',{class:'food-edit-form hidden'});
-   const fields=[[T("Faroese name"),'name_fo'],[T("English name"),'name_en'],[T("German name"),'name_de'],[T("Faroese description"),'description_fo'],[T("English description"),'description_en'],[T("German description"),'description_de']];
-   for(const [labelText,key] of fields){const label=R.dom('label');label.append(R.dom('span',{},labelText));const input=R.dom(key.startsWith('description')?'textarea':'input',{name:key});input.value=item[key]||'';if(key==='name_fo')input.required=true;label.append(input);form.append(label);}
-   const quantityLabel=R.dom('label');quantityLabel.append(R.dom('span',{},T("Quantity needed")));const quantity=R.dom('input',{type:'number',min:'0',name:'quantity_needed'});quantity.value=String(item.quantity_needed);quantity.required=true;quantityLabel.append(quantity);form.append(quantityLabel);
+   const fields=[[T("Name"),'name_en'],[T("User Comment"),'description_en'],[T("Admin Comment"),'admin_comment']];
+   for(const [labelText,key] of fields){const label=R.dom('label');label.append(R.dom('span',{},labelText));const input=R.dom(key==='name_en'?'input':'textarea',{name:key});input.value=key==='name_en'?foodItemName(item):key==='description_en'?(item.description_en||item.description_fo||item.description_de||''):item[key]||'';input.maxLength=key==='name_en'?300:4000;input.required=key==='name_en';label.append(input);form.append(label);}
+   const quantityLabel=R.dom('label');quantityLabel.append(R.dom('span',{},T("Quantity needed")));const quantity=R.dom('input',{type:'number',min:'0',name:'quantity_needed'});quantity.value=String(item.quantity_needed);quantity.required=true;quantityLabel.append(quantity);form.insertBefore(quantityLabel,form.children[1]);
    const activeLabel=R.dom('label',{class:'checkbox-label'});const active=R.dom('input',{type:'checkbox'});active.checked=item.active;activeLabel.append(active,R.dom('span',{},T("Available for guests")));form.append(activeLabel);
    const footer=R.dom('div',{class:'food-edit-buttons'});
    const save=R.dom('button',{type:'submit',class:'btn'},T("Save food item"));
@@ -637,15 +637,33 @@
      }
      const record={quantity_needed:required,active:active.checked};
      for(const [,key] of fields)record[key]=form.elements.namedItem(key).value.trim()||null;
-     if(!record.name_fo){show(T("Faroese name is required."),'error');return;}
+     if(!record.name_en){show(T("Name is required."),'error');return;}if(!item.name_fo)record.name_fo=record.name_en;
      save.disabled=true;form.setAttribute('aria-busy','true');
      try{const {error}=await db.from('food_items').update(record).eq('id',item.id);if(error)throw error;await reload();show(T("Food item updated."),'success');}
      catch(error){show(R.safeError(error),'error');}finally{save.disabled=false;form.removeAttribute('aria-busy');}
    });
    return form;
  }
+ function recipeEditor(recipe={}){
+   const form=managementForm();const name=field(form,T('Recipe name'),recipe.name||'',null,'text',true,300);
+   const category=field(form,T('Category'),recipe.category||foodCategoriesSorted()[0]?.name||'',foodCategoriesSorted().map(c=>[c.name,c.name]),'text',true);
+   const existing=R.dom('fieldset',{class:'span-2 recipe-existing'});existing.append(R.dom('legend',{},T('Existing food items')));
+   const selected=[];
+   for(const item of ordered(store.food,'name_en').filter(f=>!f.recipe_id||f.recipe_id===recipe.id)){
+     const label=R.dom('label',{class:'checkbox-label'}),checkbox=R.dom('input',{type:'checkbox'});checkbox.checked=!!recipe.id&&item.recipe_id===recipe.id;selected.push([item.id,checkbox]);label.append(checkbox,document.createTextNode(foodItemName(item)+' · '+(item.category||T('Uncategorized'))));existing.append(label);
+   }
+   form.append(existing);
+   const rows=R.dom('div',{class:'span-2 recipe-new-items'}),add=R.dom('button',{type:'button',class:'small-tool'},T('Create food item in recipe'));const fresh=[];
+   add.addEventListener('click',()=>{
+     const row=R.dom('div',{class:'form-grid recipe-new-item'}),record={};
+     for(const [key,label,type,value] of [['name','Name','text',''],['quantity','Quantity needed','number','1'],['user_comment','User Comment','textarea',''],['admin_comment','Admin Comment','textarea','']]){record[key]=field(row,T(label),value,null,type,key==='name'||key==='quantity',key==='name'?300:4000);if(key==='quantity')record[key].min='0';}
+     const remove=R.dom('button',{type:'button',class:'small-tool'},T('Remove new item'));remove.addEventListener('click',()=>{fresh.splice(fresh.indexOf(record),1);row.remove();});row.append(remove);fresh.push(record);rows.append(row);record.name.focus();
+   });form.append(add,rows);
+   form.append(R.dom('p',{class:'micro span-2'},T('Existing items keep their selections. Recipe items use the recipe category.')));
+   return saveForm(form,T('Save recipe'),()=>managementRpc('admin_save_recipe',{p_id:recipe.id||null,p_name:name.value.trim(),p_category:category.value,p_items:selected.filter(([,c])=>c.checked).map(([id])=>id),p_new_items:fresh.map(r=>({name:r.name.value.trim(),quantity:Number(r.quantity.value),user_comment:r.user_comment.value.trim(),admin_comment:r.admin_comment.value.trim()})),p_expected_updated_at:recipe.updated_at||null}));
+ }
  function renderFood(){
-   const box=$('adminFoodList');box.replaceChildren();
+   const box=$('adminFoodList');box.replaceChildren();$('newRecipe').replaceChildren(recipeEditor());
    const categorySelect=$('newFoodCategory');categorySelect.replaceChildren();
    foodCategoryOptions(categorySelect,foodCategoriesSorted()[0]?.name||'');
    const search=$('foodSearch')?.value.trim().toLowerCase()||'';
@@ -655,7 +673,7 @@
      ...unregistered.map(name=>({name,id:null,registered:false}))];
    for(const [index,category] of list.entries()){
      const items=ordered(store.food.filter(f=>(f.category||'')===category.name),'name_fo');
-     const visible=items.filter(f=>!search||[f.name_fo,f.name_en,f.name_de,f.category]
+     const visible=items.filter(f=>!search||[f.name_fo,f.name_en,f.name_de,f.category,store.recipes.find(r=>r.id===f.recipe_id)?.name]
        .join(' ').toLowerCase().includes(search));
      if(search&&!visible.length)continue;
      const section=R.dom('details',{class:'food-category tree-disclosure'});
@@ -687,26 +705,27 @@
      }
      heading.append(controls);section.append(heading);
      const itemList=R.dom('div',{class:'food-category-items'});
+     const recipeGroups=new Map();
      for(const f of visible){
        const claim=claimedQuantity(f),pos=items.findIndex(x=>x.id===f.id);
-       const wrapper=R.dom('div',{class:'food-manage-item'});
-       const main=R.dom('div',{class:'food-manage-main'});
+       const wrapper=R.dom('details',{class:'food-manage-item food-compact-item'});setDisclosure(wrapper,'food:item:'+f.id,false,!!search);
+       const main=R.dom('summary',{class:'food-manage-main'});
        const info=R.dom('div',{class:'food-item-info'});
        info.append(R.dom('strong',{},foodItemName(f)),
-         R.dom('small',{class:'muted'},T('Needed {needed} · Claimed {claimed} · Available {available}{inactive}',{needed:f.quantity_needed,claimed:claim,available:Math.max(0,f.quantity_needed-claim),inactive:f.active?'':T(T(" · Inactive"))})));
+         R.dom('small',{class:'muted'},T('Amount: {claimed}/{needed}, Shown: {shown}',{needed:f.quantity_needed,claimed:claim,shown:f.active&&f.quantity_needed>claim?'✓':'–'})));
        const buttons=R.dom('div',{class:'food-item-actions'});
        buttons.append(btn('↑',T("Move food item up"),()=>rpcAction('admin_move_food_item',
          {p_food_item_id:f.id,p_direction:-1},T("Food order saved.")),pos<=0));
        buttons.append(btn('↓',T("Move food item down"),()=>rpcAction('admin_move_food_item',
          {p_food_item_id:f.id,p_direction:1},T("Food order saved.")),pos===items.length-1));
-       const edit=buildFoodEditor(f);
-       buttons.append(btn(T("Edit"),T("Edit food item"),()=>edit.classList.toggle('hidden')));
+       const edit=buildFoodEditor(f);edit.classList.remove('hidden');edit.classList.add('edit-only');
+       buttons.append(btn(T("Edit"),T("Edit food item"),()=>{wrapper.open=true;edit.classList.remove('hidden');edit.querySelector('input')?.focus();}));
        buttons.append(iconAction('delete',T("Archive food item (preserve existing claims)"),async()=>{
          if(!confirm(T('Archive {item}? Existing claims are preserved; you can reactivate it using Edit.',{item:foodItemName(f)})))return;
          const {error}=await db.from('food_items').update({active:false}).eq('id',f.id);
          if(error)throw error;
          await reload();show(T("Food item archived."),'success');
-       },!f.active,'edit-only'));
+       },!f.active||claim>0,'edit-only'));
        const changeLabel=R.dom('label',{class:'food-category-picker edit-only'});
        changeLabel.append(R.dom('span',{},T("Category")));
        const change=R.dom('select');foodCategoryOptions(change,f.category||'');
@@ -718,8 +737,18 @@
          catch(error){change.value=f.category||'';show(R.safeError(error),'error');}
          finally{change.disabled=false;}
        });
-       changeLabel.append(change);buttons.append(changeLabel);
-       main.append(info,buttons);wrapper.append(main,edit);itemList.append(wrapper);
+       changeLabel.append(change);if(!f.recipe_id)buttons.append(changeLabel);
+       main.append(info);
+       const detail=R.dom('div',{class:'food-expanded'});detail.append(R.dom('p',{class:'small'},T('User Comment')+': '+(f.description_en||f.description_fo||f.description_de||'—')),R.dom('p',{class:'small'},T('Admin Comment')+': '+(f.admin_comment||'—')),buttons,edit);
+       wrapper.append(main,detail);
+       const recipe=store.recipes.find(r=>r.id===f.recipe_id);
+       if(recipe){
+         if(!recipeGroups.has(recipe.id)){
+           const group=R.dom('details',{class:'food-recipe tree-disclosure'});setDisclosure(group,'recipe:'+recipe.id,true,!!search);group.dataset.recipeId=recipe.id;
+           group.append(R.dom('summary',{class:'tree-group'},recipe.name));const inner=R.dom('div',{class:'tree-children'});group.append(inner);
+           const editor=disclosure(T('Edit recipe'),'edit-only');editor.append(recipeEditor(recipe));inner.append(editor);recipeGroups.set(recipe.id,inner);itemList.append(group);
+         }recipeGroups.get(recipe.id).append(wrapper);
+       }else itemList.append(wrapper);
      }
      section.append(itemList);box.append(section);
    }
@@ -884,13 +913,13 @@
    }
    $('acceptInvitationPanel').classList.add('hidden');pendingAdminInvitation=null;
    $('loginPanel').classList.add('hidden');$('adminApp').classList.remove('hidden');$('adminTopActions').classList.remove('hidden');$('loggedInAs').textContent=user.email||'';
-   const fragment=location.hash.slice(1);activeTab=['dashboard','households','invites','food','settings'].includes(fragment)?fragment:'dashboard';
+   const fragment=location.hash.slice(1);activeTab=['dashboard','households','invites','food','tasks','language','settings'].includes(fragment)?fragment:'dashboard';
    tab(activeTab,false);mode(false);await reload();const logged=await R.adminRpc('admin_record_session',{p_action:'login'});if(logged.error)show(T("Signed in, but session logging is unavailable."),'warning');
  }
  async function init(){
    window.addEventListener('popstate',()=>{
      const fragment=location.hash.slice(1);
-     tab(['dashboard','households','invites','food','settings'].includes(fragment)?fragment:'dashboard',false);
+     tab(['dashboard','households','invites','food','tasks','language','settings'].includes(fragment)?fragment:'dashboard',false);
    });
    await window.RSVP_I18N.load();
    db=R.getClient();
@@ -936,7 +965,7 @@
      const category=$('newFoodCategory').value;const count=Number($('newFoodQuantity').value);
      if(!Number.isInteger(count)||count<0){show(T("Enter a non-negative quantity."),'error');button.disabled=false;return;}
      const items=store.food.filter(f=>f.category===category);
-     const record={category,name_fo:$('newFoodFo').value.trim(),name_en:$('newFoodEn').value.trim()||null,name_de:$('newFoodDe').value.trim()||null,quantity_needed:count,active:true,sort_order:Math.max(0,...items.map(f=>f.sort_order||0))+1};
+     const record={category,name_fo:$('newFoodFo').value.trim(),name_en:$('newFoodFo').value.trim(),description_en:$('newFoodUserComment').value.trim()||null,admin_comment:$('newFoodAdminComment').value.trim()||null,quantity_needed:count,active:true,sort_order:Math.max(0,...items.map(f=>f.sort_order||0))+1};
      try{const {error}=await db.from('food_items').insert(record);if(error)throw error;e.target.reset();await reload();show(T("Food item added."),'success');}
      catch(error){show(R.safeError(error),'error');}finally{button.disabled=false;}
    });

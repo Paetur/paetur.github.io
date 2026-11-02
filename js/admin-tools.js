@@ -1,7 +1,7 @@
 (function(){
  'use strict';
  const I=window.RSVP_I18N,T=(text,params)=>I.t(text,params);
- let ctx,backup=null,preview=null,renderedLanguageCount=0,fileGeneration=0;
+ let ctx,backup=null,preview=null,renderedLanguageCount=0,fileGeneration=0,translationScopeValue='settings',taskEditing=false,taskDraft=null;
  const $=id=>document.getElementById(id);
  function enabled(){const rows=ctx.getStore().languages;return rows.length?rows.filter(l=>l.enabled).sort((a,b)=>(a.sort_order||0)-(b.sort_order||0)||a.language_code.localeCompare(b.language_code)):I.languages;}
  function options(select,rows,selected){select.replaceChildren(...rows.map(([value,label])=>ctx.R.dom('option',{value},label)));if(rows.some(([value])=>value===selected))select.value=selected;}
@@ -10,7 +10,16 @@
   for(const form of document.querySelectorAll('#languageRows form'))for(const control of form.elements)control.disabled=!ctx.isEditing();
   $('restoreBackupButton').disabled=!ctx.isEditing()||!preview?.can_restore||!$('restoreBackupAck').checked||$('restoreBackupConfirmation').value!=='RESTORE '+preview.event_name;
  }
- function translationKeys(){const s=ctx.getStore();return [['welcome',T('Welcome messages')],...s.locations.map(v=>['venue:'+v.id+':welcome',T('Venue')+' · '+v.name]),...s.sessions.map(v=>['session:'+v.id+':name',T('Session')+' · '+v.name]),...s.food.flatMap(v=>[['food:'+v.id+':name',T('Food')+' · '+(v.name_en||v.name_fo)],['food:'+v.id+':description',T('Description')+' · '+(v.name_en||v.name_fo)]]),...Object.keys(I.catalog).sort().map(key=>['ui:'+key,T('Interface wording')+' · '+key])];}
+ function translationKeys(){const s=ctx.getStore();return [['welcome',T('Welcome messages')],...s.locations.map(v=>['venue:'+v.id+':welcome',T('Venue')+' · '+v.name]),...s.sessions.map(v=>['session:'+v.id+':name',T('Session')+' · '+v.name]),...s.food.flatMap(v=>[['food:'+v.id+':name',T('Food')+' · '+(v.name_en||v.name_fo)],['food:'+v.id+':description',T('User Comment')+' · '+(v.name_en||v.name_fo)]]),...Object.keys(I.catalog).sort().map(key=>['ui:'+key,key])];}
+ function keyCategory(key){if(key==='welcome')return 'welcome';return key.split(':')[0];}
+ function renderTranslationKeys(){
+  const categories=translationScopeValue==='settings'?[['ui',T('Interface wording')],['welcome',T('Welcome messages')]]:[['food',T('Food')],['venue',T('Venues')],['session',T('Sessions')]];
+  options($('translationCategory'),categories,$('translationCategory').value);
+  const category=$('translationCategory').value,search=$('translationSearch').value.toLowerCase();
+  options($('translationKey'),translationKeys().filter(([key,label])=>keyCategory(key)===category&&(!search||label.toLowerCase().includes(search))),$('translationKey').value);
+  $('translationForm').querySelector('button[type="submit"]').disabled=!$('translationKey').value;loadTranslation();
+ }
+ function translationScope(scope){translationScopeValue=scope;if(!ctx)return;$(scope==='content'?'contentTranslationHost':'settingsTranslationHost').append($('translationEditor'));renderTranslationKeys();}
  function legacyTranslation(key){const s=ctx.getStore(),parts=key.split(':'),record=parts[0]==='venue'?s.locations.find(v=>v.id===parts[1]):parts[0]==='food'?s.food.find(v=>v.id===parts[1]):null;return record?Object.fromEntries(['fo','en','de'].map(lang=>[lang,record[(parts[0]==='venue'?'welcome':parts[2])+'_'+lang]])):{};}
  function loadTranslation(){
   const s=ctx.getStore(),key=$('translationKey').value,lang=$('translationLanguage').value;
@@ -19,10 +28,25 @@
   const fallback=key.startsWith('ui:')?I.t(key.slice(3),{},lang):I.resolve(values,lang);
   $('translationFallbackPreview').textContent=T('Fallback preview')+': '+(fallback||'—');
  }
- function render(){if(!ctx)return;
+ function renderTasks(){
+  if(!taskEditing||!taskDraft)taskDraft=[...(ctx.getStore().tasks||[])].sort((a,b)=>(a.sort_order||0)-(b.sort_order||0)||a.task.localeCompare(b.task)).map(r=>({...r}));
+  const body=$('taskRows');body.replaceChildren();
+  for(const [index,row] of taskDraft.entries()){
+   const tr=ctx.R.dom('tr');
+   for(const key of ['task','assigned_to','status']){
+    const td=ctx.R.dom('td'),control=ctx.R.dom(key==='status'?'select':'input');
+    if(key==='status')options(control,[['open',T('Open')],['in_progress',T('In progress')],['done',T('Done')]],row.status||'open');else{control.value=row[key]||'';control.maxLength=key==='task'?1000:300;}
+    control.disabled=!taskEditing;control.setAttribute('aria-label',T(key==='task'?'Task':key==='assigned_to'?'Assigned to':'Status')+' · '+(index+1));
+    control.addEventListener('input',()=>row[key]=control.value);control.addEventListener('change',()=>row[key]=control.value);td.append(control);tr.append(td);
+   }body.append(tr);
+  }
+  $('addTaskRows').disabled=!taskEditing;$('saveTasks').disabled=!taskEditing;$('editTasks').disabled=taskEditing;
+  $('tasksStatus').textContent=taskEditing?T('Edit cells, add rows, then save. Blank new rows are ignored.'):T('Select Edit to update the task list.');
+ }
+ function render(){if(!ctx)return;renderTasks();
   const s=ctx.getStore(),langs=enabled().map(l=>[l.language_code,l.display_name]),keep=$('translationLanguage').value;
   options($('languageDefault'),langs,s.settings?.default_language||I.defaultLanguage);options($('languageFallback'),langs,s.settings?.fallback_language||'en');
-  options($('translationLanguage'),langs,keep||I.language);options($('translationKey'),translationKeys(),$('translationKey').value);
+  options($('translationLanguage'),langs,keep||I.language);renderTranslationKeys();
   const host=$('languageRows');host.replaceChildren();
   for(const l of [...(s.languages.length?s.languages:I.languages)].sort((a,b)=>(a.sort_order||0)-(b.sort_order||0)||a.language_code.localeCompare(b.language_code))){
    const form=ctx.R.dom('form',{class:'form-grid language-row'});form.dataset.languageCode=l.language_code;
@@ -37,15 +61,20 @@
   renderedLanguageCount=langs.length;loadTranslation();mode();
  }
  function init(context){ctx=context;
+  $('editTasks').addEventListener('click',()=>{taskEditing=true;renderTasks();$('taskRows input')?.focus();});
+  $('addTaskRows').addEventListener('click',()=>{if(!taskEditing)return;taskDraft.push({task:'',assigned_to:'',status:'open'});renderTasks();$('taskRows tr:last-child input')?.focus();});
+  $('saveTasks').addEventListener('click',async()=>{if(!taskEditing)return;const button=$('saveTasks');button.disabled=true;try{await rpc('admin_save_tasks',{p_rows:taskDraft.filter(r=>r.id||r.task.trim()).map((r,i)=>({id:r.id||null,task:r.task.trim(),assigned_to:(r.assigned_to||'').trim(),status:r.status,expected_updated_at:r.updated_at||null,sort_order:i}))});taskDraft=null;taskEditing=false;await ctx.reload();ctx.show(T('Tasks saved.'),'success');}catch(error){$('tasksStatus').textContent=ctx.R.safeError(error);button.disabled=false;}});
+
   $('languagePreferences').addEventListener('submit',async e=>{e.preventDefault();if(!ctx.isEditing())return;try{await rpc('admin_set_language_preferences',{p_default:$('languageDefault').value,p_fallback:$('languageFallback').value});await ctx.reload();ctx.show(T('Language preferences saved.'),'success');}catch(error){ctx.show(ctx.R.safeError(error),'error');}});
   $('addLanguageForm').addEventListener('submit',async e=>{e.preventDefault();if(!ctx.isEditing())return;try{const code=Intl.getCanonicalLocales($('newLanguageCode').value.trim())[0];await rpc('admin_save_language',{p_code:code,p_name:$('newLanguageName').value.trim(),p_enabled:true,p_order:renderedLanguageCount+1});e.target.reset();await ctx.reload();ctx.show(T('Language saved.'),'success');}catch(error){ctx.show(ctx.R.safeError(error),'error');}});
+  $('translationCategory').addEventListener('change',renderTranslationKeys);$('translationSearch').addEventListener('input',renderTranslationKeys);
   $('translationKey').addEventListener('change',loadTranslation);$('translationLanguage').addEventListener('change',loadTranslation);
-  $('translationForm').addEventListener('submit',async e=>{e.preventDefault();if(!ctx.isEditing())return;try{await rpc('admin_save_translation',{p_key:$('translationKey').value,p_language:$('translationLanguage').value,p_value:$('translationValue').value});await ctx.reload();ctx.show(T('Translation saved.'),'success');}catch(error){ctx.show(ctx.R.safeError(error),'error');}});
+  $('translationForm').addEventListener('submit',async e=>{e.preventDefault();if(!ctx.isEditing()||e.target.getAttribute('aria-busy')==='true')return;const form=e.target,button=form.querySelector('button[type="submit"]');form.setAttribute('aria-busy','true');button.disabled=true;try{await rpc('admin_save_translation',{p_key:$('translationKey').value,p_language:$('translationLanguage').value,p_value:$('translationValue').value});await ctx.reload();ctx.show(T('Translation saved.'),'success');}catch(error){ctx.show(ctx.R.safeError(error),'error');}finally{form.removeAttribute('aria-busy');button.disabled=!$('translationKey').value;}});
   $('exportBackup').addEventListener('click',async()=>{const button=$('exportBackup');button.disabled=true;$('backupStatus').textContent=T('Preparing backup…');try{const data=await rpc('admin_export_backup');if(!data?.payload)throw Error(T('Backup export is unavailable. Install the matching migration first.'));ctx.R.dl('rsvp-application-backup-'+new Date().toISOString().slice(0,10)+'.json',JSON.stringify(data,null,2),'application/json;charset=utf-8');$('backupStatus').textContent=T('Backup downloaded. Store it privately and rehearse restoration.');}catch(error){$('backupStatus').textContent=ctx.R.safeError(error);}finally{button.disabled=false;}});
   $('backupFile').addEventListener('change',async()=>{const generation=++fileGeneration;backup=null;preview=null;$('backupPreview').replaceChildren();$('previewBackup').disabled=true;$('restoreBackupConfirmation').value='';$('restoreBackupAck').checked=false;mode();const file=$('backupFile').files[0];if(!file)return;try{if(file.size>20971520)throw Error(T('Backup exceeds 20 MB.'));const parsed=JSON.parse(await file.text());if(generation!==fileGeneration)return;backup=parsed;if(backup.format!=='rsvp-application-backup'||backup.version!==1||!backup.payload)throw Error(T('Unsupported backup format or version.'));$('previewBackup').disabled=false;}catch(error){if(generation===fileGeneration){backup=null;$('backupPreview').textContent=ctx.R.safeError(error);}}});
   $('previewBackup').addEventListener('click',async()=>{if(!backup)return;const candidate=backup;preview=null;mode();$('previewBackup').disabled=true;$('backupPreview').textContent=T('Validating backup…');try{const result=await rpc('admin_preview_backup',{p_backup:candidate});if(candidate!==backup)return;preview=result;if(!preview?.counts)throw Error(T('Backup validation is unavailable.'));const box=$('backupPreview');box.replaceChildren(ctx.R.dom('h3',{},preview.event_name),ctx.R.dom('p',{},preview.can_restore?T('Restore rehearsal passed. No data was changed.'):T('This destination cannot be restored: ')+(preview.reason||'')));for(const [name,count]of Object.entries(preview.counts))box.append(ctx.R.dom('p',{class:'micro'},name+': '+count));$('restoreBackupConfirmation').placeholder='RESTORE '+preview.event_name;}catch(error){preview=null;$('backupPreview').textContent=ctx.R.safeError(error);}finally{$('previewBackup').disabled=!backup;mode();}});
   $('restoreBackupConfirmation').addEventListener('input',mode);$('restoreBackupAck').addEventListener('change',mode);
   $('restoreBackupForm').addEventListener('submit',async e=>{e.preventDefault();if($('restoreBackupButton').disabled)return;const button=$('restoreBackupButton');button.disabled=true;try{await rpc('admin_restore_backup',{p_backup:backup,p_confirmation:$('restoreBackupConfirmation').value});backup=null;preview=null;$('backupFile').value='';$('backupPreview').textContent=T('Application restored. The event is unpublished. Review administrator access separately.');await ctx.reload();}catch(error){$('backupPreview').textContent=ctx.R.safeError(error);}finally{mode();}});
  }
- window.RSVP_ADMIN_TOOLS={init,render,mode};
+ window.RSVP_ADMIN_TOOLS={init,render,mode,translationScope};
 }());

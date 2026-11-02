@@ -46,7 +46,7 @@ jobs:
           node tests/admin-invitations.cjs
           node tests/admin-auth.cjs
           node tests/timezones.cjs
-          node tests/languages-backup-db.cjs
+          node tests/languages-backup-db.cjs && node tests/food-choice-db.cjs
           node tests/household-management-db.cjs
   browser-smoke:
     runs-on: ubuntu-latest
@@ -85,6 +85,8 @@ jobs:
         run: node tests/disclosure-layout.cjs
       - name: Test language management and backup/import UI
         run: node tests/languages-backup-browser.cjs
+      - name: Test compact food, language categories and task sheet
+        run: node tests/food-language-tasks-browser.cjs
       - name: Test device delivery handoffs and reminder drafts
         run: node tests/device-delivery.cjs && node tests/device-delivery-browser.cjs
       - name: Test compact admin layout with mocked data

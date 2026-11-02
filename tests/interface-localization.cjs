@@ -16,9 +16,10 @@ const server=http.createServer((req,res)=>{
 });
 const extra=`
 const originalFrom=client.from;client.from=function(name){const query=originalFrom.call(this,name);query.upsert=async(rows,options)=>{if(name!=='event_content')throw Error('Unexpected mutation '+name);window.__contentSave={rows,options};fixtures.event_content=rows;return {error:null};};return query;};
+fixtures.event_languages=['fo','en','de'].map((language_code,i)=>({language_code,display_name:language_code,enabled:true,sort_order:i+1}));
 fixtures.households[0].household_name='Food';fixtures.guests[0].first_name='Settings';
 client.functions={invoke:async(name,request)=>{const action=request.body.action;if(action==='get_invitation_v2')return {data:{household:{name:'Food',language:'fo',rsvp_state:'open'},guests:[{id:'g',first_name:'Settings'}],invitations:[{guest_id:'g',session_id:s1,requires_rsvp:true}]}};if(action==='get_household_food')return {data:{items:[{id:'dish',name_en:'Food',quantity_needed:5,claimed_total:0}],claims:[]}};return {error:null};}};
-const originalRpc=client.rpc;client.rpc=async(name,args)=>name.startsWith('get_public_event')?{data:{event:{event_name:'Settings',default_language:'fo',event_date:'2027-02-20',timezone:'Europe/Berlin'},content:{de:'Unser Fest',fo:'Okkara veitsla'},sessions:[{id:s1,name:'Food'}]}}:originalRpc(name,args);
+const originalRpc=client.rpc;client.rpc=async(name,args)=>{if(name==='admin_save_translation'){fixtures.event_content=fixtures.event_content.filter(c=>c.content_key!==args.p_key||c.language_code!==args.p_language);fixtures.event_content.push({content_key:args.p_key,language_code:args.p_language,content_value:args.p_value});return {data:null};}return name.startsWith('get_public_event')?{data:{event:{event_name:'Settings',default_language:'fo',event_date:'2027-02-20',timezone:'Europe/Berlin'},content:{de:'Unser Fest',fo:'Okkara veitsla'},sessions:[{id:s1,name:'Food'}]}}:originalRpc(name,args);};
 `;
 async function run(browserType){
  const browser=await browserType.launch({headless:true});
@@ -33,16 +34,14 @@ async function run(browserType){
    assert.equal(await page.locator('html').getAttribute('lang'),lang);
    assert.equal(await page.locator('[data-tab="households"]').textContent(),lang==='en'?'Households':catalog.Households[lang]);
    await page.locator('#settingsToggle').click();await page.locator('#editModeButton').click();
-   assert.equal(await page.locator('#eventContentForm button').textContent(),lang==='en'?'Save welcome messages':catalog['Save welcome messages'][lang]);
-   for(const l of ['fo','en','de'])await page.locator('#welcome_'+l).fill('Message '+l);
-   await page.locator('#eventContentForm button').click();await page.waitForFunction(()=>window.__contentSave);
-   assert.equal(await page.evaluate(()=>window.__contentSave.rows.length),3);assert.equal(await page.evaluate(()=>window.__fixtures.event_settings[0].is_published),false);
-   assert.equal(await page.evaluate(()=>window.__contentSave.options.onConflict),'content_key,language_code');
-   await page.locator('#wordingPhrase').selectOption('Households');await page.locator('#wordingValue').fill('<img src=x onerror=alert(1)>');
-   await page.locator('#interfaceWordingForm button[type="submit"]').click();
-   await page.waitForFunction(()=>document.querySelector('#wordingPreview').textContent==='<img src=x onerror=alert(1)>');
-   assert.equal(await page.locator('#wordingPreview img').count(),0);assert.equal(await page.locator('#wordingPreview').textContent(),'<img src=x onerror=alert(1)>');
-   const source=await page.evaluate(()=>window.RSVP_I18N.source());const custom={window:{}};vm.runInNewContext(source,custom);assert.equal(custom.window.RSVP_INTERFACE_OVERRIDES.Households[lang],'<img src=x onerror=alert(1)>');
+   await page.locator('[data-settings-tab="languages"]').click();
+   await page.locator('#translationCategory').selectOption('welcome');
+   for(const l of ['fo','en','de']){await page.locator('#translationLanguage').selectOption(l);await page.locator('#translationValue').fill('Message '+l);await page.locator('#translationForm button').click();await page.waitForFunction(lang=>document.querySelector('#translationForm').getAttribute('aria-busy')!=='true'&&window.__fixtures.event_content.some(c=>c.content_key==='welcome'&&c.language_code===lang&&c.content_value==='Message '+lang),l).catch(async e=>{console.error(await page.evaluate(()=>({notice:document.querySelector('#adminMessage').textContent,content:window.__fixtures.event_content,key:document.querySelector('#translationKey').value,lang:document.querySelector('#translationLanguage').value})));throw e;});}
+   assert.equal(await page.evaluate(()=>window.__fixtures.event_settings[0].is_published),false);
+   await page.locator('#translationCategory').selectOption('ui');await page.locator('#translationKey').selectOption('ui:Households');await page.locator('#translationLanguage').selectOption(lang);await page.locator('#translationValue').fill('<img src=x onerror=alert(1)>');
+   await page.locator('#translationForm button[type="submit"]').click();
+   await page.waitForFunction(l=>window.RSVP_I18N.t('Households',{},l)==='<img src=x onerror=alert(1)>',lang);
+   assert.equal(await page.locator('#translationFallbackPreview img').count(),0);
    assert.equal(await page.evaluate(()=>{try{window.RSVP_I18N.applyWording('Quantity for {item}','de','Menge');return false;}catch{return true;}}),true);
    const overflow=await page.evaluate(()=>Array.from(document.querySelectorAll('body *')).filter(n=>n.getBoundingClientRect().right>innerWidth+1).map(n=>n.tagName+'#'+n.id+'.'+n.className).slice(0,12));
    assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),true,'Mobile admin overflow: '+overflow.join(', '));
@@ -53,8 +52,8 @@ async function run(browserType){
    assert.equal(await page.locator('html').getAttribute('lang'),'de');assert.equal(await page.locator('input[value="attending"]').isChecked(),true);
    assert.equal(await page.locator('#welcomeMessage').textContent(),'Unser Fest');
    assert.equal(await page.locator('#inviteCode').getAttribute('placeholder'),catalog['Invitation code'].de);
-   assert.equal(await page.locator('.food-controls button').textContent(),catalog.Save.de);
-   assert.equal(await page.locator('.food-controls input').getAttribute('aria-label'),'Menge für Food');
+   assert.equal(await page.locator('.guest-food-details button').textContent(),'Auswählen');
+   assert.equal(await page.locator('#foodList input[type=number]').count(),0);
    assert.deepEqual(errors,[]);await page.close();
   }
   console.log('PASS '+browserType.name()+': FO/EN/DE admin, setup, guest, welcome saves, safe custom text, placeholders, mobile layout and retained RSVP answers');

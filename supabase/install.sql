@@ -2226,3 +2226,68 @@ END $$;
 REVOKE ALL ON FUNCTION app_private.restore_backup(jsonb) FROM PUBLIC,anon,authenticated;
 NOTIFY pgrst,'reload schema';
 COMMIT;
+
+-- Migration: 20261102101500_compact_food_comments.sql
+-- Add private administrator comments and omit fully claimed options from other households.
+BEGIN;
+ALTER TABLE public.food_items ADD COLUMN admin_comment text CHECK (length(admin_comment)<=4000);
+CREATE OR REPLACE FUNCTION public.get_household_food(p_code text)
+RETURNS jsonb LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path = '' AS $$
+DECLARE v_household uuid; v_result jsonb;
+BEGIN
+ SELECT h.id INTO v_household FROM public.households h
+ WHERE h.archived_at IS NULL AND h.invite_code=p_code AND h.food=true
+   AND EXISTS(SELECT 1 FROM public.event_settings e WHERE e.id=1 AND e.is_published);
+ IF NOT FOUND THEN RETURN NULL; END IF;
+ SELECT jsonb_build_object(
+ 'confirmed',(SELECT food_confirmed FROM public.households WHERE id=v_household),
+ 'items',coalesce((SELECT jsonb_agg(jsonb_build_object('id',f.id,'category',f.category,
+   'name_fo',f.name_fo,'name_en',f.name_en,'name_de',f.name_de,
+   'description_fo',f.description_fo,'description_en',f.description_en,'description_de',f.description_de,
+   'quantity_needed',f.quantity_needed,
+   'claimed_total',coalesce((SELECT sum(c.quantity) FROM public.food_claims c WHERE c.food_item_id=f.id),0))
+   ORDER BY coalesce(fc.sort_order,2147483647),lower(coalesce(f.category,'')),f.sort_order,lower(f.name_fo),f.id)
+   FROM public.food_items f LEFT JOIN public.food_categories fc ON fc.name=f.category WHERE (f.active AND f.quantity_needed>coalesce((SELECT sum(q.quantity) FROM public.food_claims q WHERE q.food_item_id=f.id),0)) OR EXISTS(SELECT 1 FROM public.food_claims own WHERE own.food_item_id=f.id AND own.household_id=v_household)),'[]'::jsonb),
+ 'claims',coalesce((SELECT jsonb_agg(jsonb_build_object('food_item_id',c.food_item_id,'quantity',c.quantity,'notes',c.notes))
+   FROM public.food_claims c WHERE c.household_id=v_household),'[]'::jsonb)
+ ) INTO v_result;
+ RETURN v_result;
+END $$;
+
+REVOKE ALL ON FUNCTION public.get_household_food(text) FROM PUBLIC,anon,authenticated;
+GRANT EXECUTE ON FUNCTION public.get_household_food(text) TO service_role;
+CREATE FUNCTION app_private.guard_food_capacity() RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path='' AS $$
+BEGIN
+ IF NEW.quantity_needed<(SELECT coalesce(sum(quantity),0) FROM public.food_claims WHERE food_item_id=NEW.id) THEN RAISE EXCEPTION 'Amount cannot be less than existing claims';END IF;
+ RETURN NEW;
+END $$;
+REVOKE ALL ON FUNCTION app_private.guard_food_capacity() FROM PUBLIC,anon,authenticated;
+CREATE TRIGGER food_capacity_guard BEFORE UPDATE OF quantity_needed ON public.food_items FOR EACH ROW EXECUTE FUNCTION app_private.guard_food_capacity();
+NOTIFY pgrst,'reload schema';
+COMMIT;
+
+-- Migration: 20261102103000_administrator_task_sheet.sql
+-- Atomic spreadsheet-style task edits. Existing due dates and notes are retained.
+BEGIN;
+CREATE FUNCTION public.admin_save_tasks(p_rows jsonb) RETURNS void LANGUAGE plpgsql SECURITY DEFINER SET search_path='' AS $$
+DECLARE r jsonb;old public.things_to_do%ROWTYPE;
+BEGIN
+ PERFORM app_private.require_live_session();IF NOT public.is_admin() THEN RAISE EXCEPTION 'Administrator access required' USING ERRCODE='42501';END IF;
+ IF jsonb_typeof(p_rows) IS DISTINCT FROM 'array' OR jsonb_array_length(p_rows)>1000 THEN RAISE EXCEPTION 'Enter at most 1000 task rows';END IF;
+ IF (SELECT count(*) FROM jsonb_array_elements(p_rows) x WHERE nullif(x->>'id','') IS NOT NULL)<>(SELECT count(DISTINCT x->>'id') FROM jsonb_array_elements(p_rows) x WHERE nullif(x->>'id','') IS NOT NULL) THEN RAISE EXCEPTION 'Duplicate task rows';END IF;
+ PERFORM pg_advisory_xact_lock(19421,7744);
+ FOR r IN SELECT value FROM jsonb_array_elements(p_rows) ORDER BY value->>'id' LOOP
+  IF jsonb_typeof(r) IS DISTINCT FROM 'object' OR nullif(btrim(r->>'task'),'') IS NULL OR length(r->>'task')>1000 OR length(coalesce(r->>'assigned_to',''))>300 OR r->>'status' IS NULL OR r->>'status' NOT IN ('open','in_progress','done') OR (r->>'sort_order')::integer<0 THEN RAISE EXCEPTION 'Enter valid task, assignee and status';END IF;
+  IF nullif(r->>'id','') IS NULL THEN
+   INSERT INTO public.things_to_do(task,assigned_to,status,sort_order) VALUES(btrim(r->>'task'),nullif(btrim(r->>'assigned_to'),''),r->>'status',(r->>'sort_order')::integer);
+  ELSE
+   SELECT * INTO old FROM public.things_to_do WHERE id=(r->>'id')::uuid FOR UPDATE;
+   IF NOT FOUND OR old.updated_at IS DISTINCT FROM (r->>'expected_updated_at')::timestamptz THEN RAISE EXCEPTION 'Task changed; reload before saving';END IF;
+   UPDATE public.things_to_do SET task=btrim(r->>'task'),assigned_to=nullif(btrim(r->>'assigned_to'),''),status=r->>'status',sort_order=(r->>'sort_order')::integer,updated_at=clock_timestamp() WHERE id=old.id;
+  END IF;
+ END LOOP;
+END $$;
+REVOKE ALL ON FUNCTION public.admin_save_tasks(jsonb) FROM PUBLIC,anon;
+GRANT EXECUTE ON FUNCTION public.admin_save_tasks(jsonb) TO authenticated;
+NOTIFY pgrst,'reload schema';
+COMMIT;

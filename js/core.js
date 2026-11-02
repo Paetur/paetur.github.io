@@ -140,9 +140,10 @@
     return '// Event Invitation public browser configuration. NEVER add a secret/service_role key.\n'+
       'window.RSVP_CONFIG = Object.freeze('+JSON.stringify({supabaseUrl:cfg.supabaseUrl,supabaseKey:cfg.supabaseKey},null,2)+');\n';
   }
-  let activePopup=null,popupCount=0;
+  let activePopup=null,popupCount=0,popupHandlersInstalled=false;
   function closePopups(focus=false){if(!activePopup)return;const {wrap,button,menu}=activePopup;activePopup=null;menu.classList.add('hidden');button.setAttribute('aria-expanded','false');wrap.append(menu);if(focus&&button.isConnected)button.focus();}
   function iconPopup(button,content){
+    installPopupHandlers();
     const wrap=dom('div',{class:'icon-popup-control'}),menu=dom('div',{class:'icon-popup-menu hidden'});menu.id='icon-popup-'+(++popupCount);menu.setAttribute('role','dialog');menu.setAttribute('aria-label',button.getAttribute('aria-label')||button.title||T('Options'));menu.append(content);
     button.setAttribute('aria-expanded','false');button.setAttribute('aria-haspopup','dialog');button.setAttribute('aria-controls',menu.id);
     button.addEventListener('click',()=>{
@@ -151,10 +152,13 @@
       menu.querySelector('select,input,button')?.focus();
     });wrap.append(button,menu);return wrap;
   }
+  function installPopupHandlers(){
+    if(popupHandlersInstalled)return;popupHandlersInstalled=true;
   document.addEventListener('click',e=>{if(activePopup&&!activePopup.button.contains(e.target)&&!activePopup.menu.contains(e.target))closePopups();});
   document.addEventListener('keydown',e=>{if(e.key==='Escape'&&activePopup){e.preventDefault();closePopups(true);}});
   window.addEventListener('resize',()=>closePopups());
   document.addEventListener('scroll',e=>{if(activePopup&&!activePopup.menu.contains(e.target))closePopups();},{capture:true,passive:true});
+  }
   window.RSVP={config,getClient,adminRpc,guestRpc,normalizeUrl,validateKey,savePreview,invitationURL,getInviteCode,codePattern,siteRoot,dom,byId,showStatus,formatDate,zonedInput,zonedInstant,safeError,dl,configSource,iconPopup,closePopups};
 }());
 

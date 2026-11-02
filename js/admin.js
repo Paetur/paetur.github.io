@@ -2,7 +2,7 @@
  'use strict';
  const T=(text,params)=>window.RSVP_I18N?.t(text,params)||text;
  const R=window.RSVP,$=R.byId;
- let db=null,user=null,store={settings:null,sessions:[],locations:[],households:[],guests:[],food:[],claims:[],submissions:[],defaults:[],content:[],admins:[],adminInvitations:[],relationGroups:[],foodCategories:[],languages:[],contacts:[],overrides:[],responses:[],queue:[],deliveries:[],tasks:[],recipes:[]};
+ let db=null,user=null,store={settings:null,sessions:[],locations:[],households:[],guests:[],food:[],claims:[],submissions:[],defaults:[],content:[],admins:[],adminInvitations:[],relationGroups:[],foodCategories:[],languages:[],contacts:[],overrides:[],responses:[],queue:[],deliveries:[],tasks:[],otherCategories:[],recipes:[]};
  let inviteDetail=null;
  let activeTab='dashboard',lastMainTab='dashboard',activeSettingsTab='event',editMode=false;
  const expandedGroups=new Map();
@@ -23,8 +23,9 @@
  function sessionName(id){return store.sessions.find(s=>s.id===id)?.name||T("Session");}
  function settingsTab(name){activeSettingsTab=name;document.querySelectorAll('[data-settings-tab]').forEach(b=>{const active=b.dataset.settingsTab===name;b.classList.toggle('active',active);b.setAttribute('aria-pressed',String(active));});document.querySelectorAll('[data-settings-panel]').forEach(n=>n.classList.toggle('hidden',n.dataset.settingsPanel!==name));if(name==='logs')loadLogs(true);}
  function tab(name,updateUrl=true){
-   if(!['dashboard','households','invites','food','tasks','language','settings'].includes(name))name='dashboard';
-   activeTab=name;if(name!=='settings')lastMainTab=name;window.RSVP_ADMIN_TOOLS?.showTasks(name==='tasks');window.RSVP_ADMIN_TOOLS?.translationScope(name==='language'?'content':'settings');
+   if(name==='tasks')name='other';
+   if(!['dashboard','households','invites','food','other','language','settings'].includes(name))name='dashboard';
+   activeTab=name;if(name!=='settings')lastMainTab=name;window.RSVP_ADMIN_TOOLS?.showTasks(name==='other');window.RSVP_ADMIN_TOOLS?.translationScope(name==='language'?'content':'settings');
    document.querySelectorAll('[data-tab]').forEach(b=>{
      const active=b.dataset.tab===name;b.classList.toggle('active',active);
      b.setAttribute('aria-selected',String(active));
@@ -46,8 +47,8 @@
  async function reload(){
    show(T("Loading event data…"));
    try{
-     const keys=['languages','settings','sessions','locations','households','guests','food','claims','submissions','defaults','content','relationGroups','foodCategories','contacts','overrides','responses','queue','deliveries','tasks','recipes'];
-     const jobs=[fetchTable('event_languages'),fetchTable('event_settings'),fetchTable('event_sessions'),fetchTable('event_locations'),fetchTable('households','id,household_name,invite_code,language,side,relation_group_id,email,phone,food,food_confirmed,rsvp_state,rsvp_submitted_at,late_submission_until,sort_order,parent_id,notes,archived_at,whatsapp,postal_address,preferred_contact_method'),fetchTable('guests','id,household_id,first_name,last_name,courtesy_title,relation,language,is_child,rsvp_status,dietary_requirements,notes,archived_at'),fetchTable('food_items'),fetchTable('food_claims'),fetchTable('rsvp_submissions','id,household_id,submitted_at'),fetchTable('household_session_defaults'),fetchTable('event_content'),fetchTable('relation_groups'),fetchTable('food_categories'),fetchTable('household_contacts'),fetchTable('guest_session_overrides'),fetchTable('guest_session_responses'),fetchTable('invitation_send_queue'),fetchTable('invitation_deliveries'),fetchTable('things_to_do'),fetchTable('food_recipes')];
+     const keys=['languages','settings','sessions','locations','households','guests','food','claims','submissions','defaults','content','relationGroups','foodCategories','contacts','overrides','responses','queue','deliveries','tasks','recipes','otherCategories'];
+     const jobs=[fetchTable('event_languages'),fetchTable('event_settings'),fetchTable('event_sessions'),fetchTable('event_locations'),fetchTable('households','id,household_name,invite_code,language,side,relation_group_id,email,phone,food,food_confirmed,rsvp_state,rsvp_submitted_at,late_submission_until,sort_order,parent_id,notes,archived_at,whatsapp,postal_address,preferred_contact_method'),fetchTable('guests','id,household_id,first_name,last_name,courtesy_title,relation,language,is_child,rsvp_status,dietary_requirements,notes,archived_at'),fetchTable('food_items'),fetchTable('food_claims'),fetchTable('rsvp_submissions','id,household_id,submitted_at'),fetchTable('household_session_defaults'),fetchTable('event_content'),fetchTable('relation_groups'),fetchTable('food_categories'),fetchTable('household_contacts'),fetchTable('guest_session_overrides'),fetchTable('guest_session_responses'),fetchTable('invitation_send_queue'),fetchTable('invitation_deliveries'),fetchTable('other_items'),fetchTable('food_recipes'),fetchTable('other_categories')];
      const values=await Promise.all(jobs);keys.forEach((key,i)=>store[key]=values[i]);store.settings=store.settings[0]||null;
      const {data:admins,error:adminsError}=await R.adminRpc('admin_list_members');
      store.admins=adminsError?[]:(admins||[]);
@@ -742,7 +743,9 @@
          const popup=R.iconPopup(move,changeLabel);popup.classList.add('edit-only');buttons.append(popup);
        }
        main.append(info);
-       const detail=R.dom('div',{class:'food-expanded'});detail.append(R.dom('p',{class:'small'},T('User Comment')+': '+(f.description_en||f.description_fo||f.description_de||'—')),R.dom('p',{class:'small'},T('Admin Comment')+': '+(f.admin_comment||'—')),buttons,edit);
+       const detail=R.dom('div',{class:'food-expanded'}),comments=R.dom('div',{class:'food-comment-grid'});
+       for(const [label,value] of [['User Comment',f.description_en||f.description_fo||f.description_de],['Admin Comment',f.admin_comment]])if(value?.trim())comments.append(R.dom('p',{class:'small'},T(label)+': '+value));
+       detail.dataset.hasComments=String(comments.children.length>0);if(comments.children.length)detail.append(comments);detail.append(buttons,edit);
        wrapper.append(main,detail);
        const recipe=store.recipes.find(r=>r.id===f.recipe_id);
        if(recipe){
@@ -920,13 +923,13 @@
    }
    $('acceptInvitationPanel').classList.add('hidden');pendingAdminInvitation=null;
    $('loginPanel').classList.add('hidden');$('adminApp').classList.remove('hidden');$('adminTopActions').classList.remove('hidden');$('loggedInAs').textContent=user.email||'';
-   const fragment=location.hash.slice(1);activeTab=['dashboard','households','invites','food','tasks','language','settings'].includes(fragment)?fragment:'dashboard';
+   const fragment=location.hash.slice(1)==='tasks'?'other':location.hash.slice(1);activeTab=['dashboard','households','invites','food','other','language','settings'].includes(fragment)?fragment:'dashboard';
    tab(activeTab,false);mode(false);await reload();const logged=await R.adminRpc('admin_record_session',{p_action:'login'});if(logged.error)show(T("Signed in, but session logging is unavailable."),'warning');
  }
  async function init(){
    window.addEventListener('popstate',()=>{
-     const fragment=location.hash.slice(1);
-     tab(['dashboard','households','invites','food','tasks','language','settings'].includes(fragment)?fragment:'dashboard',false);
+     const fragment=location.hash.slice(1)==='tasks'?'other':location.hash.slice(1);
+     tab(['dashboard','households','invites','food','other','language','settings'].includes(fragment)?fragment:'dashboard',false);
    });
    await window.RSVP_I18N.load();
    db=R.getClient();
@@ -961,8 +964,8 @@
    $('householdSearch').addEventListener('input',renderHouseholds);
    $('inviteSearch').addEventListener('input',renderInvites);$('deliveryStatusFilter').addEventListener('change',renderDeliveryLog);
    $('showArchived').addEventListener('change',renderHouseholds);
-   $('expandFood').addEventListener('click',()=>{document.querySelectorAll('#adminFoodList details[data-tree-key]').forEach(d=>{d.open=true;expandedGroups.set(d.dataset.treeKey,true);});});
-   $('collapseFood').addEventListener('click',()=>{R.closePopups();document.querySelectorAll('#adminFoodList details[data-tree-key]').forEach(d=>{d.open=false;expandedGroups.set(d.dataset.treeKey,false);});});
+   $('expandFood').addEventListener('click',()=>{document.querySelectorAll('#adminFoodList > .food-category').forEach(d=>{d.open=true;expandedGroups.set(d.dataset.treeKey,true);});});
+   $('collapseFood').addEventListener('click',()=>{R.closePopups();document.querySelectorAll('#adminFoodList > .food-category').forEach(d=>{d.open=false;expandedGroups.set(d.dataset.treeKey,false);});});
    $('foodSearch').addEventListener('input',renderFood);
    $('addCategoryForm').addEventListener('submit',async e=>{
      e.preventDefault();const input=$('categoryName'),name=input.value.trim();if(!name)return;const button=e.target.querySelector('button');button.disabled=true;

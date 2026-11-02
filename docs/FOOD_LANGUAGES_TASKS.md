@@ -2,7 +2,7 @@
 
 ## Food administration
 
-Food categories retain their configured order. Each item is one expandable row: its name, claimed/total amount and whether it is shown as an available guest option. Expand it for the public User Comment, private Admin Comment and editing controls. The editor has one source name, amount and the two comments; localized names and User Comments are edited in Language → Food. Existing localized text and claims are retained.
+Food categories retain their configured order. Empty read-only comments are omitted; present User and Admin Comments sit side by side on wider screens. Empty comment inputs remain available in Edit mode so comments can be added. Each item is one expandable row: its name, claimed/total amount and whether it is shown as an available guest option. Expand it for the public User Comment, private Admin Comment and editing controls. The editor has one source name, amount and the two comments; localized names and User Comments are edited in Language → Food. Existing localized text and claims are retained.
 
 An item is available when it is active and its amount exceeds the claimed total. Fully claimed items remain editable in administration. Increase the amount to offer more units; capacity updates cannot reduce the amount below existing claims. Archived items must also be reactivated. Existing claims are never deleted by an item edit.
 
@@ -17,13 +17,13 @@ Admin Comments are stored separately and omitted from the guest RPC projection. 
 
 The old event-settings editors are hidden in favor of the managed translation editor. Changing wording does not publish the event.
 
-## Things to do
+## Other
 
-The administrator task sheet has four columns: Task, Comment, Assigned to and Status (Open, In progress, Done). Use the main Edit switch, add rows as needed, then Save. There is no separate task Edit button. Save becomes active only when cells have changed; switching main Edit off keeps the local draft. Blank new rows are ignored. Comment uses the existing task notes field; existing comments are shown and editable, and due dates are retained. There is no deletion operation.
+Other sits immediately after Food. It combines the former Things to do and Stuff to bring records under categories. Each line contains Item, Comment, Assigned to and Status. Main Edit enables the pencil at the end of a line; the pencil unlocks that line and becomes its Save control. Edits stay local until that line is saved. Escape cancels the current line draft. New entries use stable UUIDs so retrying an uncertain create response cannot duplicate them. Existing row edits reject stale timestamps.
 
-Typing and adding rows stay in browser memory and do not send network requests. Rows are built when the tab is opened; adding a row preserves existing cell nodes. Save sends only changed rows and refreshes only the task table, avoiding a full dashboard reload. A failed save keeps the draft. If saving succeeds but refreshing fails, editing is blocked until Refresh so retrying cannot duplicate new tasks.
+Add category creates a group. Choose a category and select Add item for a new line. The category can also be changed while editing an existing line. Original task due dates and stuff-to-bring quantities remain in the database, although they are not among the four visible boxes. Original statuses, comments, assignments, source IDs and timestamps are retained during migration.
 
-The save RPC requires a live administrator session, validates every row and commits the sheet atomically. A changed existing row causes the whole save to fail rather than overwrite another administrator’s change. Unsaved cells remain available after errors. Reload the page to discard/reload a conflicting draft. The sheet is administrator-only; guest task assignment workflows remain a future decision.
+The canonical tables are `other_categories` and `other_items`. The task table is renamed into the canonical item table; stuff rows are copied into it, preserving source IDs even if IDs overlap across the two old lists. The former stuff table is retained as a sealed migration archive. Security-invoker compatibility views retain old read names, and the old task-save RPC routes writes into the canonical list during rollout. Application backups include the canonical categories/items, not compatibility views or the redundant archive. Fresh empty installs have no seeded Other categories, allowing empty-destination restore; migrated source lists create their own categories.
 
 ## Deployment
 
@@ -39,6 +39,6 @@ Dish editing places Name and Quantity side by side, followed by User Comment and
 
 ## Compact controls
 
-Food has Expand all and Collapse all controls for category, recipe and item disclosures. Saved disclosure state is retained across refreshes. Creation forms are separate from these controls.
+Food has Expand all and Collapse all controls for category disclosures only. Recipe and item expansion states are left untouched. Saved disclosure state is retained across refreshes. Creation forms are separate from these controls.
 
 The top language control is a globe icon with a pop-up, styled like Appearance. Enabled languages and the existing unsaved-change confirmation remain available. Food items and recipes use a move icon to open their category selector. Pop-ups close on Escape, outside clicks, scrolling or resizing, and avoid being clipped by the food hierarchy.

@@ -1,7 +1,7 @@
 (function(){
  'use strict';
  const I=window.RSVP_I18N,T=(text,params)=>I.t(text,params);
- let ctx,backup=null,preview=null,renderedLanguageCount=0,fileGeneration=0,translationScopeValue='settings',taskDraft=null,taskOriginal=[],taskChanged=new Set(),taskSaving=false,taskNeedsRefresh=false,tasksActive=false;
+ let ctx,backup=null,preview=null,renderedLanguageCount=0,fileGeneration=0,translationScopeValue='settings';
  const $=id=>document.getElementById(id);
  function enabled(){const rows=ctx.getStore().languages;return rows.length?rows.filter(l=>l.enabled).sort((a,b)=>(a.sort_order||0)-(b.sort_order||0)||a.language_code.localeCompare(b.language_code)):I.languages;}
  function options(select,rows,selected){select.replaceChildren(...rows.map(([value,label])=>ctx.R.dom('option',{value},label)));if(rows.some(([value])=>value===selected))select.value=selected;}
@@ -29,36 +29,53 @@
   const fallback=key.startsWith('ui:')?I.t(key.slice(3),{},lang):I.resolve(values,lang);
   $('translationFallbackPreview').textContent=T('Fallback preview')+': '+(fallback||'—');
  }
- const taskKeys=['task','notes','assigned_to','status'];
- function hasUnsavedTasks(){return taskChanged.size>0;}
- function taskMode(){
-  const editable=ctx.isEditing()&&!taskSaving&&!taskNeedsRefresh;
-  for(const control of $('taskRows').querySelectorAll('input,select'))control.disabled=!editable;
-  $('addTaskRows').disabled=!editable;$('saveTasks').disabled=!editable||!hasUnsavedTasks();
+ const otherFields=['item','notes','assigned_to','status'];
+ const otherModels=new Map(),otherOpen=new Map();let otherActive=false;
+ function otherDirty(model){return !model.original?!!(model.row.item?.trim()||model.row.notes?.trim()||model.row.assigned_to?.trim()||model.row.status!=='open'):otherFields.some(k=>(model.row[k]||'')!==(model.original[k]||''))||model.row.category_id!==model.original.category_id;}
+ function hasUnsavedTasks(){return [...otherModels.values()].some(otherDirty);}
+ function taskMode(){for(const model of otherModels.values())otherLineMode(model);$('addOtherItem').disabled=!ctx.isEditing();$('otherNewCategory').disabled=!ctx.isEditing();}
+ function otherLineMode(model){
+  if(!model.element)return;const editing=ctx.isEditing()&&model.editing&&!model.saving;
+  model.element.querySelectorAll('input,select').forEach(c=>c.disabled=!editing);model.categoryLabel.classList.toggle('hidden',!editing);
+  model.button.disabled=!ctx.isEditing()||model.saving;model.button.title=T(model.editing?'Save item':'Edit item');model.button.setAttribute('aria-label',model.button.title+' · '+(model.row.item||T('New item')));
+  model.button.innerHTML=model.editing?'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 4 4L19 6"/></svg>':'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m16 5 3 3M4 20l4-1 12-12a2.1 2.1 0 0 0-3-3L5 16l-1 4Z"/></svg>';
  }
- function taskRow(row,index){
-  const tr=ctx.R.dom('tr');
-  for(const key of taskKeys){const td=ctx.R.dom('td'),control=ctx.R.dom(key==='status'?'select':'input');
-   if(key==='status')options(control,[['open',T('Open')],['in_progress',T('In progress')],['done',T('Done')]],row.status||'open');else{control.value=row[key]||'';control.maxLength=key==='task'?1000:key==='notes'?4000:300;}
-   control.dataset.taskIndex=index;control.dataset.taskField=key;control.disabled=!ctx.isEditing();control.setAttribute('aria-label',T(key==='task'?'Task':key==='notes'?'Comment':key==='assigned_to'?'Assigned to':'Status')+' · '+(index+1));td.append(control);tr.append(td);
-  }return tr;
+ function otherLine(model){
+  const line=ctx.R.dom('div',{class:'other-line'});line.dataset.otherId=model.row.id;model.element=line;
+  for(const key of otherFields){const label=ctx.R.dom('label',{},T(key==='item'?'Item':key==='notes'?'Comment':key==='assigned_to'?'Assigned to':'Status')),control=ctx.R.dom(key==='status'?'select':'input');
+   if(key==='status')options(control,[['open',T('Open')],['assigned',T('Assigned')],['in_progress',T('In progress')],['done',T('Done')]],model.row.status||'open');else{control.value=model.row[key]||'';control.maxLength=key==='item'?1000:key==='notes'?4000:300;control.required=key==='item';}
+   control.dataset.otherField=key;control.setAttribute('aria-label',T(key==='item'?'Item':key==='notes'?'Comment':key==='assigned_to'?'Assigned to':'Status')+' · '+model.row.id);
+   const change=()=>{if(ctx.isEditing()&&model.editing&&!model.saving)model.row[key]=control.value;};control.addEventListener('input',change);control.addEventListener('change',change);label.append(control);line.append(label);
+  }
+  const button=ctx.R.dom('button',{type:'button',class:'admin-row-icon edit-only'});model.button=button;button.addEventListener('click',async()=>{
+   if(!ctx.isEditing()||model.saving)return;if(!model.editing){model.editing=true;otherLineMode(model);line.querySelector('input').focus();return;}
+   if(!line.querySelector('input').reportValidity())return;if(model.original&&!otherDirty(model)){model.editing=false;otherLineMode(model);return;}
+   model.saving=true;otherLineMode(model);model.error.textContent='';
+   try{const result=await rpc('admin_save_other',{p_id:model.row.id,p_values:{item:model.row.item.trim(),notes:(model.row.notes||'').trim(),assigned_to:(model.row.assigned_to||'').trim(),status:model.row.status,category_id:model.row.category_id,sort_order:model.row.sort_order??0},p_expected_updated_at:model.original?.updated_at||null});
+    const rows=ctx.getStore().tasks,index=rows.findIndex(r=>r.id===result.id);if(index<0)rows.push(result);else rows[index]=result;model.row={...result};model.original={...result};model.editing=false;model.saving=false;
+    const oldLine=model.element,target=$('otherRows').querySelector('[data-other-category="'+model.row.category_id+'"] .other-category-body'),newLine=otherLine(model);
+    if(target===oldLine.parentElement)oldLine.replaceWith(newLine);else{oldLine.remove();target?.querySelector('.other-empty')?.remove();target?.append(newLine);}ctx.show(T('Item saved.'),'success');
+   }catch(error){model.saving=false;model.error.textContent=ctx.R.safeError(error);otherLineMode(model);}
+  });line.append(button);
+  const categoryLabel=ctx.R.dom('label',{class:'other-line-category'},T('Category')),category=ctx.R.dom('select');options(category,ctx.getStore().otherCategories.map(c=>[c.id,c.name]),model.row.category_id);category.addEventListener('change',()=>{model.row.category_id=category.value;});categoryLabel.append(category);model.categoryLabel=categoryLabel;line.append(categoryLabel);
+  const error=ctx.R.dom('div',{class:'other-row-status'});error.setAttribute('role','status');model.error=error;line.append(error);
+  line.addEventListener('keydown',e=>{if(e.key==='Escape'&&model.editing&&!model.saving){e.preventDefault();if(model.original){model.row={...model.original};model.editing=false;}else otherModels.delete(model.row.id);renderTasks();}});
+  otherLineMode(model);return line;
  }
- function taskNotice(){if(!taskSaving&&!taskNeedsRefresh)$('tasksStatus').textContent=hasUnsavedTasks()?T('Unsaved changes. Select Save to update the database.'):T('Use main Edit mode to change tasks. Save sends your changes to the database.');}
  function renderTasks(){
-  if(!taskDraft||!hasUnsavedTasks()||taskNeedsRefresh){
-   taskDraft=[...(ctx.getStore().tasks||[])].sort((a,b)=>(a.sort_order||0)-(b.sort_order||0)||a.task.localeCompare(b.task)).map(r=>({...r}));taskOriginal=taskDraft.map(r=>({...r}));taskChanged.clear();taskNeedsRefresh=false;
-   const fragment=document.createDocumentFragment();taskDraft.forEach((r,i)=>fragment.append(taskRow(r,i)));$('taskRows').replaceChildren(fragment);
-  }taskMode();taskNotice();
+  const store=ctx.getStore(),categories=[...store.otherCategories].sort((a,b)=>(a.sort_order||0)-(b.sort_order||0)||a.name.localeCompare(b.name));
+  options($('otherNewCategory'),categories.map(c=>[c.id,c.name]),$('otherNewCategory').value);
+  for(const row of store.tasks){const current=otherModels.get(row.id);if(!current||(!current.editing&&!otherDirty(current)))otherModels.set(row.id,{row:{...row},original:{...row},editing:false,saving:false});}
+  const host=$('otherRows');host.replaceChildren();
+  for(const category of categories){
+   const group=ctx.R.dom('details',{class:'other-category'});group.dataset.otherCategory=category.id;group.open=otherOpen.get(category.id)!==false;group.addEventListener('toggle',()=>otherOpen.set(category.id,group.open));
+   group.append(ctx.R.dom('summary',{},category.name));const body=ctx.R.dom('div',{class:'other-category-body'});
+   const items=[...otherModels.values()].filter(m=>m.row.category_id===category.id).sort((a,b)=>(a.row.sort_order||0)-(b.row.sort_order||0)||(a.row.item||'').localeCompare(b.row.item||''));items.forEach(m=>body.append(otherLine(m)));
+   if(!items.length)body.append(ctx.R.dom('p',{class:'micro other-empty'},T('No items in this category.')));group.append(body);host.append(group);
+  }taskMode();$('otherStatus').textContent=T('Use main Edit, then the pencil to edit and save a line.');
  }
- function editTask(e){
-  const control=e.target,key=control.dataset.taskField,index=Number(control.dataset.taskIndex);if(!key||!ctx.isEditing()||taskSaving||taskNeedsRefresh)return;
-  const row=taskDraft[index];row[key]=control.value;const original=taskOriginal[index];
-  const changed=original?taskKeys.some(k=>(row[k]||'')!==(original[k]||'')):!!(row.task?.trim()||row.notes?.trim()||row.assigned_to?.trim()||row.status!=='open');
-  if(changed)taskChanged.add(index);else taskChanged.delete(index);
-  $('saveTasks').disabled=!hasUnsavedTasks();taskNotice();
- }
- function showTasks(active){tasksActive=active;if(active)renderTasks();}
- function render(){if(!ctx)return;if(tasksActive)renderTasks();
+ function showTasks(active){otherActive=active;if(active)renderTasks();}
+ function render(){if(!ctx)return;if(otherActive)renderTasks();
   const s=ctx.getStore(),langs=enabled().map(l=>[l.language_code,l.display_name]),keep=$('translationLanguage').value;
   options($('languageDefault'),langs,s.settings?.default_language||I.defaultLanguage);options($('languageFallback'),langs,s.settings?.fallback_language||'en');
   options($('translationLanguage'),langs,keep||I.language);renderTranslationKeys();
@@ -76,22 +93,9 @@
   renderedLanguageCount=langs.length;loadTranslation();mode();
  }
  function init(context){ctx=context;
-  $('taskRows').addEventListener('input',editTask);$('taskRows').addEventListener('change',editTask);
   window.addEventListener('beforeunload',e=>{if(hasUnsavedTasks()&&!I.languageReloadApproved){e.preventDefault();e.returnValue='';}});
-  $('addTaskRows').addEventListener('click',()=>{if(!ctx.isEditing()||taskSaving||taskNeedsRefresh)return;const row={task:'',notes:'',assigned_to:'',status:'open'},index=taskDraft.length;taskDraft.push(row);$('taskRows').append(taskRow(row,index));$('taskRows tr:last-child input')?.focus();});
-  $('saveTasks').addEventListener('click',async()=>{
-   if(!ctx.isEditing()||!hasUnsavedTasks()||taskSaving||taskNeedsRefresh)return;
-   taskSaving=true;taskMode();let saved=false;
-   try{
-    const rows=[...taskChanged].sort((a,b)=>a-b).map(i=>({row:taskDraft[i],index:i}));
-    await rpc('admin_save_tasks',{p_rows:rows.map(({row:r,index:i})=>({id:r.id||null,task:r.task.trim(),notes:(r.notes||'').trim(),assigned_to:(r.assigned_to||'').trim(),status:r.status,expected_updated_at:r.updated_at||null,sort_order:r.sort_order??i}))});saved=true;
-    const {data,error}=await ctx.R.getClient().from('things_to_do').select('*');if(error)throw error;
-    ctx.getStore().tasks=data||[];taskChanged.clear();taskDraft=null;renderTasks();ctx.show(T('Tasks saved.'),'success');
-   }catch(error){
-    if(saved){taskChanged.clear();taskNeedsRefresh=true;$('tasksStatus').textContent=T('Tasks were saved. Refresh the page before editing again.');}
-    else $('tasksStatus').textContent=ctx.R.safeError(error);
-   }finally{taskSaving=false;taskMode();}
-  });
+  $('addOtherItem').addEventListener('click',()=>{if(!ctx.isEditing())return;const category_id=$('otherNewCategory').value;if(!category_id){$('otherStatus').textContent=T('Add a category first.');return;}const id=crypto.randomUUID();otherModels.set(id,{row:{id,category_id,item:'',notes:'',assigned_to:'',status:'open',sort_order:Math.max(0,...ctx.getStore().tasks.filter(r=>r.category_id===category_id).map(r=>r.sort_order||0))+1},original:null,editing:true,saving:false});otherOpen.set(category_id,true);const group=$('otherRows').querySelector('[data-other-category="'+category_id+'"]');group.open=true;const body=group.querySelector('.other-category-body');body.querySelector('.other-empty')?.remove();body.append(otherLine(otherModels.get(id)));$('otherRows').querySelector('[data-other-id="'+id+'"] input').focus();});
+  $('addOtherCategory').addEventListener('submit',async e=>{e.preventDefault();if(!ctx.isEditing())return;const button=e.target.querySelector('button');if(button.disabled)return;button.disabled=true;try{const category=await rpc('admin_save_other_category',{p_id:null,p_name:$('otherCategoryName').value.trim(),p_expected_updated_at:null});const categories=ctx.getStore().otherCategories;if(!categories.some(c=>c.id===category.id))categories.push(category);$('otherCategoryName').value='';renderTasks();$('otherNewCategory').value=category.id;}catch(error){$('otherStatus').textContent=ctx.R.safeError(error);}finally{button.disabled=false;}});
 
   $('languagePreferences').addEventListener('submit',async e=>{e.preventDefault();if(!ctx.isEditing())return;try{await rpc('admin_set_language_preferences',{p_default:$('languageDefault').value,p_fallback:$('languageFallback').value});await ctx.reload();ctx.show(T('Language preferences saved.'),'success');}catch(error){ctx.show(ctx.R.safeError(error),'error');}});
   $('addLanguageForm').addEventListener('submit',async e=>{e.preventDefault();if(!ctx.isEditing())return;try{const code=Intl.getCanonicalLocales($('newLanguageCode').value.trim())[0];await rpc('admin_save_language',{p_code:code,p_name:$('newLanguageName').value.trim(),p_enabled:true,p_order:renderedLanguageCount+1});e.target.reset();await ctx.reload();ctx.show(T('Language saved.'),'success');}catch(error){ctx.show(ctx.R.safeError(error),'error');}});

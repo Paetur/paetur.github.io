@@ -32,7 +32,7 @@ async function checksum(db,b){b.checksum=await value(db,"SELECT encode(sha256(co
  await src.query('SELECT public.submit_household_rsvp($1,$2,$3)',[code,session,[{guest_id:guest,session_id:sid,status:'attending'}]]);
  await src.query('SELECT public.set_household_food_claim($1,$2,2,null)',[code,food]);await src.query('SELECT public.confirm_household_food($1)',[code]);
  await src.query('INSERT INTO public.invitation_access_audit(id,household_id) OVERRIDING SYSTEM VALUE VALUES(9007199254740993,$1)',[household]);
- await src.exec("INSERT INTO public.stuff_to_bring(item) VALUES('Chairs');INSERT INTO public.things_to_do(task) VALUES('Prepare venue');UPDATE public.event_settings SET is_published=false;SET ROLE authenticated;");
+ await src.exec("INSERT INTO public.other_categories(name) VALUES('Recovery tasks');INSERT INTO public.other_items(item,category_id,source_kind,source_id) VALUES('Chairs',(SELECT id FROM public.other_categories WHERE name='Recovery tasks'),'stuff',gen_random_uuid()),('Prepare venue',(SELECT id FROM public.other_categories WHERE name='Recovery tasks'),'task',gen_random_uuid());UPDATE public.event_settings SET is_published=false;SET ROLE authenticated;");
  await src.query("SELECT public.admin_prepare_invitation('invited@example.invalid','Recipient')");
  await src.exec("RESET ROLE;INSERT INTO public.food_categories(name) VALUES('Recipe category');SET ROLE authenticated;");
  await src.query('SELECT public.admin_save_recipe(null,$1,$2,$3,$4,null)',['Recovery recipe','Recipe category',[food],[{name:'Ingredient',quantity:1}]]);

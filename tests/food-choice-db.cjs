@@ -31,7 +31,9 @@ const {PGlite}=require('@electric-sql/pglite'),fs=require('node:fs'),assert=requ
  const admin='11111111-1111-4111-8111-111111111111',session='aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
  await db.query("INSERT INTO auth.users VALUES($1,'admin@example.invalid',now(),'unused')",[admin]);await db.query("INSERT INTO public.admins(user_id,name) VALUES($1,'Example')",[admin]);await db.query('INSERT INTO auth.sessions(id,user_id) VALUES($1,$2)',[session,admin]);
  await db.query("SELECT set_config('request.jwt.claim.sub',$1,false),set_config('request.jwt.claims',$2,false)",[admin,JSON.stringify({sub:admin,session_id:session})]);
- const task=(await db.query("INSERT INTO public.things_to_do(task,notes,due_date) VALUES('Chairs','Keep this note','2027-01-01') RETURNING *")).rows[0];
+ await db.exec("INSERT INTO public.other_categories(name,legacy_key) VALUES('Tasks','tasks')");
+ await db.exec("INSERT INTO public.other_items(item,notes,due_date,source_kind,category_id) VALUES('Chairs','Keep this note','2027-01-01','task',(SELECT id FROM public.other_categories WHERE legacy_key='tasks'))");
+ const task=(await db.query('SELECT * FROM public.things_to_do')).rows[0];
  const draft={id:task.id,task:'Arrange chairs',assigned_to:'Helper',status:'in_progress',sort_order:0,expected_updated_at:task.updated_at};
  await db.exec('SET ROLE authenticated');
  await db.query('SELECT public.admin_save_tasks($1)',[[draft,{task:'Tablecloths',assigned_to:'Second helper',status:'open',sort_order:1}]]);

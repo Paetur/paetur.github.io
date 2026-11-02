@@ -3,6 +3,7 @@
  const T=(text,params)=>window.RSVP_I18N?.t(text,params)||text;
  const R=window.RSVP,$=R.byId;
  let db=null,user=null,store={settings:null,sessions:[],locations:[],households:[],guests:[],food:[],claims:[],submissions:[],defaults:[],content:[],admins:[],adminInvitations:[],relationGroups:[],foodCategories:[],languages:[],contacts:[],overrides:[],responses:[],queue:[],deliveries:[]};
+ let inviteDetail=null;
  let activeTab='dashboard',lastMainTab='dashboard',activeSettingsTab='event',editMode=false;
  const expandedGroups=new Map();
  const qs=(s)=>document.querySelector(s);
@@ -465,33 +466,55 @@
  }
  function renderInvites(){
    const box=$('inviteRows');box.replaceChildren();const search=$('inviteSearch').value.trim().toLowerCase();
-   const all=ordered(store.households,'household_name').filter(h=>!h.archived_at);
-   const eligible=new Set(all.filter(h=>h.invite_code&&store.guests.some(g=>g.household_id===h.id&&!g.archived_at)).map(h=>h.id));
-   const visible=new Set(all.filter(h=>eligible.has(h.id)&&(h.household_name.toLowerCase().includes(search)||all.some(a=>isDescendantOf(h.id,a.id)&&a.household_name.toLowerCase().includes(search)))).map(h=>h.id));
-   for(const id of [...visible]){let h=all.find(x=>x.id===id);const seen=new Set();while(h?.parent_id&&!seen.has(h.id)){seen.add(h.id);visible.add(h.parent_id);h=all.find(x=>x.id===h.parent_id);}}
-   function group(title,key,cls){const d=R.dom('details',{class:cls+' tree-disclosure'});setDisclosure(d,'invites:'+key,true,!!search);const heading=R.dom('summary',{class:cls==='hierarchy-section'?'tree-side':'tree-group'},title);d.append(heading);const body=R.dom('div',{class:'tree-children'});d.append(body);return {d,body};}
-   for(const side of [...new Set(all.map(h=>h.side||'unassigned'))].sort()){
-     const members=all.filter(h=>(h.side||'unassigned')===side&&visible.has(h.id));if(!members.length)continue;
-     const section=group(side.split('_').map(w=>w[0]?.toUpperCase()+w.slice(1)).join(' '),'side:'+side,'hierarchy-section');box.append(section.d);
-     for(const gid of [...new Set(members.map(h=>h.relation_group_id||''))]){
-       const households=members.filter(h=>(h.relation_group_id||'')===gid);const relation=group(householdGroupName(households[0]),side+':'+gid,'hierarchy-group');section.body.append(relation.d);
-       const visited=new Set();
-       function draw(h,parent){
-         if(visited.has(h.id))return;visited.add(h.id);
-         const node=R.dom('details',{class:'household-tree-node'});node.dataset.inviteHousehold=h.id;setDisclosure(node,'invites:household:'+h.id,false,!!search);
-         const summary=R.dom('summary',{class:'household-node'});const info=R.dom('div',{class:'household-node-name'});info.append(R.dom('strong',{},h.household_name),R.dom('small',{class:'muted'},householdSummary(h,store.guests.filter(g=>g.household_id===h.id))));summary.append(info);node.append(summary);
-         const body=R.dom('div',{class:'household-expanded'});node.append(body);parent.append(node);
-         if(eligible.has(h.id)){
-           const item=R.dom('div',{class:'invite-item'});const row=R.dom('div',{class:'invite-row'});row.append(R.dom('code',{},h.invite_code));const actions=R.dom('div',{class:'invite-actions'});
-           for(const [label,value] of [[T("Copy invite code"),h.invite_code],[T("Copy invitation link"),R.invitationURL(h.invite_code)]]){const button=R.dom('button',{type:'button',class:'small-tool'},label);button.addEventListener('click',async()=>{try{await navigator.clipboard.writeText(value);show(label===T("Copy invite code")?T("Invitation code copied."):T("Invitation link copied."),'success');}catch(error){show(R.safeError(error),'error');}});actions.append(button);}
-           row.append(actions);item.append(row,sessionAssignmentForm(h),deliverySection(h));body.append(item);
-         }
-         const children=households.filter(x=>x.parent_id===h.id);if(children.length){const nested=R.dom('div',{class:'tree-children'});body.append(nested);children.forEach(child=>draw(child,nested));}
+   const tree=ordered(store.households.filter(h=>!h.archived_at),'household_name');
+   const all=tree.filter(h=>h.invite_code&&store.guests.some(g=>g.household_id===h.id&&!g.archived_at));
+   if(inviteDetail){
+     const h=all.find(h=>h.id===inviteDetail.id);
+     if(h){
+       const panel=R.dom('section',{class:'invite-detail-panel'});
+       const back=R.dom('button',{type:'button',class:'small-tool'},T('Back to households'));
+       back.addEventListener('click',()=>{const id=inviteDetail.id;inviteDetail=null;renderInvites();box.querySelector('[data-invite-household="'+id+'"] button')?.focus();});
+       panel.append(back,R.dom('h3',{},h.household_name));
+       const tabs=R.dom('div',{class:'invite-detail-tabs'});
+       for(const [key,label] of [['sessions','Session invitations'],['delivery','Invitation delivery']]){
+         const button=R.dom('button',{type:'button',class:'small-tool'},T(label));button.setAttribute('aria-pressed',String(inviteDetail.section===key));
+         button.addEventListener('click',()=>{inviteDetail.section=key;renderInvites();box.querySelector('h3')?.focus();});tabs.append(button);
        }
-       households.filter(h=>!households.some(x=>x.id===h.parent_id)).forEach(h=>draw(h,relation.body));households.forEach(h=>draw(h,relation.body));
+       panel.append(tabs);const content=inviteDetail.section==='sessions'?sessionAssignmentForm(h):deliverySection(h);content.open=true;panel.append(content);box.append(panel);
+       const heading=panel.querySelector('h3');heading.tabIndex=-1;return;
+     }inviteDetail=null;
+   }
+   const list=R.dom('div',{class:'invite-compact-list'});
+   const visible=new Set(all.filter(h=>h.household_name.toLowerCase().includes(search)||tree.some(a=>isDescendantOf(h.id,a.id)&&a.household_name.toLowerCase().includes(search))).map(h=>h.id));
+   for(const id of [...visible]){let h=tree.find(h=>h.id===id);const seen=new Set();while(h?.parent_id&&!seen.has(h.id)){seen.add(h.id);visible.add(h.parent_id);h=tree.find(h=>h.id===h.parent_id);}}
+   function drawRow(h,container){
+     const row=R.dom('div',{class:'invite-compact-row'});row.dataset.inviteHousehold=h.id;
+     const name=R.dom('strong',{class:'invite-compact-name',title:h.household_name},h.household_name);row.append(name);
+     const actions=R.dom('div',{class:'invite-compact-actions'});
+     if(all.some(x=>x.id===h.id)){
+     for(const [key,label] of [['sessions','Session invitations'],['delivery','Invitation delivery']]){
+       const button=R.dom('button',{type:'button',class:'small-tool'},T(label));button.setAttribute('aria-label',T(label)+' · '+h.household_name);
+       button.addEventListener('click',()=>{inviteDetail={id:h.id,section:key};renderInvites();box.querySelector('h3')?.focus();});actions.append(button);
+     }
+     const copy=R.dom('button',{type:'button',class:'small-tool'},T('Copy invitation link'));copy.setAttribute('aria-label',T('Copy invitation link')+' · '+h.household_name);
+     copy.addEventListener('click',async()=>{try{await navigator.clipboard.writeText(R.invitationURL(h.invite_code));show(T('Invitation link copied.'),'success');}catch(error){show(R.safeError(error),'error');}});actions.append(copy);
+     }row.append(actions);container.append(row);
+   }
+   for(const side of [...new Set(tree.map(h=>h.side||'unassigned'))].sort()){
+     const sideMembers=tree.filter(h=>(h.side||'unassigned')===side);if(!sideMembers.some(h=>visible.has(h.id)))continue;
+     const sideBox=R.dom('details',{class:'hierarchy-section tree-disclosure'});setDisclosure(sideBox,'invites:side:'+side,true,!!search);
+     sideBox.append(R.dom('summary',{class:'tree-side'},side.split('_').map(w=>w[0]?.toUpperCase()+w.slice(1)).join(' ')));
+     const sideBody=R.dom('div',{class:'tree-children'});sideBox.append(sideBody);list.append(sideBox);
+     const groups=[...new Set(sideMembers.map(h=>h.relation_group_id||''))].sort((a,b)=>{const ar=store.relationGroups.find(g=>g.id===a),br=store.relationGroups.find(g=>g.id===b);return (ar?.sort_order||0)-(br?.sort_order||0)||(ar?.name||'').localeCompare(br?.name||'');});
+     for(const gid of groups){
+       const members=sideMembers.filter(h=>(h.relation_group_id||'')===gid);if(!members.some(h=>visible.has(h.id)))continue;
+       const group=R.dom('details',{class:'hierarchy-group tree-disclosure'});setDisclosure(group,'invites:group:'+side+':'+gid,true,!!search);
+       group.append(R.dom('summary',{class:'tree-group'},householdGroupName(members[0])));const body=R.dom('div',{class:'tree-children'});group.append(body);sideBody.append(group);
+       const visited=new Set();function draw(h,parent){if(visited.has(h.id)||!visible.has(h.id))return;visited.add(h.id);drawRow(h,parent);const children=ordered(members.filter(c=>c.parent_id===h.id&&c.id!==h.id),'household_name');if(children.some(c=>visible.has(c.id))){const nested=R.dom('div',{class:'tree-children invite-nested-rows'});parent.append(nested);children.forEach(c=>draw(c,nested));}}
+       ordered(members.filter(h=>!members.some(p=>p.id===h.parent_id)),'household_name').forEach(h=>draw(h,body));ordered(members,'household_name').forEach(h=>draw(h,body));
      }
    }
-   if(!box.children.length)box.append(R.dom('p',{class:'muted'},T("No matching invitations. Empty and archived households have no active invitation.")));
+   box.append(list);if(!list.children.length)box.append(R.dom('p',{class:'muted'},T('No matching invitations. Empty and archived households have no active invitation.')));
  }
 
  function renderHouseholds(){

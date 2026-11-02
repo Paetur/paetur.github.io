@@ -1,5 +1,6 @@
 // Built-in interface catalog. Event and guest data are never translated by lookup.
 window.RSVP_TRANSLATIONS = {
+  "Back to households": {"fo":"Aftur til húski", "de":"Zurück zu Haushalten"},
   "Administration": {
     "fo": "Umsiting",
     "de": "Verwaltung"

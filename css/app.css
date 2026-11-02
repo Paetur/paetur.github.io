@@ -434,3 +434,17 @@ html[data-theme="dark"] code{background:#253b32;color:var(--ink)}
 #restoreBackupForm{border-top:1px solid var(--line);padding-top:16px}
 .language-switch{flex-wrap:wrap}
 @media(max-width:600px){.language-switch button{padding:4px 7px}}
+
+/* Compact invitation index; detailed workflows open separately. */
+.invite-compact-list{margin-top:12px;overflow-x:auto}
+.invite-compact-row{display:flex;align-items:center;gap:16px;min-width:620px;padding:8px 2px;border-bottom:1px solid var(--line)}
+.invite-compact-name{flex:1;min-width:100px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.invite-compact-actions,.invite-detail-tabs{display:flex;gap:8px;align-items:center;flex-wrap:nowrap}
+.invite-compact-actions button{white-space:nowrap;padding:8px 10px;min-height:40px}
+.invite-detail-panel{margin-top:16px}.invite-detail-tabs{margin:12px 0;flex-wrap:wrap}
+.invite-detail-tabs [aria-pressed="true"]{background:var(--teal);color:#fff}
+.invite-detail-panel h3{margin:16px 0 8px}
+
+#inviteRows .invite-compact-list .tree-children{margin-top:4px;margin-bottom:4px;padding-top:0;padding-bottom:0}
+#inviteRows .invite-compact-list .hierarchy-section,#inviteRows .invite-compact-list .hierarchy-group{margin-bottom:6px}
+#inviteRows .invite-compact-row{min-height:48px}

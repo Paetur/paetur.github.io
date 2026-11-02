@@ -19,7 +19,9 @@ The old event-settings editors are hidden in favor of the managed translation ed
 
 ## Things to do
 
-The administrator task sheet has four columns: Task, Comment, Assigned to and Status (Open, In progress, Done). Select Edit, use Add rows for additional tasks, then Save. Blank new rows are ignored. Comment uses the existing task notes field; existing comments are shown and editable, and due dates are retained. There is no deletion operation.
+The administrator task sheet has four columns: Task, Comment, Assigned to and Status (Open, In progress, Done). Use the main Edit switch, add rows as needed, then Save. There is no separate task Edit button. Save becomes active only when cells have changed; switching main Edit off keeps the local draft. Blank new rows are ignored. Comment uses the existing task notes field; existing comments are shown and editable, and due dates are retained. There is no deletion operation.
+
+Typing and adding rows stay in browser memory and do not send network requests. Rows are built when the tab is opened; adding a row preserves existing cell nodes. Save sends only changed rows and refreshes only the task table, avoiding a full dashboard reload. A failed save keeps the draft. If saving succeeds but refreshing fails, editing is blocked until Refresh so retrying cannot duplicate new tasks.
 
 The save RPC requires a live administrator session, validates every row and commits the sheet atomically. A changed existing row causes the whole save to fail rather than overwrite another administrator’s change. Unsaved cells remain available after errors. Reload the page to discard/reload a conflicting draft. The sheet is administrator-only; guest task assignment workflows remain a future decision.
 
@@ -34,3 +36,9 @@ Add Food Category, Add Food Item and Add recipe are above the food list. Add rec
 Recipes appear as expandable groups within their category. Edit recipe changes its name, category and item membership. Changing its category also moves its items through a database foreign-key cascade; an individual recipe item cannot be assigned a conflicting category. Guests still pick individual items, with the recipe name shown beside each item. Private comments remain private. Recipes and their memberships are included in application backups and tested restoration.
 
 Dish editing places Name and Quantity side by side, followed by User Comment and Admin Comment side by side.
+
+## Compact controls
+
+Food has Expand all and Collapse all controls for category, recipe and item disclosures. Saved disclosure state is retained across refreshes. Creation forms are separate from these controls.
+
+The top language control is a globe icon with a pop-up, styled like Appearance. Enabled languages and the existing unsaved-change confirmation remain available. Food items and recipes use a move icon to open their category selector. Pop-ups close on Escape, outside clicks, scrolling or resizing, and avoid being clipped by the food hierarchy.

@@ -1,6 +1,6 @@
 # Current work and optional backlog
 
-Updated 1 November 2026. The former source database has been deleted. Implementation is authorized; the historical read-only planning restriction no longer applies. Use only the designated current project. Keep the event unpublished until explicit launch approval.
+Updated 2 November 2026. The former source database has been deleted. Implementation is authorized; the historical read-only planning restriction no longer applies. Use only the designated current project. Keep the event unpublished until explicit launch approval.
 
 ## Selected for implementation
 
@@ -21,6 +21,8 @@ Updated 1 November 2026. The former source database has been deleted. Implementa
 - [x] Compact hierarchy/disclosure layouts, appearance preferences and browser/database regression checks.
 
 ## Implemented for next release
+
+- [x] Food expansion controls, compact language/category pop-ups, and local task drafts with main Edit and explicit changed-row Save.
 
 - [x] Compact Food rows, guest one-unit picks with capacity-based hiding, and separate public/private comments.
 - [x] Categorized content translations and consolidated settings language controls.

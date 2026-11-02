@@ -4,7 +4,7 @@ The former source database has been deleted. Recovery must use retained snapshot
 
 ## What is included
 
-Settings → Backups downloads a versioned JSON application backup. The snapshot contains event settings, languages/translations, venues/sessions, households/guests/contacts, nested relationships, invitation defaults/exceptions, food/categories/claims/locks, stuff-to-bring, tasks, message templates, manual sending queues/deliveries, immutable RSVP submissions/corrections, management/configuration/access/membership/invitation audit records, previous restore audit records and the private invitation-code registry (including retired codes).
+Settings → Backups downloads a versioned JSON application backup. The snapshot contains event settings, languages/translations, venues/sessions, households/guests/contacts, nested relationships, invitation defaults/exceptions, food/categories/claims/locks, Other categories/items (including migrated task due dates, stuff-to-bring quantities and source IDs), message templates, manual sending queues/deliveries, immutable RSVP submissions/corrections, management/configuration/access/membership/invitation audit records, previous restore audit records and the private invitation-code registry (including retired codes).
 
 The snapshot is read in one stable database statement. It includes an exact table/column/type manifest, row counts, a schema contract version, creation time and a SHA-256 checksum over PostgreSQL's canonical JSON representation. Bigint columns are exported as strings to preserve IDs beyond JavaScript's safe integer range. The checksum detects damage; it does not authenticate a file supplied by an untrusted person.
 

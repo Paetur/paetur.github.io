@@ -1034,7 +1034,7 @@ window.RSVP_TRANSLATIONS = {
   },
   "Other": {
     "fo": "Annað",
-    "de": "Andere"
+    "de": "Sonstiges"
   },
   "Recipient: ": {
     "fo": "Móttakari: ",
@@ -2811,5 +2811,41 @@ window.RSVP_TRANSLATIONS = {
   "Tasks were saved. Refresh the page before editing again.": {
     "fo": "Uppgávurnar eru goymdar. Dagfør síðuna áðrenn tú rættar aftur.",
     "de": "Aufgaben wurden gespeichert. Seite vor dem weiteren Bearbeiten aktualisieren."
+  },
+  "Item": {
+    "fo": "Lutur",
+    "de": "Eintrag"
+  },
+  "New item": {
+    "fo": "Nýggjur lutur",
+    "de": "Neuer Eintrag"
+  },
+  "Edit item": {
+    "fo": "Rætta lut",
+    "de": "Eintrag bearbeiten"
+  },
+  "Save item": {
+    "fo": "Goym lut",
+    "de": "Eintrag speichern"
+  },
+  "Item saved.": {
+    "fo": "Lutur goymdur.",
+    "de": "Eintrag gespeichert."
+  },
+  "No items in this category.": {
+    "fo": "Eingir lutir í hesum bólki.",
+    "de": "Keine Einträge in dieser Kategorie."
+  },
+  "Use main Edit, then the pencil to edit and save a line.": {
+    "fo": "Brúka Rætta ovast, síðani blýantin fyri at rætta og goyma eina linju.",
+    "de": "Zentralen Bearbeitungsmodus aktivieren und eine Zeile mit dem Stift bearbeiten und speichern."
+  },
+  "Add a category first.": {
+    "fo": "Legg fyrst ein bólk afturat.",
+    "de": "Zuerst eine Kategorie hinzufügen."
+  },
+  "Tasks and things to bring, grouped by category. Use main Edit, then the pencil to edit a line.": {
+    "fo": "Uppgávur og lutir at taka við, bólkað. Brúka Rætta ovast og síðani blýantin á linjuni.",
+    "de": "Aufgaben und mitzubringende Dinge nach Kategorien. Zentralen Bearbeitungsmodus aktivieren und eine Zeile mit dem Stift bearbeiten."
   }
 };

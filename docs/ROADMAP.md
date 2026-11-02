@@ -22,6 +22,9 @@ Updated 2 November 2026. The former source database has been deleted. Implementa
 
 ## Implemented for next release
 
+- [x] Unified categorized Other list for tasks and stuff to bring, four-box lines with per-row pencil/save, and preservation of original metadata.
+- [x] Category-only Food expansion and conditional side-by-side comment displays.
+
 - [x] Food expansion controls, compact language/category pop-ups, and local task drafts with main Edit and explicit changed-row Save.
 
 - [x] Compact Food rows, guest one-unit picks with capacity-based hiding, and separate public/private comments.

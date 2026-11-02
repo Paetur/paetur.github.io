@@ -474,3 +474,15 @@ html[data-theme="dark"] code{background:#253b32;color:var(--ink)}
 .recipe-existing{max-height:240px;overflow-y:auto;border:1px solid var(--line);border-radius:8px}.recipe-existing label{display:flex;align-items:center;gap:8px;font-size:.85rem;margin:6px 0}.recipe-existing input{width:auto}.recipe-new-item{padding:12px;border:1px solid var(--line);border-radius:8px;margin:8px 0}.food-recipe{margin:6px 0}.food-recipe-label{font-size:.8rem;color:var(--muted)}.guest-food-disclosure>summary strong{display:inline}
 
 .icon-popup-control{display:inline-flex;flex-shrink:0}.icon-popup-menu{position:fixed;z-index:2000;width:230px;max-width:calc(100vw - 16px);max-height:70vh;overflow-y:auto;padding:16px;background:var(--white);color:var(--ink);border:1px solid var(--line);border-radius:12px;box-shadow:var(--shadow)}.icon-popup-menu label{display:grid;gap:8px;font-size:.8rem;font-weight:700}.icon-popup-menu select{width:100%;max-width:none;font-size:.85rem}.icon-popup-menu .interface-language{max-width:none;width:100%}
+
+.food-comment-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}.food-comment-grid p{overflow-wrap:anywhere}
+.other-add-controls{display:flex;align-items:end;gap:10px;margin:12px 0}.other-add-controls label{display:grid;gap:4px;font-size:.8rem}
+.other-category{margin:10px 0;border:1px solid var(--line);border-radius:9px}.other-category>summary{padding:8px 12px;cursor:pointer;background:var(--light);font-weight:700}.other-category-body{padding:8px}
+.other-line{display:grid;grid-template-columns:minmax(100px,1.2fr) minmax(100px,1.3fr) minmax(90px,1fr) minmax(90px,.75fr) 34px;gap:8px;align-items:start;padding:6px 0}.other-line input,.other-line select{width:100%;padding:8px;min-height:40px}.other-line input:disabled,.other-line select:disabled{opacity:1;color:var(--ink);-webkit-text-fill-color:var(--ink)}.other-line button{margin-top:3px}.other-line label{display:grid;font-size:.68rem;gap:3px}.other-line .other-row-status{grid-column:1/-1;color:var(--danger);font-size:.75rem}
+@media(max-width:600px){.food-comment-grid{grid-template-columns:1fr;gap:0}.other-category-body{overflow-x:auto}.other-line{min-width:600px}}
+
+.food-comment-grid p:only-child{grid-column:1/-1}.other-line>button{margin-top:20px}.other-line-category{grid-column:1/-1;max-width:260px}
+#otherRows{min-width:0;max-width:100%}.other-category{width:100%;min-width:0;max-width:100%;overflow:hidden}.other-category-body{min-width:0;max-width:100%}.other-line label,.other-line input,.other-line select{min-width:0}
+[data-panel="other"]>.panel{min-width:0;width:100%;max-width:100%}
+
+#adminApp[data-mode="view"] .food-expanded[data-has-comments="false"]{display:none}

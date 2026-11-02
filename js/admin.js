@@ -423,6 +423,21 @@
    const d=disclosure(({email:T('Email'),sms:'SMS',whatsapp:'WhatsApp',postal:T('Postal'),manual:T('Manual')}[q.channel]||q.channel)+' · '+({draft:T('Draft'),ready:T('Ready'),sent:T('Recorded sent'),failed:T('Failed'),cancelled:T('Cancelled')}[q.status]||q.status)+' · '+adminTime(q.updated_at));d.dataset.deliveryId=q.id;
    const recipient=q.recipient_snapshot||{};d.append(R.dom('p',{class:'small'},T("To: ")+[recipient.contact_name,recipient.contact_value].filter(Boolean).join(' · ')),R.dom('p',{class:'micro'},q.message_subject||''),R.dom('pre',{class:'delivery-message'},q.message_body));
    const copy=R.dom('button',{type:'button',class:'small-tool'},T("Copy message"));copy.addEventListener('click',async()=>{try{await navigator.clipboard.writeText(q.message_body);show(T("Message copied."),'success');}catch(error){show(R.safeError(error),'error');}});d.append(copy);
+   if(q.status==='ready'&&!h.archived_at&&q.invitation_code_snapshot===h.invite_code){
+     try{const href=window.RSVP_DEVICE_DELIVERY.compose(q);if(href){
+       const link=R.dom('a',{class:'small-tool'},T(({email:'Open email',sms:'Open Messages',whatsapp:'Open WhatsApp'})[q.channel]));link.href=href;link.rel='noopener noreferrer';
+       if(q.channel==='whatsapp')link.target='_blank';d.append(link);
+       d.append(R.dom('p',{class:'micro'},T(q.channel==='sms'?'Copy the message, open Messages, then paste and send.':'Review the message in your device app and tap Send.')));
+       d.append(R.dom('p',{class:'micro'},T('Opening an app does not mark this message as sent. Return here to confirm sending. Delivery and read receipts remain in your messaging app.')));
+     }}catch(error){d.append(R.dom('p',{class:'notice'},T(error.message)));}
+   }else if(q.status==='ready')d.append(R.dom('p',{class:'notice'},T('Refresh and save this delivery again before sending.')));
+   if(editable&&q.status==='sent'&&!h.archived_at){
+     const followup=disclosure(T('Prepare reminder'),'edit-only');
+     followup.append(R.dom('p',{class:'micro'},T('Creates a separate draft using current contact details. Review the recipient and text before sending.')));
+     const code=h.language||store.settings?.default_language||'en';
+     const message=window.RSVP_I18N?.t('A friendly reminder to reply to our invitation:',{},code)||'A friendly reminder to reply to our invitation:';
+     followup.append(deliveryEditor(h,{channel:q.channel,contact_id:q.contact_id,message_subject:q.message_subject,message_body:message+'\n'+R.invitationURL(h.invite_code)}));d.append(followup);
+   }
    const sent=store.deliveries.find(x=>x.queue_id===q.id);if(sent)d.append(R.dom('p',{class:'notice success'},T("Manually recorded as sent · ")+adminTime(sent.confirmed_at)+' · '+actorName(sent.confirmed_by)+(sent.delivery_note?' · '+sent.delivery_note:'')));
    if(editable&&!['sent','cancelled'].includes(q.status)){
      const edit=disclosure(T("Edit delivery"),'edit-only');edit.append(deliveryEditor(h,q));d.append(edit);

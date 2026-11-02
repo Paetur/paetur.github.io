@@ -20,6 +20,10 @@ Updated 1 November 2026. The former source database has been deleted. Implementa
 - [x] FO/EN/DE interface translation, wording customization and welcome-message editors.
 - [x] Compact hierarchy/disclosure layouts, appearance preferences and browser/database regression checks.
 
+## Implemented for next release
+
+- [x] Device-based email, SMS/Messages and WhatsApp invitations with administrator-initiated reminder drafts and existing manual sent history. Actual iPad/account handoff acceptance remains required; no background sending or automatic delivery/read receipts.
+
 ## Optional features — decide later
 
 These are candidates, not commitments or launch blockers by default.

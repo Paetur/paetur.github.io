@@ -24,7 +24,7 @@
  function settingsTab(name){activeSettingsTab=name;document.querySelectorAll('[data-settings-tab]').forEach(b=>{const active=b.dataset.settingsTab===name;b.classList.toggle('active',active);b.setAttribute('aria-pressed',String(active));});document.querySelectorAll('[data-settings-panel]').forEach(n=>n.classList.toggle('hidden',n.dataset.settingsPanel!==name));if(name==='logs')loadLogs(true);}
  function tab(name,updateUrl=true){
    if(!['dashboard','households','invites','food','tasks','language','settings'].includes(name))name='dashboard';
-   activeTab=name;if(name!=='settings')lastMainTab=name;window.RSVP_ADMIN_TOOLS?.translationScope(name==='language'?'content':'settings');
+   activeTab=name;if(name!=='settings')lastMainTab=name;window.RSVP_ADMIN_TOOLS?.showTasks(name==='tasks');window.RSVP_ADMIN_TOOLS?.translationScope(name==='language'?'content':'settings');
    document.querySelectorAll('[data-tab]').forEach(b=>{
      const active=b.dataset.tab===name;b.classList.toggle('active',active);
      b.setAttribute('aria-selected',String(active));
@@ -41,7 +41,7 @@
    }
  }
  function toggleSettings(){tab(activeTab==='settings'?lastMainTab:'settings');}
- function mode(isEditing){editMode=isEditing;$('adminApp').dataset.mode=isEditing?'edit':'view';const b=$('editModeButton');b.classList.toggle('active',isEditing);b.setAttribute('aria-pressed',String(isEditing));b.title=isEditing?T("Switch to View mode"):T("Switch to Edit mode");b.setAttribute('aria-label',b.title);$('adminModeLabel').textContent=isEditing?T("Edit mode · Changes are saved to the event database"):T("View mode · Manage invitations, food and event details");for(const id of ['eventSettingsForm','eventContentForm','interfaceWordingForm','languagePreferences','addLanguageForm','translationForm']){const form=$(id);for(const field of form.querySelectorAll('input,select,textarea'))field.disabled=!isEditing;}window.RSVP_ADMIN_TOOLS?.mode();}
+ function mode(isEditing){R.closePopups();editMode=isEditing;$('adminApp').dataset.mode=isEditing?'edit':'view';const b=$('editModeButton');b.classList.toggle('active',isEditing);b.setAttribute('aria-pressed',String(isEditing));b.title=isEditing?T("Switch to View mode"):T("Switch to Edit mode");b.setAttribute('aria-label',b.title);$('adminModeLabel').textContent=isEditing?T("Edit mode · Changes are saved to the event database"):T("View mode · Manage invitations, food and event details");for(const id of ['eventSettingsForm','eventContentForm','interfaceWordingForm','languagePreferences','addLanguageForm','translationForm']){const form=$(id);for(const field of form.querySelectorAll('input,select,textarea'))field.disabled=!isEditing;}window.RSVP_ADMIN_TOOLS?.mode();}
  async function fetchTable(name,columns='*',order){let q=db.from(name).select(columns);if(order)q=q.order(order);const {data,error}=await q;if(error)throw new Error(`${name}: ${R.safeError(error)}`);return data||[];}
  async function reload(){
    show(T("Loading event data…"));
@@ -663,7 +663,7 @@
    return saveForm(form,T('Save recipe'),()=>managementRpc('admin_save_recipe',{p_id:recipe.id||null,p_name:name.value.trim(),p_category:category.value,p_items:selected.filter(([,c])=>c.checked).map(([id])=>id),p_new_items:fresh.map(r=>({name:r.name.value.trim(),quantity:Number(r.quantity.value),user_comment:r.user_comment.value.trim(),admin_comment:r.admin_comment.value.trim()})),p_expected_updated_at:recipe.updated_at||null}));
  }
  function renderFood(){
-   const box=$('adminFoodList');box.replaceChildren();$('newRecipe').replaceChildren(recipeEditor());
+   R.closePopups();const box=$('adminFoodList');box.replaceChildren();$('newRecipe').replaceChildren(recipeEditor());
    const categorySelect=$('newFoodCategory');categorySelect.replaceChildren();
    foodCategoryOptions(categorySelect,foodCategoriesSorted()[0]?.name||'');
    const search=$('foodSearch')?.value.trim().toLowerCase()||'';
@@ -708,7 +708,7 @@
      const recipeGroups=new Map();
      for(const f of visible){
        const claim=claimedQuantity(f),pos=items.findIndex(x=>x.id===f.id);
-       const wrapper=R.dom('details',{class:'food-manage-item food-compact-item'});setDisclosure(wrapper,'food:item:'+f.id,false,!!search);
+       const wrapper=R.dom('details',{class:'food-manage-item food-compact-item'});wrapper.dataset.treeKey='food:item:'+f.id;setDisclosure(wrapper,wrapper.dataset.treeKey,false,!!search);
        const main=R.dom('summary',{class:'food-manage-main'});
        const info=R.dom('div',{class:'food-item-info'});
        info.append(R.dom('strong',{},foodItemName(f)),
@@ -735,17 +735,24 @@
          try{await rpcAction('admin_set_food_category',
            {p_food_item_id:f.id,p_category:change.value},T("Food category updated."));}
          catch(error){change.value=f.category||'';show(R.safeError(error),'error');}
-         finally{change.disabled=false;}
+         finally{change.disabled=false;R.closePopups(true);}
        });
-       changeLabel.append(change);if(!f.recipe_id)buttons.append(changeLabel);
+       changeLabel.append(change);if(!f.recipe_id){
+         const move=iconAction('move',T('Move to category'),()=>{},false,'edit-only');
+         const popup=R.iconPopup(move,changeLabel);popup.classList.add('edit-only');buttons.append(popup);
+       }
        main.append(info);
        const detail=R.dom('div',{class:'food-expanded'});detail.append(R.dom('p',{class:'small'},T('User Comment')+': '+(f.description_en||f.description_fo||f.description_de||'—')),R.dom('p',{class:'small'},T('Admin Comment')+': '+(f.admin_comment||'—')),buttons,edit);
        wrapper.append(main,detail);
        const recipe=store.recipes.find(r=>r.id===f.recipe_id);
        if(recipe){
          if(!recipeGroups.has(recipe.id)){
-           const group=R.dom('details',{class:'food-recipe tree-disclosure'});setDisclosure(group,'recipe:'+recipe.id,true,!!search);group.dataset.recipeId=recipe.id;
-           group.append(R.dom('summary',{class:'tree-group'},recipe.name));const inner=R.dom('div',{class:'tree-children'});group.append(inner);
+           const group=R.dom('details',{class:'food-recipe tree-disclosure'});group.dataset.treeKey='recipe:'+recipe.id;setDisclosure(group,group.dataset.treeKey,true,!!search);group.dataset.recipeId=recipe.id;
+           const recipeHeading=R.dom('summary',{class:'tree-group'},recipe.name);
+           const categoryLabel=R.dom('label');categoryLabel.append(document.createTextNode(T('Category')));const categoryChoice=R.dom('select');foodCategoryOptions(categoryChoice,recipe.category);categoryChoice.setAttribute('aria-label',T('Category for ')+recipe.name);categoryLabel.append(categoryChoice);
+           const recipeMove=iconAction('move',T('Move recipe to category'),()=>{},false,'edit-only'),recipePopup=R.iconPopup(recipeMove,categoryLabel);recipePopup.classList.add('edit-only');recipeHeading.append(recipePopup);
+           categoryChoice.addEventListener('change',async()=>{if(categoryChoice.value===recipe.category){R.closePopups(true);return;}categoryChoice.disabled=true;try{await rpcAction('admin_save_recipe',{p_id:recipe.id,p_name:recipe.name,p_category:categoryChoice.value,p_items:store.food.filter(f=>f.recipe_id===recipe.id).map(f=>f.id),p_new_items:[],p_expected_updated_at:recipe.updated_at},T('Food category updated.'));}catch(error){categoryChoice.value=recipe.category;show(R.safeError(error),'error');}finally{categoryChoice.disabled=false;R.closePopups(true);}});
+           group.append(recipeHeading);const inner=R.dom('div',{class:'tree-children'});group.append(inner);
            const editor=disclosure(T('Edit recipe'),'edit-only');editor.append(recipeEditor(recipe));inner.append(editor);recipeGroups.set(recipe.id,inner);itemList.append(group);
          }recipeGroups.get(recipe.id).append(wrapper);
        }else itemList.append(wrapper);
@@ -954,6 +961,8 @@
    $('householdSearch').addEventListener('input',renderHouseholds);
    $('inviteSearch').addEventListener('input',renderInvites);$('deliveryStatusFilter').addEventListener('change',renderDeliveryLog);
    $('showArchived').addEventListener('change',renderHouseholds);
+   $('expandFood').addEventListener('click',()=>{document.querySelectorAll('#adminFoodList details[data-tree-key]').forEach(d=>{d.open=true;expandedGroups.set(d.dataset.treeKey,true);});});
+   $('collapseFood').addEventListener('click',()=>{R.closePopups();document.querySelectorAll('#adminFoodList details[data-tree-key]').forEach(d=>{d.open=false;expandedGroups.set(d.dataset.treeKey,false);});});
    $('foodSearch').addEventListener('input',renderFood);
    $('addCategoryForm').addEventListener('submit',async e=>{
      e.preventDefault();const input=$('categoryName'),name=input.value.trim();if(!name)return;const button=e.target.querySelector('button');button.disabled=true;

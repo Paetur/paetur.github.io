@@ -85,6 +85,8 @@ jobs:
         run: node tests/disclosure-layout.cjs
       - name: Test language management and backup/import UI
         run: node tests/languages-backup-browser.cjs
+      - name: Test local task edits, food expansion and icon pop-ups
+        run: node tests/admin-controls-browser.cjs
       - name: Test compact food, language categories and task sheet
         run: node tests/food-language-tasks-browser.cjs
       - name: Test device delivery handoffs and reminder drafts

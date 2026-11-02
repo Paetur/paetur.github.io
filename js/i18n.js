@@ -6,7 +6,7 @@
   const enabled=code=>languages.some(l=>l.language_code===code);
   const key='rsvp-interface-language',catalog=window.RSVP_TRANSLATIONS||{};
   const overrides=Object.create(null),textNodes=[],attributes=[];
-  let language='en',preference=false;
+  let language='en',preference=false,languageReloadApproved=false;
   try{const saved=localStorage.getItem(key);if(validCode(saved)){language=saved;preference=true;}}catch(_){}
   const placeholders=s=>[...s.matchAll(/\{([a-zA-Z][a-zA-Z0-9_]*)\}/g)].map(m=>m[1]).sort().join(',');
   function validOverride(source,value){return typeof value==='string'&&value.length<=12000&&placeholders(source)===placeholders(value);}
@@ -22,7 +22,7 @@
     document.documentElement.lang=language;
     for(const [node,source,before,after] of textNodes)if(node.isConnected)node.nodeValue=before+t(source)+after;
     for(const [node,name,source] of attributes)if(node.isConnected)node.setAttribute(name,t(source));
-    const select=document.getElementById('interfaceLanguage');if(select){select.value=language;select.setAttribute('aria-label',t('Interface language'));}
+    const select=document.getElementById('interfaceLanguage');if(select){select.value=language;select.setAttribute('aria-label',t('Interface language'));}const button=document.getElementById('languageToggle');if(button){button.title=t('Interface language');button.setAttribute('aria-label',t('Interface language'));}const caption=document.getElementById('languageMenuLabel')?.firstChild;if(caption?.nodeType===Node.TEXT_NODE)caption.nodeValue=t('Interface language');
   }
   function setLanguage(next,save=true){
     if(!enabled(next))next=defaultLanguage;
@@ -53,7 +53,7 @@
     if(loaded)return loaded;
     loaded=(async()=>{try{const db=window.RSVP?.getClient();if(!db)return;const {data,error}=await db.rpc('get_language_configuration');if(!error)configure(data);}catch(_){/* Existing deployments keep bundled languages until upgraded. */}})();return loaded;
   }
-  window.RSVP_I18N={t,setLanguage,get language(){return language;},hasPreference:()=>preference,
+  window.RSVP_I18N={t,setLanguage,get language(){return language;},get languageReloadApproved(){return languageReloadApproved;},hasPreference:()=>preference,
     locale:()=>{try{const code={fo:'fo-FO',en:'en-GB',de:'de-DE'}[language]||language;return Intl.DateTimeFormat.supportedLocalesOf(code).length?code:'en-GB';}catch(_){return 'en-GB';}},catalog,applyWording,
     get languages(){return languages;},get defaultLanguage(){return defaultLanguage;},get fallbackLanguage(){return fallbackLanguage;},enabled,configure,load,
     resolve:(values,lang=language)=>[...new Set([lang,fallbackLanguage,'en'])].map(code=>values?.[code]).find(value=>typeof value==='string'&&value.trim())||'',
@@ -73,13 +73,15 @@
     const host=document.querySelector('.topbar-actions');
     if(host&&!document.getElementById('languageSwitcher')){
       const select=document.createElement('select');select.id='interfaceLanguage';select.className='interface-language';
+      const button=document.createElement('button');button.id='languageToggle';button.type='button';button.className='admin-icon-btn';button.title=t('Interface language');button.setAttribute('aria-label',t('Interface language'));button.innerHTML='<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c5 5 5 13 0 18M12 3c-5 5-5 13 0 18"/></svg>';
+      const label=document.createElement('label');label.id='languageMenuLabel';label.textContent=t('Interface language');label.append(select);
       for(const l of languages){const option=document.createElement('option');option.value=l.language_code;option.textContent=l.display_name;select.append(option);}
       let dirty=false;
       document.addEventListener('input',e=>{if(e.target.closest('form')&&!['search'].includes(e.target.type))dirty=true;});
       select.addEventListener('change',()=>{
-        if(dirty&&!window.confirm(t('Changing language reloads this page. Unsaved changes will be lost. Continue?'))){select.value=language;return;}
-        setLanguage(select.value);location.reload();
-      });host.prepend(select);
+        if((dirty||window.RSVP_ADMIN_TOOLS?.hasUnsavedTasks())&&!window.confirm(t('Changing language reloads this page. Unsaved changes will be lost. Continue?'))){select.value=language;return;}
+        setLanguage(select.value);languageReloadApproved=true;location.reload();
+      });host.prepend(window.RSVP.iconPopup(button,label));
     }
     paint();
   });

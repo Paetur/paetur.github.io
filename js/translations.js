@@ -2791,5 +2791,25 @@ window.RSVP_TRANSLATIONS = {
   "Existing items keep their selections. Recipe items use the recipe category.": {
     "fo": "Verandi vørur varðveita síni val. Vørurnar í uppskriftini brúka bólkin hjá uppskriftini.",
     "de": "Vorhandene Speisen behalten ihre Reservierungen. Speisen im Rezept verwenden dessen Kategorie."
+  },
+  "Move to category": {
+    "fo": "Flyt til bólk",
+    "de": "In Kategorie verschieben"
+  },
+  "Move recipe to category": {
+    "fo": "Flyt uppskrift til bólk",
+    "de": "Rezept in Kategorie verschieben"
+  },
+  "Unsaved changes. Select Save to update the database.": {
+    "fo": "Ógoymdar broytingar. Vel Goym fyri at dagføra dátugrunnin.",
+    "de": "Ungespeicherte Änderungen. Zum Übertragen in die Datenbank Speichern wählen."
+  },
+  "Use main Edit mode to change tasks. Save sends your changes to the database.": {
+    "fo": "Brúka Rætta ovast fyri at broyta uppgávur. Goym sendir broytingarnar til dátugrunnin.",
+    "de": "Zum Ändern den zentralen Bearbeitungsmodus verwenden. Speichern überträgt die Änderungen in die Datenbank."
+  },
+  "Tasks were saved. Refresh the page before editing again.": {
+    "fo": "Uppgávurnar eru goymdar. Dagfør síðuna áðrenn tú rættar aftur.",
+    "de": "Aufgaben wurden gespeichert. Seite vor dem weiteren Bearbeiten aktualisieren."
   }
 };

@@ -1,6 +1,6 @@
 # RSVP Manager — Event Invitation
 
-A standalone, mobile-friendly **single-event** invitation and RSVP website for GitHub Pages and Supabase. One GitHub repository and one Supabase project per event. Changes through [PR #18](https://github.com/Paetur/paetur.github.io/pull/18) are merged and deployed as of **1 November 2026**. The event remains **unpublished** and is **not yet approved for public launch**. See [Security and release checklist](docs/SECURITY_AND_RELEASE.md).
+A standalone, mobile-friendly **single-event** invitation and RSVP website for GitHub Pages and Supabase. One GitHub repository and one Supabase project per event. Changes through [PR #21](https://github.com/Paetur/paetur.github.io/pull/21) are merged and deployed as of **2 November 2026**. The event remains **unpublished** and is **not yet approved for public launch**. See [Security and release checklist](docs/SECURITY_AND_RELEASE.md).
 
 The repository source files do **not** contain guest data, invitation codes, or privileged Supabase credentials.
 
@@ -57,6 +57,8 @@ Completed implementation and deployment milestones through PR #18:
 Live workflow acceptance and an independent recovery rehearsal remain open below.
 
 ## Implemented for next release
+
+- Food Expand/Collapse all, language/category icon pop-ups, and local task editing controlled by main Edit with dirty-only Save.
 
 - Compact food disclosures, one-unit guest selection without displayed quantities, public/private comments, categorized language tools and an administrator task sheet with comments. Recipes group existing or new items under a category. See [Food, language and task workflows](docs/FOOD_LANGUAGES_TASKS.md).
 

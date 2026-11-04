@@ -15,6 +15,7 @@
   }
   async function testConnection(e){
     e.preventDefault();const button=e.submitter||e.target.querySelector('button[type="submit"]');button.disabled=true;
+    connected=false;verified=false;
     try{
       const cfg=R.savePreview($('setupUrl').value,$('setupKey').value);
       const db=R.getClient();
@@ -56,6 +57,7 @@
     document.querySelectorAll('[data-back]').forEach(b=>b.addEventListener('click',()=>displayStep(step-1)));
     document.querySelectorAll('.steps button').forEach(b=>b.addEventListener('click',()=>displayStep(Number(b.dataset.step))));
     $('connectForm').addEventListener('submit',testConnection);
+    $('connectForm').addEventListener('input',()=>{connected=false;verified=false;});
     $('makeBootstrap').addEventListener('click',makeBootstrap);
     $('copyBootstrap').addEventListener('click',()=>{
       if(!$('bootstrapSql').value){stateMessage(T("Generate SQL first."),'warning');return;}

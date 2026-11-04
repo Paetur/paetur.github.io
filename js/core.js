@@ -6,10 +6,13 @@
   const CLIENT_STORAGE_KEY = 'rsvp-manager-setup-preview-v1';
   const codePattern = /^[A-HJ-NP-Z2-9]{8}$/;
   let client = null;
+  let preview = null;
   function config() {
-    const saved = localStorage.getItem(CLIENT_STORAGE_KEY);
+    if (preview) return preview;
+    let saved = null;
+    try { saved = localStorage.getItem(CLIENT_STORAGE_KEY); } catch (_) {}
     let override = {};
-    try { override = saved ? JSON.parse(saved) : {}; } catch (_) { /* ignore malformed preview */ }
+    try { override = saved ? JSON.parse(saved) : {}; } catch (_) {}
     const deployed = window.RSVP_CONFIG || {};
     return deployed.supabaseUrl && deployed.supabaseKey ? deployed : override;
   }
@@ -35,7 +38,10 @@
   }
   function savePreview(url,key) {
     const validated = {supabaseUrl:normalizeUrl(url),supabaseKey:validateKey(key)};
-    localStorage.setItem(CLIENT_STORAGE_KEY,JSON.stringify(validated));
+    preview = validated;
+    try {
+        localStorage.setItem(CLIENT_STORAGE_KEY,JSON.stringify(validated));
+    } catch (_) {}
     client=null;
     return validated;
   }
@@ -50,6 +56,10 @@
     return client;
   }
   async function adminRpc(name,args={}) {
+    try { return await sendAdminRpc(name,args); }
+    catch (_) { return {data:null,error:{message:T("Could not reach the database.")}}; }
+  }
+  async function sendAdminRpc(name,args={}) {
     if(!/^(admin_[a-z_]+|is_admin)$/.test(name))return {data:null,error:{message:T("Invalid administrator action")}};
     const db=getClient();if(!db)return {data:null,error:{message:T("Database not configured")}};
     const expired=()=>({data:null,error:{code:'AUTH_SESSION_MISSING',message:T("Your sign-in has expired. Sign in again before saving. Your edits have not been submitted.")}});
@@ -72,10 +82,15 @@
     return {data:result.data,error:result.error};
   }
   async function guestRpc(action,args) {
+    try {
     const client=getClient();
     if(!client)return {data:null,error:new Error(T("Database not configured"))};
     const {data,error}=await client.functions.invoke('guest-gateway',{body:{action,args}});
+    if(error?.context instanceof Response){
+      try {const body=await error.context.clone().json();if(typeof body?.error==='string'&&body.error.length<=250)return {data:null,error:{message:T(body.error)}};}catch(_){}
+    }
     return {data,error};
+    } catch (_) { return {data:null,error:{message:T("Could not reach the database.")}}; }
   }
   function invitationURL(code) { const url=new URL('./',siteRoot);url.search='?='+encodeURIComponent(code);return url.href; }
   function getInviteCode() {

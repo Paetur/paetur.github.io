@@ -1,12 +1,14 @@
 BEGIN;
 
-LOCK TABLE public.legacy_stuff_to_bring, public.other_items, public.food_recipes, public.food_items IN ACCESS EXCLUSIVE MODE;
+LOCK TABLE public.food_recipes, public.food_items IN ACCESS EXCLUSIVE MODE;
 
 DO $$
 BEGIN
  IF EXISTS (SELECT 1 FROM public.food_recipes) THEN
   RAISE EXCEPTION 'Legacy recipe groups still contain data';
  END IF;
+ IF to_regclass('public.legacy_stuff_to_bring') IS NOT NULL THEN
+ LOCK TABLE public.legacy_stuff_to_bring, public.other_items IN ACCESS EXCLUSIVE MODE;
  IF EXISTS (
   SELECT 1 FROM public.legacy_stuff_to_bring a
   LEFT JOIN public.stuff_to_bring b USING (id)
@@ -16,6 +18,7 @@ BEGIN
      OR (a.notes IS DISTINCT FROM b.notes AND a.notes IS DISTINCT FROM 'Imported from Food.csv')
  ) THEN
   RAISE EXCEPTION 'Legacy bring-list archive contains records or notes missing from Other';
+ END IF;
  END IF;
 END $$;
 
@@ -61,7 +64,7 @@ REVOKE ALL ON FUNCTION app_private.backup_tables() FROM PUBLIC,anon,authenticate
 DROP FUNCTION public.admin_save_recipe(uuid,text,text,uuid[],jsonb,timestamptz);
 ALTER TABLE public.food_items DROP COLUMN recipe_id;
 DROP TABLE public.food_recipes;
-DROP TABLE public.legacy_stuff_to_bring;
+DROP TABLE IF EXISTS public.legacy_stuff_to_bring;
 
 NOTIFY pgrst,'reload schema';
 COMMIT;

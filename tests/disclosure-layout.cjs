@@ -32,7 +32,7 @@ async function run(type){
    const side=page.locator('#householdRows > .hierarchy-section').first();
    const group=side.locator('.hierarchy-group').first();
    const household=group.locator('.household-tree-node').first();
-   for(const title of ['Household details','RSVP management','Food access']){
+   for(const title of ['Household details','RSVP management']){
     const disclosure=household.locator(':scope > .household-expanded > details').filter({has:page.locator('summary').filter({hasText:new RegExp('^'+title+'$')})}).first();
     await disclosure.evaluate(n=>n.open=true);await compact(disclosure,title);
    }

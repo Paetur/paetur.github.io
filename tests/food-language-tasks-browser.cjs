@@ -38,19 +38,9 @@ async function run(type){const browser=await type.launch({headless:true});try{
  assert.match(await food.locator('.food-selections tbody tr').textContent(),/Example child2/);
  await page.locator('[data-tab="households"]').click();
  await page.locator('#expandHouseholds').click();
- const householdFood=page.locator('.feature-section').filter({has:page.locator('.food-selections tbody tr')});
- await householdFood.locator(':scope > summary').click();
- assert.match(await householdFood.locator('.food-selections tbody tr').textContent(),/Sample dish2/);
- const householdSelection=householdFood.locator('.food-selection-editor');
- await householdSelection.locator('summary').click();
- await householdSelection.getByLabel('Food item',{exact:true}).selectOption({label:'Sample dish'});
- assert.equal(await householdSelection.getByLabel('Quantity',{exact:true}).inputValue(),'2');
- await householdSelection.getByLabel('Quantity',{exact:true}).fill('1');
- await householdSelection.getByRole('button',{name:'Save food selection'}).click();
- await page.waitForFunction(()=>window.__savedSelection.p_quantity===1);
+ assert.equal(await page.locator('#householdRows .food-selections').count(),0);
  await page.locator('[data-tab="food"]').click();
- assert.match(await food.locator('.food-selections tbody tr').textContent(),/Example child1/);
-
+ assert.match(await food.locator('.food-selections tbody tr').textContent(),/Example child2/);
  if(process.env.PREVIEW_OUTPUT)await page.locator('[data-panel="food"]').screenshot({path:process.env.PREVIEW_OUTPUT+'/food-admin-draft.png'});
  await page.evaluate(()=>window.__fixtures.food_items.forEach(f=>{f.description_fo=null;f.description_en=null;f.description_de=null;f.admin_comment=null;}));await page.locator('#refreshButton').click();await page.waitForFunction(()=>!document.querySelector('#refreshButton').disabled);assert.equal(await page.locator('.food-comment-grid').count(),0,'empty read-only comments are omitted');
  await page.locator('[data-tab="language"]').click();assert.equal(await page.locator('#translationEditor').isVisible(),true);await page.locator('#translationCategory').selectOption('food');assert.ok(await page.locator('#translationKey option').count());

@@ -41,6 +41,9 @@ const {PGlite}=require('@electric-sql/pglite'),fs=require('node:fs'),assert=requ
  await db.exec('SET ROLE authenticated');
  await db.query('SELECT public.admin_set_food_selection($1,$2,2,0)',[selectedHousehold,brownie]);
  assert.equal(await value('SELECT quantity v FROM public.food_claims WHERE household_id=$1 AND food_item_id=$2',[selectedHousehold,brownie]),2);
+ const householdDetails={household_name:'Should roll back',side:'paetur_hentze',language:'en'};
+ await assert.rejects(()=>db.query('SELECT public.admin_save_household_with_food($1,$2,false,true)',[selectedHousehold,householdDetails]),/commitments exist/);
+ assert.equal(await value('SELECT household_name v FROM public.households WHERE id=$1',[selectedHousehold]),'One');
  await assert.rejects(()=>db.query('SELECT public.admin_set_food_selection($1,$2,1,0)',[selectedHousehold,brownie]),/changed/);
  await assert.rejects(()=>db.query('SELECT public.admin_set_food_selection($1,$2,3,2)',[selectedHousehold,brownie]),/Insufficient/);
  await db.query('SELECT public.admin_set_food_selection($1,$2,0,2)',[selectedHousehold,brownie]);

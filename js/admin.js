@@ -256,9 +256,16 @@
    const whatsapp=field(f,'WhatsApp',h.whatsapp,null,'tel',false,80);
    const address=field(f,T("Postal address"),h.postal_address,null,'textarea',false,1000);
    const method=field(f,T("Preferred contact method"),h.preferred_contact_method,[['',T("Unspecified")],['whatsapp','WhatsApp'],['sms','SMS'],['email',T("Email")],['postal',T("Postal")],['manual',T("Manual")]]);
+   const allowFood=h.id?field(f,T("Allow food"),!!h.food,null,'checkbox'):null;
    const notes=field(f,T("Household notes"),h.notes,null,'textarea');
    f.append(R.dom('p',{class:'micro span-2'},h.id?T("Grouping changes with child households require moving the children first."):T("Empty households have no invitation code. Add a guest, then use Manage Invites. Assign sessions in Settings.")));
-   return saveForm(f,h.id?T("Save household"):T("Create household"),()=>managementRpc('admin_save_household',{p_id:h.id||null,p_values:{household_name:name.value.trim(),side:side.value,relation_group_id:group.value||null,language:lang.value,parent_id:parent.value||null,email:email.value.trim(),phone:phone.value.trim(),whatsapp:whatsapp.value.trim(),postal_address:address.value.trim(),preferred_contact_method:method.value||null,notes:notes.value.trim()}}));
+   return saveForm(f,h.id?T("Save household"):T("Create household"),()=>{
+     const args={p_id:h.id||null,p_values:{household_name:name.value.trim(),side:side.value,relation_group_id:group.value||null,language:lang.value,parent_id:parent.value||null,email:email.value.trim(),phone:phone.value.trim(),whatsapp:whatsapp.value.trim(),postal_address:address.value.trim(),preferred_contact_method:method.value||null,notes:notes.value.trim()}};
+     if(allowFood&&allowFood.checked!==!!h.food){
+       return managementRpc('admin_save_household_with_food',{...args,p_food:allowFood.checked,p_expected_food:!!h.food});
+     }
+     return managementRpc('admin_save_household',args);
+   });
  }
  function archiveButton(entity,record){
    const restoring=!!record.archived_at;
@@ -380,16 +387,6 @@
 
  function adminTime(value){return value?R.formatDate(value,window.RSVP_I18N?.language||'en',store.settings?.timezone||'Atlantic/Faroe'):'—';}
  function actorName(id){return store.admins.find(a=>a.user_id===id)?.name||T("Administrator");}
- function foodAccessSection(h){
-   const d=disclosure(T("Food access"),'feature-section');const claims=store.claims.filter(c=>c.household_id===h.id);
-   d.append(R.dom('p',{class:'small'},T('{state} · {count} food commitments{confirmed}',{state:h.food?T('Enabled'):T('Disabled'),count:claims.length,confirmed:h.food_confirmed?T(' · Confirmed'):''})));
-   d.append(foodSelections({household:h}));
-   if(h.archived_at)return d;
-   const f=managementForm();const enabled=field(f,T("Allow this household to contribute food"),!!h.food,null,'checkbox');
-   const reason=field(f,T("Reason for food-access change"),'',null,'textarea',true,2000);
-   f.append(R.dom('p',{class:'micro span-2'},T("Disabling access is blocked while food commitments or a confirmed selection exist. Existing selections are never removed by this control.")));
-   d.append(saveForm(f,T("Save food access"),()=>managementRpc('admin_set_food_access',{p_household_id:h.id,p_enabled:enabled.checked,p_expected:!!h.food,p_reason:reason.value.trim()})));return d;
- }
  function rsvpSection(h){
    const d=disclosure(T("RSVP management"),'feature-section');const zone=store.settings?.timezone||'Atlantic/Faroe';
    d.append(R.dom('p',{class:'small'},`${h.rsvp_state==='locked'?T("Locked after submission"):T("Open for responses")}${h.rsvp_submitted_at?T(' · Last submission {time}',{time:adminTime(h.rsvp_submitted_at)}):''}`));
@@ -582,7 +579,7 @@
          const actions=R.dom('div',{class:'household-actions'});
          const editor=disclosure(T("Household details"));editor.classList.add('household-inline-editor');
          const summary=R.dom('dl',{class:'household-profile-summary view-only'});
-         for(const [label,value] of [[T("Language"),h.language],[T("Email"),h.email],[T("Phone"),h.phone],['WhatsApp',h.whatsapp],[T("Postal address"),h.postal_address],[T("Preferred contact"),h.preferred_contact_method],[T("Notes"),h.notes]]){summary.append(R.dom('dt',{},label),R.dom('dd',{},value||'—'));}editor.append(summary);
+         for(const [label,value] of [[T("Language"),h.language],[T("Email"),h.email],[T("Phone"),h.phone],['WhatsApp',h.whatsapp],[T("Postal address"),h.postal_address],[T("Preferred contact"),h.preferred_contact_method],[T("Allow food"),h.food?T("Enabled"):T("Disabled")],[T("Notes"),h.notes]]){summary.append(R.dom('dt',{},label),R.dom('dd',{},value||'—'));}editor.append(summary);
          actions.append(iconAction('edit',T("Edit household: ")+(h.household_name||'household'),()=>{
            node.open=true;editor.open=!editor.open;if(editor.open)editor.querySelector('input')?.focus();
          },!!h.archived_at,'edit-only'));
@@ -596,7 +593,7 @@
          const expanded=R.dom('div',{class:'household-expanded'});
          expanded.append(editor,buildGuestList(guests));
          if(!h.archived_at){const add=disclosure(T("Add guest"),'edit-only');const form=buildGuestEditor({household_id:h.id});form.classList.remove('hidden');add.append(form);expanded.append(add);}
-         expanded.append(rsvpSection(h),foodAccessSection(h),contactSection(h));
+         expanded.append(rsvpSection(h),contactSection(h));
          if(nested){
            const childList=R.dom('div',{class:'tree-children'});
            childList.append(R.dom('div',{class:'guest-list-heading'},T("Child households")));
@@ -622,35 +619,30 @@
    if(current&&!store.foodCategories.some(c=>c.name===current))select.append(R.dom('option',{value:current},current+T(" (unregistered)")));
    select.value=current||'';
  }
- function foodSelections({household,item}){
+ function foodSelections(item){
    const section=R.dom('div',{class:'food-selections'});
-   const claims=store.claims.filter(c=>household?c.household_id===household.id:c.food_item_id===item.id);
+   const claims=store.claims.filter(c=>c.food_item_id===item.id);
    if(claims.length){
      const rows=claims.map(c=>[
-       household?foodItemName(store.food.find(f=>f.id===c.food_item_id)||{}):
-         (store.households.find(h=>h.id===c.household_id)?.household_name||T('Household')),
+       store.households.find(h=>h.id===c.household_id)?.household_name||T('Household'),
        String(c.quantity)
      ]);
-     section.append(makeTable([T(household?'Food item':'Household'),T('Quantity')],rows));
+     section.append(makeTable([T('Household'),T('Quantity')],rows));
    }
-   const households=household?[household]:ordered(store.households,'household_name');
-   const items=item?[item]:ordered(store.food,'name_en');
-   const eligibleHouseholds=households.filter(h=>h.food&&!h.archived_at&&!h.food_confirmed);
-   const eligibleItems=items.filter(f=>f.active&&(f.quantity_needed>claimedQuantity(f)||claims.some(c=>c.food_item_id===f.id)));
-   if(!eligibleHouseholds.length||!eligibleItems.length)return section;
-
-   const options=household?eligibleItems.map(f=>[f.id,foodItemName(f)]):
-     eligibleHouseholds.filter(h=>item.quantity_needed>claimedQuantity(item)||claims.some(c=>c.household_id===h.id))
-       .map(h=>[h.id,h.household_name]);
+   if(!item.active)return section;
+   const available=item.quantity_needed-claimedQuantity(item);
+   const options=ordered(store.households,'household_name')
+     .filter(h=>h.food&&!h.archived_at&&!h.food_confirmed&&(available>0||claims.some(c=>c.household_id===h.id)))
+     .map(h=>[h.id,h.household_name]);
    if(!options.length)return section;
    const editor=disclosure(T('Set food selection'),'edit-only food-selection-editor');
    const form=managementForm();
-   const choice=field(form,T(household?'Food item':'Household'),'', [['',T('Choose…')],...options],'text',true);
+   const choice=field(form,T('Household'),'', [['',T('Choose…')],...options],'text',true);
    const quantity=field(form,T('Quantity'),1,null,'number',true);
    quantity.step='1';quantity.disabled=true;
    const hint=R.dom('p',{class:'micro span-2'});
    form.append(hint);
-   const ids=()=>({p_household_id:household?.id||choice.value,p_food_item_id:item?.id||choice.value});
+   const ids=()=>({p_household_id:choice.value,p_food_item_id:item.id});
    const current=()=>{
      const {p_household_id,p_food_item_id}=ids();
      return claims.find(c=>c.household_id===p_household_id&&c.food_item_id===p_food_item_id)?.quantity||0;
@@ -658,10 +650,9 @@
    choice.addEventListener('change',()=>{
      quantity.disabled=!choice.value;
      if(!choice.value){hint.textContent='';return;}
-     const selected=item||eligibleItems.find(f=>f.id===choice.value);
      const selectedQuantity=current();
      quantity.min=selectedQuantity?'0':'1';
-     quantity.max=String(selected.quantity_needed-claimedQuantity(selected)+selectedQuantity);
+     quantity.max=String(available+selectedQuantity);
      quantity.value=String(selectedQuantity||1);
      hint.textContent=selectedQuantity?T('Enter 0 to remove this selection.'):'';
    });
@@ -784,7 +775,7 @@
          const recipe=disclosure(T('Recipe'),'food-item-recipe');
          recipe.append(R.recipeContent(f.recipe_text));detail.append(recipe);
        }
-       detail.append(foodSelections({item:f}),buttons,edit);
+       detail.append(foodSelections(f),buttons,edit);
        wrapper.append(main,detail);
        itemList.append(wrapper);
      }

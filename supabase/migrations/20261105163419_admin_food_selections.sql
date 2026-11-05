@@ -92,6 +92,17 @@ END $$;
 REVOKE ALL ON FUNCTION public.admin_set_food_selection(uuid,uuid,integer,integer) FROM PUBLIC,anon,authenticated;
 GRANT EXECUTE ON FUNCTION public.admin_set_food_selection(uuid,uuid,integer,integer) TO authenticated;
 
+-- Keep the profile and food permission change in one transaction.
+CREATE FUNCTION public.admin_save_household_with_food(p_id uuid,p_values jsonb,p_food boolean,p_expected_food boolean)
+ RETURNS uuid LANGUAGE plpgsql SECURITY INVOKER SET search_path='' AS $$
+BEGIN
+ PERFORM public.admin_save_household(p_id,p_values);
+ PERFORM public.admin_set_food_access(p_id,p_food,p_expected_food,'Updated from Household details');
+ RETURN p_id;
+END $$;
+REVOKE ALL ON FUNCTION public.admin_save_household_with_food(uuid,jsonb,boolean,boolean) FROM PUBLIC,anon,authenticated;
+GRANT EXECUTE ON FUNCTION public.admin_save_household_with_food(uuid,jsonb,boolean,boolean) TO authenticated;
+
 ALTER TABLE public.food_items DROP COLUMN reserved_household_id;
 NOTIFY pgrst,'reload schema';
 COMMIT;

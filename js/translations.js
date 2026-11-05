@@ -2776,6 +2776,10 @@ window.RSVP_TRANSLATIONS = {
     "fo": "Loyv sprettgluggum fyri at goyma uppskriftina sum PDF.",
     "de": "Pop-ups zulassen, um das Rezept als PDF zu speichern."
   },
+  "Allow food": {
+    "fo": "Loyv matvali",
+    "de": "Speisenauswahl erlauben"
+  },
   "Set food selection": {
     "fo": "Vel matvøru",
     "de": "Speisenauswahl festlegen"

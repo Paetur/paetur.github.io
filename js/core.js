@@ -191,6 +191,21 @@
     }
     return body;
   }
-  window.RSVP={config,getClient,adminRpc,guestRpc,normalizeUrl,validateKey,savePreview,invitationURL,getInviteCode,codePattern,siteRoot,dom,byId,showStatus,formatDate,zonedInput,zonedInstant,safeError,dl,configSource,iconPopup,closePopups,recipeContent};
+  function printRecipe(label,text){
+    const popup=window.open('','_blank');
+    if(!popup)return false;
+    popup.opener=null;
+    const doc=popup.document;
+    doc.title=label;
+    doc.documentElement.lang=document.documentElement.lang;
+    const style=doc.createElement('style');
+    style.textContent='@page{margin:18mm}body{font:16px/1.5 system-ui;color:#161616;max-width:42rem;margin:2rem auto;padding:0 1rem}h1{line-height:1.15}h4,p,ul{margin:0 0 .3em}h4{break-after:avoid}.recipe-break{height:.7em}li{break-inside:avoid}@media print{body{margin:0;padding:0}}';
+    doc.head.append(style);
+    doc.body.append(dom('h1',{},label),recipeContent(text));
+    popup.focus();
+    popup.print();
+    return true;
+  }
+  window.RSVP={config,getClient,adminRpc,guestRpc,normalizeUrl,validateKey,savePreview,invitationURL,getInviteCode,codePattern,siteRoot,dom,byId,showStatus,formatDate,zonedInput,zonedInstant,safeError,dl,configSource,iconPopup,closePopups,recipeContent,printRecipe};
 }());
 

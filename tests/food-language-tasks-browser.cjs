@@ -33,7 +33,12 @@ async function run(type){const browser=await type.launch({headless:true});try{
  await recipeDialog.getByLabel('Recipe',{exact:true}).fill(recipeText);
  if(process.env.FOOD_PREVIEW&&type.name()==='chromium')await recipeDialog.screenshot({path:process.env.FOOD_PREVIEW+'/food-recipe-popup.png'});
  await recipeDialog.getByRole('button',{name:'Save',exact:true}).click();
- await food.getByRole('button',{name:'Print / Save as PDF',exact:true}).waitFor();
+ const recipeLink=food.getByRole('link',{name:'Recipe',exact:true});
+ await recipeLink.waitFor();
+ await page.evaluate(()=>{window.open=()=>{const doc=document.implementation.createHTMLDocument();return {document:doc,focus(){},print(){window.__recipePrint=doc.body.textContent;}};};});
+ await recipeLink.click();
+ assert.match(await page.evaluate(()=>window.__recipePrint),/^Sample dishMelt:/);
+ assert.equal(await food.evaluate(n=>n.open),true);
  assert.equal(await page.evaluate(()=>window.__savedFood.recipe_text),recipeText);
  const itemSelection=food.locator('.food-selection-editor');
  await itemSelection.locator('summary').click();

@@ -504,7 +504,7 @@ html[data-theme="dark"] code{background:#253b32;color:var(--ink)}
 .food-selection-form .btn{padding:.35rem .6rem}
 .food-selection-editor>summary{cursor:pointer;width:max-content;padding:4px 0;font-size:.8rem;font-weight:700}
 
-.food-item-info .food-recipe-pdf{margin-inline-start:auto;flex-shrink:0}
+.food-item-info .food-recipe-link{margin-inline-start:auto;flex-shrink:0;font-size:.72rem;font-weight:600;text-underline-offset:2px}
 .food-recipe-dialog{width:min(36rem,calc(100vw - 32px));max-height:calc(100dvh - 32px);padding:20px;border:1px solid var(--line);border-radius:12px;background:var(--white);color:var(--ink)}
 .food-recipe-dialog::backdrop{background:#0008}
 .food-recipe-dialog label{grid-column:1/-1}

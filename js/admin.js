@@ -797,8 +797,8 @@
        const move=iconAction('move',T('Move to category'),()=>{},false,'edit-only');
        const popup=R.iconPopup(move,changeLabel);popup.classList.add('edit-only');buttons.append(popup);
        if(f.recipe_text){
-         const pdf=R.dom('button',{type:'button',class:'small-tool food-recipe-pdf',title:T('Print / Save as PDF')},'PDF');
-         pdf.setAttribute('aria-label',T('Print / Save as PDF'));
+         const pdf=R.dom('a',{class:'food-recipe-link',title:T('Print / Save as PDF')},T('Recipe'));
+         pdf.href='#';
          pdf.addEventListener('click',event=>{
            event.preventDefault();event.stopPropagation();
            if(!R.printRecipe(foodItemName(f),f.recipe_text))show(T('Allow pop-ups to save the recipe as PDF.'),'warning');

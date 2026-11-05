@@ -174,6 +174,23 @@
   window.addEventListener('resize',()=>closePopups());
   document.addEventListener('scroll',e=>{if(activePopup&&!activePopup.menu.contains(e.target))closePopups();},{capture:true,passive:true});
   }
-  window.RSVP={config,getClient,adminRpc,guestRpc,normalizeUrl,validateKey,savePreview,invitationURL,getInviteCode,codePattern,siteRoot,dom,byId,showStatus,formatDate,zonedInput,zonedInstant,safeError,dl,configSource,iconPopup,closePopups};
+  function recipeContent(text){
+    const body=dom('div',{class:'recipe-content'});
+    let list=null;
+    for(const line of text.split(/\r?\n/)){
+      const bullet=line.match(/^\s*[-*]\s+(.+)$/);
+      if(bullet){
+        if(!list){list=dom('ul');body.append(list);}
+        list.append(dom('li',{},bullet[1]));
+        continue;
+      }
+      list=null;
+      const value=line.trim();
+      if(value)body.append(dom(value.endsWith(':')?'h4':'p',{},value));
+      else body.append(dom('div',{class:'recipe-break','aria-hidden':'true'}));
+    }
+    return body;
+  }
+  window.RSVP={config,getClient,adminRpc,guestRpc,normalizeUrl,validateKey,savePreview,invitationURL,getInviteCode,codePattern,siteRoot,dom,byId,showStatus,formatDate,zonedInput,zonedInstant,safeError,dl,configSource,iconPopup,closePopups,recipeContent};
 }());
 

@@ -15,7 +15,9 @@ const server = http.createServer((req,res)=>{
     if(!filename.startsWith(root+path.sep)) {res.writeHead(403);res.end();return;}
     if(!fs.existsSync(filename) || !fs.statSync(filename).isFile()){res.writeHead(404);res.end();return;}
     res.writeHead(200,{'Content-Type':types[path.extname(filename)]||'text/plain'});
-    fs.createReadStream(filename).pipe(res);
+    if(path.extname(filename) === '.html')
+      res.end(fs.readFileSync(filename,'utf8').replace(/ integrity="[^"]+"/g,''));
+    else fs.createReadStream(filename).pipe(res);
   }catch(e){res.writeHead(500);res.end(String(e));}
 });
 const {mock}=require('./helpers/admin-fixture.cjs');

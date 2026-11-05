@@ -1,4 +1,4 @@
-import {createClient} from 'npm:@supabase/supabase-js@2.49.10';
+import {createClient} from 'npm:@supabase/supabase-js@2.50.0';
 import {invitationHandler} from './handler.mjs';
 Deno.serve(invitationHandler({
   createClient,

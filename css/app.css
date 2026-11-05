@@ -453,7 +453,7 @@ html[data-theme="dark"] code{background:#253b32;color:var(--ink)}
 #adminApp .admin-main-tabs button{font-size:.82rem!important;padding:8px 12px!important;min-height:38px}
 #adminApp .admin-main-tabs{gap:4px}
 .food-compact-item{border-bottom:1px solid var(--line);padding:0!important}
-.food-compact-item>summary.food-manage-main{display:list-item;list-style-position:inside;cursor:pointer;padding:9px 4px;min-height:42px}
+#adminApp .food-compact-item>summary.food-manage-main{display:list-item;list-style-position:inside;cursor:pointer;padding:9px 4px;min-height:42px}
 .food-compact-item .food-item-info{display:inline-flex;align-items:center;justify-content:space-between;gap:16px;width:calc(100% - 25px);vertical-align:middle;flex-direction:row}
 .food-compact-item .food-item-info strong{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .food-compact-item .food-item-info small{white-space:nowrap;font-size:.72rem}
@@ -494,3 +494,12 @@ html[data-theme="dark"] code{background:#253b32;color:var(--ink)}
 .recipe-content h4,.recipe-content p,.recipe-content ul{margin:0 0 .3em}
 .recipe-content ul{padding-inline-start:1.4em}
 .recipe-break{height:.7em}
+
+.food-claim-summary{display:flex;flex-wrap:wrap;gap:2px 14px;margin:3px 0 0 20px;font-size:.7rem;overflow-wrap:anywhere}
+.food-selections:not(:empty){margin:0 0 10px}
+.food-selection-actions{display:flex;gap:4px}
+.food-selection-form{display:flex;flex-wrap:wrap;gap:6px;align-items:end;margin:4px 0}
+.food-selection-form label{display:grid;gap:2px;font-size:.72rem}
+.food-selection-form input{width:5em}
+.food-selection-form .btn{padding:.35rem .6rem}
+.food-selection-editor>summary{cursor:pointer;width:max-content;padding:4px 0;font-size:.8rem;font-weight:700}

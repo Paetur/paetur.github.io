@@ -619,46 +619,55 @@
    if(current&&!store.foodCategories.some(c=>c.name===current))select.append(R.dom('option',{value:current},current+T(" (unregistered)")));
    select.value=current||'';
  }
- function foodSelections(item){
-   const section=R.dom('div',{class:'food-selections'});
-   const claims=store.claims.filter(c=>c.food_item_id===item.id);
-   if(claims.length){
-     const rows=claims.map(c=>[
-       store.households.find(h=>h.id===c.household_id)?.household_name||T('Household'),
-       String(c.quantity)
-     ]);
-     section.append(makeTable([T('Household'),T('Quantity')],rows));
-   }
-   if(!item.active)return section;
-   const available=item.quantity_needed-claimedQuantity(item);
-   const options=ordered(store.households,'household_name')
-     .filter(h=>h.food&&!h.archived_at&&!h.food_confirmed&&(available>0||claims.some(c=>c.household_id===h.id)))
-     .map(h=>[h.id,h.household_name]);
-   if(!options.length)return section;
-   const editor=disclosure(T('Set food selection'),'edit-only food-selection-editor');
-   const form=managementForm();
-   const choice=field(form,T('Household'),'', [['',T('Choose…')],...options],'text',true);
-   const quantity=field(form,T('Quantity'),1,null,'number',true);
-   quantity.step='1';quantity.disabled=true;
-   const hint=R.dom('p',{class:'micro span-2'});
-   form.append(hint);
-   const ids=()=>({p_household_id:choice.value,p_food_item_id:item.id});
-   const current=()=>{
-     const {p_household_id,p_food_item_id}=ids();
-     return claims.find(c=>c.household_id===p_household_id&&c.food_item_id===p_food_item_id)?.quantity||0;
-   };
-   choice.addEventListener('change',()=>{
-     quantity.disabled=!choice.value;
-     if(!choice.value){hint.textContent='';return;}
-     const selectedQuantity=current();
-     quantity.min=selectedQuantity?'0':'1';
-     quantity.max=String(available+selectedQuantity);
-     quantity.value=String(selectedQuantity||1);
-     hint.textContent=selectedQuantity?T('Enter 0 to remove this selection.'):'';
+ function foodClaimName(claim){
+   return store.households.find(h=>h.id===claim.household_id)?.household_name||T('Household');
+ }
+ function foodSelections(item,claims,claimed){
+   const section=R.dom('div',{class:'food-selections edit-only'});
+   const available=item.quantity_needed-claimed;
+   const eligible=ordered(store.households,'household_name').filter(h=>h.food&&!h.archived_at&&!h.food_confirmed);
+   const canEdit=new Set(eligible.map(h=>h.id));
+   const selectionArgs=(householdId,quantity,expected)=>({
+     p_household_id:householdId,p_food_item_id:item.id,p_quantity:quantity,p_expected_quantity:expected
    });
-   editor.append(saveForm(form,T('Save food selection'),()=>managementRpc('admin_set_food_selection',
-     {...ids(),p_quantity:Number(quantity.value),p_expected_quantity:current()})));
-   section.append(editor);
+   const quantityField=(form,value,max)=>{
+     const quantity=field(form,T('Quantity'),value,null,'number',true);
+     quantity.min='1';quantity.max=String(max);quantity.step='1';
+     return quantity;
+   };
+   if(claims.length){
+     const rows=claims.map(claim=>{
+       const name=foodClaimName(claim),amount=R.dom('div',{class:'food-selection-amount'},String(claim.quantity));
+       const actions=R.dom('div',{class:'food-selection-actions'});
+       if(item.active&&canEdit.has(claim.household_id)){
+         const form=R.dom('form',{class:'food-selection-form hidden'});
+         const quantity=quantityField(form,claim.quantity,available+claim.quantity);
+         amount.append(saveForm(form,T('Save'),()=>managementRpc('admin_set_food_selection',
+           selectionArgs(claim.household_id,Number(quantity.value),claim.quantity))));
+         actions.append(iconAction('edit',T('Edit quantity for {household}',{household:name}),()=>{
+           form.classList.toggle('hidden');
+           if(!form.classList.contains('hidden'))quantity.focus();
+         }));
+         actions.append(iconAction('delete',T('Remove selection for {household}',{household:name}),async()=>{
+           if(!confirm(T('Remove the food selection for {household}?',{household:name})))return;
+           await rpcAction('admin_set_food_selection',selectionArgs(claim.household_id,0,claim.quantity),T('Changes saved.'));
+         }));
+       }
+       return [name,amount,actions];
+     });
+     section.append(makeTable([T('Household'),T('Quantity'),''],rows));
+   }
+   const selected=new Set(claims.map(c=>c.household_id));
+   const options=eligible.filter(h=>!selected.has(h.id)).map(h=>[h.id,h.household_name]);
+   if(item.active&&available>0&&options.length){
+     const editor=disclosure(T('+ Add'),'food-selection-editor');
+     const form=R.dom('form',{class:'food-selection-form'});
+     const choice=field(form,T('Household'),'', [['',T('Choose…')],...options],'text',true);
+     const quantity=quantityField(form,1,available);
+     editor.append(saveForm(form,T('Save'),()=>managementRpc('admin_set_food_selection',
+       selectionArgs(choice.value,Number(quantity.value),0))));
+     section.append(editor);
+   }
    return section;
  }
  function buildFoodEditor(item){
@@ -708,7 +717,10 @@
      setDisclosure(section,section.dataset.treeKey,index===0,!!search);
      const heading=R.dom('summary',{class:'food-category-heading'});
      const title=R.dom('span',{class:'food-category-title'},category.name||T("Uncategorized"));
-     heading.append(title,R.dom('small',{class:'tree-count'},T('{count} items',{count:items.length})));
+     const totals=items.reduce((sum,item)=>({
+       claimed:sum.claimed+claimedQuantity(item),capacity:sum.capacity+item.quantity_needed
+     }),{claimed:0,capacity:0});
+     heading.append(title,R.dom('small',{class:'tree-count'},T('{items}, {claimed}/{capacity} amounts',{items:items.length===1?T('1 item'):T('{count} items',{count:items.length}),...totals})));
      const controls=R.dom('span',{class:'food-heading-actions'});
      if(category.registered){
        const pos=categories.findIndex(c=>c.id===category.id);
@@ -733,7 +745,8 @@
      heading.append(controls);section.append(heading);
      const itemList=R.dom('div',{class:'food-category-items'});
      for(const f of visible){
-       const claim=claimedQuantity(f),pos=items.findIndex(x=>x.id===f.id);
+       const claims=store.claims.filter(c=>c.food_item_id===f.id);
+       const claim=claims.reduce((total,c)=>total+c.quantity,0),pos=items.findIndex(x=>x.id===f.id);
        const wrapper=R.dom('details',{class:'food-manage-item food-compact-item'});wrapper.dataset.treeKey='food:item:'+f.id;setDisclosure(wrapper,wrapper.dataset.treeKey,false,!!search);
        const main=R.dom('summary',{class:'food-manage-main'});
        const info=R.dom('div',{class:'food-item-info'});
@@ -767,15 +780,20 @@
        const move=iconAction('move',T('Move to category'),()=>{},false,'edit-only');
        const popup=R.iconPopup(move,changeLabel);popup.classList.add('edit-only');buttons.append(popup);
        main.append(info);
+       if(claims.length){
+         const commitments=R.dom('small',{class:'food-claim-summary muted'});
+         for(const c of claims)commitments.append(R.dom('span',{},foodClaimName(c)+' · '+c.quantity));
+         main.append(commitments);
+       }
        const detail=R.dom('div',{class:'food-expanded'}),comments=R.dom('div',{class:'food-comment-grid'});
        for(const [label,value] of [['User Comment',f.description_en||f.description_fo||f.description_de],['Admin Comment',f.admin_comment]])if(value?.trim())comments.append(R.dom('p',{class:'small'},T(label)+': '+value));
-       detail.dataset.hasComments=String(!!(comments.children.length||f.recipe_text||claim));
+       detail.dataset.hasComments=String(!!(comments.children.length||f.recipe_text));
        if(comments.children.length)detail.append(comments);
        if(f.recipe_text){
          const recipe=disclosure(T('Recipe'),'food-item-recipe');
          recipe.append(R.recipeContent(f.recipe_text));detail.append(recipe);
        }
-       detail.append(foodSelections(f),buttons,edit);
+       detail.append(foodSelections(f,claims,claim),buttons,edit);
        wrapper.append(main,detail);
        itemList.append(wrapper);
      }

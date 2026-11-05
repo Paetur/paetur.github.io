@@ -2,7 +2,7 @@
 const {PGlite}=require('@electric-sql/pglite'),fs=require('node:fs'),assert=require('node:assert/strict');
 (async()=>{const db=new PGlite();try{
  await db.exec(`CREATE ROLE anon;CREATE ROLE authenticated;CREATE ROLE service_role BYPASSRLS;CREATE SCHEMA auth;CREATE TABLE auth.users(id uuid PRIMARY KEY,email text,email_confirmed_at timestamptz,encrypted_password text);CREATE TABLE auth.sessions(id uuid PRIMARY KEY,user_id uuid,created_at timestamptz DEFAULT now());CREATE TABLE auth.audit_log_entries(id uuid PRIMARY KEY,payload json,created_at timestamptz DEFAULT now());CREATE FUNCTION auth.uid() RETURNS uuid LANGUAGE sql AS $$SELECT nullif(current_setting('request.jwt.claim.sub',true),'')::uuid$$;GRANT USAGE ON SCHEMA auth TO authenticated,anon;`);
- const files=fs.readdirSync('supabase/migrations').filter(f=>f.endsWith('.sql')).sort(),migration='20261102203000_unified_other.sql';for(const f of files.filter(f=>f!==migration))await db.exec(fs.readFileSync('supabase/migrations/'+f,'utf8'));
+ const files=fs.readdirSync('supabase/migrations').filter(f=>f.endsWith('.sql')).sort(),migration='20261102203000_unified_other.sql';for(const f of files.filter(f=>f<migration))await db.exec(fs.readFileSync('supabase/migrations/'+f,'utf8'));
  const shared='33333333-3333-4333-8333-333333333333';
  await db.query("INSERT INTO public.things_to_do(id,task,assigned_to,status,due_date,notes,sort_order,created_at,updated_at) VALUES($1,'Prepare venue','Helper','in_progress','2027-02-01','Task comment',3,'2026-01-01','2026-02-01')",[shared]);
  await db.query("INSERT INTO public.stuff_to_bring(id,item,quantity,assigned_to,status,notes,sort_order,created_at,updated_at) VALUES($1,'Chairs',12,'Another helper','assigned','Bring folding chairs',2,'2026-03-01','2026-04-01')",[shared]);
@@ -11,6 +11,15 @@ const {PGlite}=require('@electric-sql/pglite'),fs=require('node:fs'),assert=requ
  assert.deepEqual((await db.query('SELECT * FROM public.things_to_do ORDER BY id')).rows,tasksBefore,'old task read projection preserved');assert.deepEqual((await db.query('SELECT * FROM public.stuff_to_bring ORDER BY id')).rows,stuffBefore,'old stuff read projection preserved');
  const merged=(await db.query('SELECT * FROM public.other_items ORDER BY source_kind')).rows;assert.equal(merged.length,2);assert.notEqual(merged[0].id,merged[1].id,'colliding source UUIDs remain separate');assert.equal(merged.find(r=>r.source_kind==='stuff').quantity,12);assert.equal(merged.find(r=>r.source_kind==='task').due_date.toISOString().slice(0,10),'2027-02-01');
  await assert.rejects(()=>db.query("UPDATE public.legacy_stuff_to_bring SET notes='changed'"),/immutable/);
+ const cleanup=files.find(f=>f.endsWith('_retire_legacy_food_tables.sql'));
+ const cleanupSql=fs.readFileSync('supabase/migrations/'+cleanup,'utf8');
+ await db.exec(fs.readFileSync('supabase/migrations/20261105130034_item_recipes.sql','utf8'));
+ await db.exec("UPDATE public.other_items SET notes=NULL WHERE source_kind='stuff'");
+ await assert.rejects(()=>db.exec(cleanupSql),/archive contains/);
+ await db.exec('ROLLBACK');
+ await db.exec("UPDATE public.other_items SET notes='Bring folding chairs' WHERE source_kind='stuff'");
+ await db.exec(cleanupSql);
+ assert.deepEqual((await db.query('SELECT * FROM public.stuff_to_bring ORDER BY id')).rows,stuffBefore);
  const admin='11111111-1111-4111-8111-111111111111',session='aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';await db.query("INSERT INTO auth.users VALUES($1,'admin@example.invalid',now(),'unused')",[admin]);await db.query("INSERT INTO public.admins(user_id,name) VALUES($1,'Example')",[admin]);await db.query('INSERT INTO auth.sessions(id,user_id) VALUES($1,$2)',[session,admin]);await db.query("SELECT set_config('request.jwt.claim.sub',$1,false),set_config('request.jwt.claims',$2,false)",[admin,JSON.stringify({sub:admin,session_id:session})]);await db.exec('SET ROLE authenticated');
  const value=async(q,p=[])=>(await db.query(q,p)).rows[0].v;
  const cat=await value("SELECT public.admin_save_other_category(null,'Equipment',null) v");assert.equal((await value("SELECT public.admin_save_other_category(null,'Equipment',null) v")).id,cat.id,'category retry is idempotent');

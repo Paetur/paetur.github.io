@@ -129,7 +129,6 @@
       const wrap=R.dom('details',{class:'food-item guest-food-disclosure'}),heading=R.dom('summary');
       const label=translated('food:'+item.id+':name',{fo:item.name_fo,en:item.name_en,de:item.name_de},window.RSVP_I18N.t('Food item'));
       wrap.dataset.itemId=item.id;wrap.open=expanded.has(item.id);heading.append(R.dom('strong',{},label));
-      if(item.recipe_name&&!item.recipe_text)heading.append(R.dom('span',{class:'food-recipe-label'},' · '+item.recipe_name));
       if(item.reserved_for_you)heading.append(R.dom('span',{class:'tag'},window.RSVP_I18N.t('Reserved for you')));
       if(mine)heading.append(R.dom('span',{class:'tag'},window.RSVP_I18N.t('Selected')));
       const detail=R.dom('div',{class:'guest-food-details'});

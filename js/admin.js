@@ -2,7 +2,7 @@
  'use strict';
  const T=(text,params)=>window.RSVP_I18N?.t(text,params)||text;
  const R=window.RSVP,$=R.byId;
- let db=null,user=null,store={settings:null,sessions:[],locations:[],households:[],guests:[],food:[],claims:[],submissions:[],defaults:[],content:[],admins:[],adminInvitations:[],relationGroups:[],foodCategories:[],languages:[],contacts:[],overrides:[],responses:[],queue:[],deliveries:[],tasks:[],otherCategories:[],recipes:[]};
+ let db=null,user=null,store={settings:null,sessions:[],locations:[],households:[],guests:[],food:[],claims:[],submissions:[],defaults:[],content:[],admins:[],adminInvitations:[],relationGroups:[],foodCategories:[],languages:[],contacts:[],overrides:[],responses:[],queue:[],deliveries:[],tasks:[],otherCategories:[]};
  let inviteDetail=null;
  let activeTab='dashboard',lastMainTab='dashboard',activeSettingsTab='event',editMode=false;
  const expandedGroups=new Map();
@@ -47,8 +47,8 @@
  async function reload(){
    show(T("Loading event data…"));
    try{
-     const keys=['languages','settings','sessions','locations','households','guests','food','claims','submissions','defaults','content','relationGroups','foodCategories','contacts','overrides','responses','queue','deliveries','tasks','recipes','otherCategories'];
-     const jobs=[fetchTable('event_languages'),fetchTable('event_settings'),fetchTable('event_sessions'),fetchTable('event_locations'),fetchTable('households','id,household_name,invite_code,language,side,relation_group_id,email,phone,food,food_confirmed,rsvp_state,rsvp_submitted_at,late_submission_until,sort_order,parent_id,notes,archived_at,whatsapp,postal_address,preferred_contact_method'),fetchTable('guests','id,household_id,first_name,last_name,courtesy_title,relation,language,is_child,rsvp_status,dietary_requirements,notes,archived_at'),fetchTable('food_items'),fetchTable('food_claims'),fetchTable('rsvp_submissions','id,household_id,submitted_at'),fetchTable('household_session_defaults'),fetchTable('event_content'),fetchTable('relation_groups'),fetchTable('food_categories'),fetchTable('household_contacts'),fetchTable('guest_session_overrides'),fetchTable('guest_session_responses'),fetchTable('invitation_send_queue'),fetchTable('invitation_deliveries'),fetchTable('other_items'),fetchTable('food_recipes'),fetchTable('other_categories')];
+     const keys=['languages','settings','sessions','locations','households','guests','food','claims','submissions','defaults','content','relationGroups','foodCategories','contacts','overrides','responses','queue','deliveries','tasks','otherCategories'];
+     const jobs=[fetchTable('event_languages'),fetchTable('event_settings'),fetchTable('event_sessions'),fetchTable('event_locations'),fetchTable('households','id,household_name,invite_code,language,side,relation_group_id,email,phone,food,food_confirmed,rsvp_state,rsvp_submitted_at,late_submission_until,sort_order,parent_id,notes,archived_at,whatsapp,postal_address,preferred_contact_method'),fetchTable('guests','id,household_id,first_name,last_name,courtesy_title,relation,language,is_child,rsvp_status,dietary_requirements,notes,archived_at'),fetchTable('food_items'),fetchTable('food_claims'),fetchTable('rsvp_submissions','id,household_id,submitted_at'),fetchTable('household_session_defaults'),fetchTable('event_content'),fetchTable('relation_groups'),fetchTable('food_categories'),fetchTable('household_contacts'),fetchTable('guest_session_overrides'),fetchTable('guest_session_responses'),fetchTable('invitation_send_queue'),fetchTable('invitation_deliveries'),fetchTable('other_items'),fetchTable('other_categories')];
      const values=await Promise.all(jobs);keys.forEach((key,i)=>store[key]=values[i]);store.settings=store.settings[0]||null;
      const {data:admins,error:adminsError}=await R.adminRpc('admin_list_members');
      store.admins=adminsError?[]:(admins||[]);
@@ -674,7 +674,7 @@
      ...unregistered.map(name=>({name,id:null,registered:false}))];
    for(const [index,category] of list.entries()){
      const items=ordered(store.food.filter(f=>(f.category||'')===category.name),'name_fo');
-     const visible=items.filter(f=>!search||[f.name_fo,f.name_en,f.name_de,f.category,store.recipes.find(r=>r.id===f.recipe_id)?.name]
+     const visible=items.filter(f=>!search||[f.name_fo,f.name_en,f.name_de,f.category]
        .join(' ').toLowerCase().includes(search));
      if(search&&!visible.length)continue;
      const section=R.dom('details',{class:'food-category tree-disclosure'});
@@ -743,12 +743,10 @@
        main.append(info);
        const detail=R.dom('div',{class:'food-expanded'}),comments=R.dom('div',{class:'food-comment-grid'});
        for(const [label,value] of [['User Comment',f.description_en||f.description_fo||f.description_de],['Admin Comment',f.admin_comment]])if(value?.trim())comments.append(R.dom('p',{class:'small'},T(label)+': '+value));
-       const legacyRecipe=store.recipes.find(recipe=>recipe.id===f.recipe_id);
        const reservedHousehold=store.households.find(h=>h.id===f.reserved_household_id);
-       detail.dataset.hasComments=String(!!(comments.children.length||f.recipe_text||legacyRecipe||reservedHousehold));
+       detail.dataset.hasComments=String(!!(comments.children.length||f.recipe_text||reservedHousehold));
        if(comments.children.length)detail.append(comments);
        if(reservedHousehold)detail.append(R.dom('p',{class:'small'},T('Reserved for')+': '+reservedHousehold.household_name));
-       if(legacyRecipe)detail.append(R.dom('p',{class:'small muted'},T('Previous recipe group')+': '+legacyRecipe.name));
        if(f.recipe_text){
          const recipe=disclosure(T('Recipe'),'food-item-recipe');
          recipe.append(R.recipeContent(f.recipe_text));detail.append(recipe);

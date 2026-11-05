@@ -102,6 +102,20 @@
       foodState=data;$('foodCard').classList.remove('hidden');renderFood();
     }catch(_){$('foodCard').classList.add('hidden');}
   }
+  function printRecipe(label,text){
+    const popup=window.open('','_blank');
+    if(!popup){status(window.RSVP_I18N.t('Allow pop-ups to save the recipe as PDF.'),'warning');return;}
+    popup.opener=null;
+    const doc=popup.document;
+    doc.title=label;
+    doc.documentElement.lang=document.documentElement.lang;
+    const style=doc.createElement('style');
+    style.textContent='@page{margin:18mm}body{font:16px/1.5 system-ui;color:#161616;max-width:42rem;margin:2rem auto;padding:0 1rem}h1{line-height:1.15}h4,p,ul{margin:0 0 .3em}h4{break-after:avoid}.recipe-break{height:.7em}li{break-inside:avoid}@media print{body{margin:0;padding:0}}';
+    doc.head.append(style);
+    doc.body.append(R.dom('h1',{},label),R.recipeContent(text));
+    popup.focus();
+    popup.print();
+  }
   function renderFood(){
     if(!foodState)return;
     const expanded=new Set(Array.from($('foodList').querySelectorAll('details[open]')).map(n=>n.dataset.itemId));
@@ -115,11 +129,19 @@
       const wrap=R.dom('details',{class:'food-item guest-food-disclosure'}),heading=R.dom('summary');
       const label=translated('food:'+item.id+':name',{fo:item.name_fo,en:item.name_en,de:item.name_de},window.RSVP_I18N.t('Food item'));
       wrap.dataset.itemId=item.id;wrap.open=expanded.has(item.id);heading.append(R.dom('strong',{},label));
-      if(item.recipe_name)heading.append(R.dom('span',{class:'food-recipe-label'},' · '+item.recipe_name));
+      if(item.recipe_name&&!item.recipe_text)heading.append(R.dom('span',{class:'food-recipe-label'},' · '+item.recipe_name));
+      if(item.reserved_for_you)heading.append(R.dom('span',{class:'tag'},window.RSVP_I18N.t('Reserved for you')));
       if(mine)heading.append(R.dom('span',{class:'tag'},window.RSVP_I18N.t('Selected')));
       const detail=R.dom('div',{class:'guest-food-details'});
       const description=translated('food:'+item.id+':description',{fo:item.description_fo,en:item.description_en,de:item.description_de});
       if(description)detail.append(R.dom('p',{class:'small'},window.RSVP_I18N.t('User Comment')+': '+description));
+      if(item.recipe_text){
+        const recipe=R.dom('details',{class:'food-item-recipe'});
+        const pdf=R.dom('button',{class:'btn secondary',type:'button'},window.RSVP_I18N.t('Print / Save as PDF'));
+        pdf.addEventListener('click',()=>printRecipe(label,item.recipe_text));
+        recipe.append(R.dom('summary',{},window.RSVP_I18N.t('Recipe')),R.recipeContent(item.recipe_text),pdf);
+        detail.append(recipe);
+      }
       if(!confirmed){
         const pick=R.dom('button',{class:'btn secondary',type:'button'},window.RSVP_I18N.t(mine?'Remove selection':'Pick item'));
         pick.dataset.itemId=item.id;pick.addEventListener('click',()=>saveFood(item.id,mine?0:1,pick));detail.append(pick);

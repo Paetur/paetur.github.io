@@ -2760,6 +2760,38 @@ window.RSVP_TRANSLATIONS = {
     "fo": "Viðmerking",
     "de": "Kommentar"
   },
+  "Recipe": {
+    "fo": "Uppskrift",
+    "de": "Rezept"
+  },
+  "Previous recipe group": {
+    "fo": "Fyrri uppskriftarbólkur",
+    "de": "Frühere Rezeptgruppe"
+  },
+  "Print / Save as PDF": {
+    "fo": "Prenta / Goym sum PDF",
+    "de": "Drucken / Als PDF speichern"
+  },
+  "Allow pop-ups to save the recipe as PDF.": {
+    "fo": "Loyv sprettgluggum fyri at goyma uppskriftina sum PDF.",
+    "de": "Pop-ups zulassen, um das Rezept als PDF zu speichern."
+  },
+  "Reserve for household": {
+    "fo": "Reservera til húski",
+    "de": "Für Haushalt reservieren"
+  },
+  "Any household with food access": {
+    "fo": "Øll húski við atgongd til mat",
+    "de": "Alle Haushalte mit Speisenzugang"
+  },
+  "Reserved for": {
+    "fo": "Reserverað til",
+    "de": "Reserviert für"
+  },
+  "Reserved for you": {
+    "fo": "Reserverað til tín",
+    "de": "Für euch reserviert"
+  },
   "Add recipe": {
     "fo": "Legg uppskrift afturat",
     "de": "Rezept hinzufügen"

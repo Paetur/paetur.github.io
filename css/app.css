@@ -487,3 +487,10 @@ html[data-theme="dark"] code{background:#253b32;color:var(--ink)}
 
 #adminApp[data-mode="view"] .food-expanded[data-has-comments="false"]{display:none}
 #adminApp .other-line input,#adminApp .other-line select{height:40px;min-height:40px;font-size:.8rem}#adminApp .other-line select{appearance:none;-webkit-appearance:none;line-height:normal;padding:8px 24px 8px 8px;background-image:linear-gradient(45deg,transparent 50%,var(--muted) 50%),linear-gradient(135deg,var(--muted) 50%,transparent 50%);background-position:calc(100% - 14px) 17px,calc(100% - 10px) 17px;background-size:4px 4px;background-repeat:no-repeat}
+
+.food-item-recipe{margin:.5rem 0;min-width:0}
+.food-item-recipe>summary{cursor:pointer;font-weight:700}
+.food-item-recipe .recipe-content{margin:.6rem 0;overflow-wrap:anywhere}
+.recipe-content h4,.recipe-content p,.recipe-content ul{margin:0 0 .3em}
+.recipe-content ul{padding-inline-start:1.4em}
+.recipe-break{height:.7em}

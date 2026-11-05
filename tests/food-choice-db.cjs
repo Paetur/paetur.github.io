@@ -25,6 +25,14 @@ const {PGlite}=require('@electric-sql/pglite'),fs=require('node:fs'),assert=requ
  assert.equal((await food(h[0])).items.length,1,'removing selection frees a unit');
  await db.query('SELECT public.confirm_household_food($1)',[h[1]]);
  await assert.rejects(()=>db.query('SELECT public.set_household_food_claim($1,$2,0,null)',[h[1],id]),/unavailable/);
+ const reservation=await value('SELECT id v FROM public.households WHERE invite_code=$1',[h[0]]);
+ const reserved=await value("INSERT INTO public.food_items(name_fo,recipe_text,reserved_household_id) VALUES('Brownies','Melt:\n - chocolate',$1) RETURNING id v",[reservation]);
+ const ownItem=(await food(h[0])).items.find(item=>item.id===reserved);
+ assert.equal(ownItem.recipe_text,'Melt:\n - chocolate');assert.equal(ownItem.reserved_for_you,true);
+ assert.equal(Object.hasOwn(ownItem,'reserved_household_id'),false);
+ assert.equal((await food(h[2])).items.some(item=>item.id===reserved),false);
+ await assert.rejects(()=>db.query('SELECT public.set_household_food_claim($1,$2,1,null)',[h[2],reserved]),/unavailable/);
+ await db.query('SELECT public.set_household_food_claim($1,$2,1,null)',[h[0],reserved]);
  await db.exec('UPDATE public.event_settings SET is_published=false WHERE id=1');assert.equal(await food(h[0]),null);
  await assert.rejects(()=>db.query('SELECT public.set_household_food_claim($1,$2,1,null)',[h[0],id]),/not published/);
  const grants=await db.query("SELECT has_function_privilege('anon','public.get_household_food(text)','execute') anon,has_function_privilege('authenticated','public.get_household_food(text)','execute') authenticated");assert.equal(grants.rows[0].anon,false);assert.equal(grants.rows[0].authenticated,false);
@@ -53,7 +61,8 @@ const {PGlite}=require('@electric-sql/pglite'),fs=require('node:fs'),assert=requ
  await assert.rejects(()=>db.query('SELECT public.admin_save_recipe($1,$2,$3,$4,$5,$6)',[recipe,'Stale name','Other category',members,[],recipeRow.updated_at]),/Recipe changed/);
  await assert.rejects(()=>db.query('SELECT public.admin_save_recipe(null,$1,$2,$3,$4,null)',['Steal items','Other category',[id],[]]),/another recipe/);
  const countBefore=await value('SELECT count(*)::integer v FROM public.food_recipes');await assert.rejects(()=>db.query('SELECT public.admin_save_recipe(null,$1,$2,$3,$4,null)',['Invalid','Other category',[],[{name:'',quantity:1}]]),/valid new food/);assert.equal(await value('SELECT count(*)::integer v FROM public.food_recipes'),countBefore);
- await assert.rejects(()=>db.query('UPDATE public.food_items SET category=$1 WHERE id=$2',['Recipe category',id]),/foreign key/);
+ await db.query('UPDATE public.food_items SET category=$1 WHERE id=$2',['Recipe category',id]);
+ assert.equal(await value('SELECT recipe_id v FROM public.food_items WHERE id=$1',[id]),recipe);
  assert.equal(await value("SELECT has_function_privilege('anon','public.admin_save_recipe(uuid,text,text,uuid[],jsonb,timestamptz)','execute') v"),false);
  await db.exec('RESET ROLE');await db.query("SELECT set_config('request.jwt.claim.sub','',false)");await db.exec('SET ROLE authenticated');await assert.rejects(()=>db.query('SELECT public.admin_save_tasks($1)',[[]]),/session|sign in|administrator/i);await db.exec('RESET ROLE');
  console.log('PASS food choices: private comments, unit capacity, full-item hiding, reopen, removal, locks, publication and gateway-only access.');

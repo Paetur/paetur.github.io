@@ -31,9 +31,9 @@ Apply the additive food-comment/capacity and administrator-task-sheet migrations
 
 ## Recipes
 
-Add Food Category, Add Food Item and Add recipe are above the food list. Add recipe groups selected existing food items under a name and category; Create food item in recipe adds new rows in the same save. A recipe can contain both existing and new items. Existing item IDs, translations and claims remain intact. An item belongs to at most one recipe; remove it through Edit recipe before placing it in another.
+Add or edit the recipe on the food item itself. Guests can expand the ingredient list and instructions and use **Print / Save as PDF**. An item can be reserved for one food-enabled household. Existing claims remain visible to the households that made them.
 
-Recipes appear as expandable groups within their category. Edit recipe changes its name, category and item membership. Changing its category also moves its items through a database foreign-key cascade; an individual recipe item cannot be assigned a conflicting category. Guests still pick individual items, with the recipe name shown beside each item. Private comments remain private. Recipes and their memberships are included in application backups and tested restoration.
+Deploy the frontend that removes the legacy recipe-group lookup before applying the legacy-table cleanup migration. The migration stops if the recipe-group table contains rows or the bring-list archive has records missing from Other. Backups and restores use the matching application schema.
 
 Dish editing places Name and Quantity side by side, followed by User Comment and Admin Comment side by side.
 

@@ -348,10 +348,13 @@ async function run(){
    await page.locator('#expandHouseholds').click();await openSection(childNode,'RSVP management');await openSection(rsvp,'Allow a late response');
    await rsvp.getByLabel('Allow responses until (Europe/Berlin)',{exact:true}).fill('2027-02-19T18:00');await rsvp.getByLabel('Reason for late response').fill('Allow travel arrangements to be confirmed.');await rsvp.getByRole('button',{name:'Allow late response',exact:true}).click();
    await waitForApp(page,id=>!!window.__fixtures.households.find(h=>h.id===id).late_submission_until,childId);
-   await page.locator('#expandHouseholds').click();await openSection(childNode,'Food access');
-   const foodAccess=childNode.locator('details').filter({has:page.getByText('Food access',{exact:true})});
-   await foodAccess.getByLabel('Allow this household to contribute food').check();await foodAccess.getByLabel('Reason for food-access change').fill('Household offered to bring a dish.');await foodAccess.getByRole('button',{name:'Save food access'}).click();await waitForApp(page,id=>window.__fixtures.households.find(h=>h.id===id).food,childId);
-   await page.locator('#expandHouseholds').click();await openSection(childNode,'Food access');await foodAccess.screenshot({path:path.join(root,'artifacts','food-access-preview.png')});
+   await page.locator('#expandHouseholds').click();await openSection(childNode,'Household details');
+   const details=childNode.locator(':scope > .household-expanded > .household-inline-editor');
+   await details.getByLabel('Allow food',{exact:true}).check();
+   await details.getByRole('button',{name:'Save household',exact:true}).click();
+   await waitForApp(page,id=>window.__fixtures.households.find(h=>h.id===id).food,childId);
+   await page.locator('#expandHouseholds').click();await openSection(childNode,'Household details');
+   await details.screenshot({path:path.join(root,'artifacts','food-access-preview.png')});
    await page.locator('[data-tab="invites"]').click();await page.locator('#inviteRows details.household-tree-node').evaluateAll(nodes=>nodes.forEach(n=>n.open=true));
    if(await page.getByRole('button',{name:'Back to households',exact:true}).count())await page.getByRole('button',{name:'Back to households',exact:true}).click();
    await page.locator('#inviteRows details').evaluateAll(nodes=>nodes.forEach(n=>n.open=true));

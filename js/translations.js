@@ -2776,21 +2776,21 @@ window.RSVP_TRANSLATIONS = {
     "fo": "Loyv sprettgluggum fyri at goyma uppskriftina sum PDF.",
     "de": "Pop-ups zulassen, um das Rezept als PDF zu speichern."
   },
-  "Reserve for household": {
-    "fo": "Reservera til húski",
-    "de": "Für Haushalt reservieren"
+  "Allow food": {
+    "fo": "Loyv matvali",
+    "de": "Speisenauswahl erlauben"
   },
-  "Any household with food access": {
-    "fo": "Øll húski við atgongd til mat",
-    "de": "Alle Haushalte mit Speisenzugang"
+  "Set food selection": {
+    "fo": "Vel matvøru",
+    "de": "Speisenauswahl festlegen"
   },
-  "Reserved for": {
-    "fo": "Reserverað til",
-    "de": "Reserviert für"
+  "Save food selection": {
+    "fo": "Goym matval",
+    "de": "Speisenauswahl speichern"
   },
-  "Reserved for you": {
-    "fo": "Reserverað til tín",
-    "de": "Für euch reserviert"
+  "Enter 0 to remove this selection.": {
+    "fo": "Skriva 0 fyri at taka valið burtur.",
+    "de": "0 eingeben, um diese Auswahl zu entfernen."
   },
   "Add recipe": {
     "fo": "Legg uppskrift afturat",

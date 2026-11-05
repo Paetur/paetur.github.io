@@ -43,6 +43,7 @@ jobs:
         env:
           DATABASE_URL: postgres://postgres:test-only@localhost:5432/rsvp_test
         run: |
+          node tests/security-regressions.cjs
           node tests/admin-invitations.cjs
           node tests/admin-auth.cjs
           node tests/timezones.cjs

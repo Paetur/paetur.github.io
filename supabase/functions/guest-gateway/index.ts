@@ -1,3 +1,4 @@
+import {readLimitedBody} from '../_shared/request-body.mjs';
 // RSVP guest gateway — prevents direct PostgREST bypass and enforces atomic rate limits.
 // Project-specific allowed origin. Use the same frontend hostname when reusing the starter.
 const allowedOrigin = "https://paetur.github.io";
@@ -55,9 +56,14 @@ Deno.serve(async (req: Request) => {
   const len = Number(req.headers.get("content-length") || "0");
   if (len > 20000) return reply(413, { error: "Request too large" });
   try {
-    const textBody = await req.text();
-    if (textBody.length > 20000) return reply(413, { error: "Request too large" });
-    const input = JSON.parse(textBody);
+    const textBody = await readLimitedBody(req, 20000);
+
+    let input;
+    try {
+      input = JSON.parse(textBody);
+    } catch {
+      return reply(400, { error: "Invalid request" });
+    }
     if (!input || typeof input !== "object" || Array.isArray(input)) return reply(400, { error: "Invalid request" });
     const { action, args } = input as { action?: string; args?: unknown };
     if (typeof action !== "string" || !allowed.has(action) || !args || typeof args !== "object" || Array.isArray(args)) return reply(400, { error: "Invalid action" });
@@ -91,7 +97,8 @@ Deno.serve(async (req: Request) => {
     let value: unknown = null;
     if (raw) { try { value = JSON.parse(raw); } catch { return reply(502, { error: "Invalid response" }); } }
     return reply(200, value);
-  } catch {
+  } catch (error) {
+    if (error instanceof RangeError) return reply(413, { error: "Request too large" });
     return reply(503, { error: "Request temporarily unavailable" });
   }
 });

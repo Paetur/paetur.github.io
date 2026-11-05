@@ -1,7 +1,8 @@
 // Real pinned Supabase SDK + Chromium/WebKit, with synthetic Auth and RPC servers.
 const {chromium,webkit}=require('playwright'),http=require('node:http'),fs=require('node:fs'),assert=require('node:assert/strict');
 const core=fs.readFileSync('js/core.js','utf8');
-const server=http.createServer((req,res)=>{res.setHeader('Content-Type',req.url==='/js/core.js'?'application/javascript':'text/html');res.end(req.url==='/js/core.js'?core:`<!doctype html><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.10/dist/umd/supabase.min.js" defer></script><script>window.RSVP_CONFIG={supabaseUrl:'https://admin-auth-test.supabase.co',supabaseKey:'sb_publishable_test'};</script><script src="/js/core.js" data-app-core defer></script>`);});
+const sdkScript=fs.readFileSync('index.html','utf8').split('\n').find(line=>line.includes('https://cdn.jsdelivr.net/npm/@supabase/')).trim();
+const server=http.createServer((req,res)=>{res.setHeader('Content-Type',req.url==='/js/core.js'?'application/javascript':'text/html');res.end(req.url==='/js/core.js'?core:`<!doctype html>${sdkScript}<script>window.RSVP_CONFIG={supabaseUrl:'https://admin-auth-test.supabase.co',supabaseKey:'sb_publishable_test'};</script><script src="/js/core.js" data-app-core defer></script>`);});
 const user={id:'11111111-1111-4111-8111-111111111111',aud:'authenticated',role:'authenticated',email:'synthetic@example.invalid'};
 function jwt(tag){return [Buffer.from(JSON.stringify({alg:'HS256',typ:'JWT'})).toString('base64url'),Buffer.from(JSON.stringify({sub:user.id,role:'authenticated',aud:'authenticated',exp:Math.floor(Date.now()/1000)+3600,iat:Math.floor(Date.now()/1000),tag})).toString('base64url'),'synthetic-test-signature'].join('.');}
 (async()=>{

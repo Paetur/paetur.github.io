@@ -1,3 +1,4 @@
+import {readLimitedBody} from '../_shared/request-body.mjs';
 // Factory keeps privileged email behavior testable without sending real messages.
 export function invitationHandler({createClient, url, serviceKey}) {
   const origin = 'https://paetur.github.io';
@@ -15,7 +16,7 @@ export function invitationHandler({createClient, url, serviceKey}) {
     let reservation=null, service;
     try {
       if (Number(req.headers.get('content-length')||0)>2048) return reply(413,{error:'Request too large'});
-      const raw=await req.text();if(raw.length>2048)return reply(413,{error:'Request too large'});
+      const raw=await readLimitedBody(req,2048);
       let input;try{input=JSON.parse(raw);}catch{return reply(400,{error:'Invalid request'});}
       if (!input || Array.isArray(input) || typeof input!=='object' || Object.keys(input).some(k=>!['email','name','id'].includes(k)) || typeof input.email!=='string' || typeof input.name!=='string' || input.email.length>254 || input.name.length>120 || (input.id!=null && (typeof input.id!=='string'||!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(input.id)))) return reply(400,{error:'Enter a valid email and display name'});
       service=createClient(url,serviceKey,options);
@@ -37,7 +38,8 @@ export function invitationHandler({createClient, url, serviceKey}) {
       if(result.data!==true)return reply(409,{error:'This invitation changed while sending. Refresh the invitation list.'});
       if(sent.error)return reply(400,{error:emailError(code)});
       return reply(200,{id:reservation.id,message:'Invitation email accepted by the email service. Access remains pending until acceptance.'});
-    } catch {
+    } catch (error) {
+      if(error instanceof RangeError&&!reservation)return reply(413,{error:'Request too large'});
       if(reservation&&service){try{await service.rpc('admin_finish_invitation',{p_id:reservation.id,p_attempt_id:reservation.attempt_id,p_sent:false,p_error_code:'email_status_unknown'});}catch{/* Keep sending state; bounded cooldown permits an explicit retry. */}}
       return reply(503,{error:'Email status is uncertain. Refresh pending invitations before retrying.'});
     }

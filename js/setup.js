@@ -3,6 +3,12 @@
  const T=(text,params)=>window.RSVP_I18N?.t(text,params)||text;
   const R=window.RSVP,$=R.byId;
   let step=1,mode='existing',connected=false,verified=false;
+  let connectionVersion=0;
+  function invalidateConnection(){
+    connected=false;
+    verified=false;
+    return ++connectionVersion;
+  }
   const stateMessage=(m,t='info')=>R.showStatus('setupStatus',m,t);
   function displayStep(next){
     if(next>2&&!connected){stateMessage(T("Test your Supabase connection before continuing."),'warning');return;}
@@ -15,16 +21,19 @@
   }
   async function testConnection(e){
     e.preventDefault();const button=e.submitter||e.target.querySelector('button[type="submit"]');button.disabled=true;
+    const version=invalidateConnection();
     try{
       const cfg=R.savePreview($('setupUrl').value,$('setupKey').value);
       const db=R.getClient();
       const {error}=await db.rpc('get_public_event');
+      if(version!==connectionVersion)return;
       if(error)throw new Error(T("Database connection or schema validation failed: ")+R.safeError(error));
       const probe=await R.guestRpc('get_invitation_v2',{p_code:'AAAAAAAA'});
+      if(version!==connectionVersion)return;
       if(probe.error)throw new Error(T("Guest Edge Function is unavailable. Deploy the guest-gateway function first: ")+R.safeError(probe.error));
       connected=true;stateMessage(T('Connected to {host}. The protected guest gateway responded.',{host:new URL(cfg.supabaseUrl).hostname}),'success');
-      setTimeout(()=>displayStep(3),1100);
-    }catch(err){stateMessage(R.safeError(err),'error');}
+      setTimeout(()=>{if(version===connectionVersion&&step===2)displayStep(3);},1100);
+    }catch(err){if(version===connectionVersion)stateMessage(R.safeError(err),'error');}
     finally{button.disabled=false;}
   }
   function makeBootstrap(){
@@ -36,26 +45,32 @@
   }
   async function verifyAdmin(e){
     e.preventDefault();const b=e.submitter||e.target.querySelector('button[type="submit"]');b.disabled=true;
+    const version=connectionVersion;
+    if(!connected){b.disabled=false;return;}
+    verified=false;
     try{
       const db=R.getClient();
       const {error}=await db.auth.signInWithPassword({email:$('setupAdminEmail').value.trim(),password:$('setupAdminPassword').value});
       if(error)throw error;
+      if(version!==connectionVersion)return;
       const access=await db.rpc('is_admin');
+      if(version!==connectionVersion)return;
       if(access.error)throw access.error;
       if(access.data!==true)throw new Error(T("This account does not have administrator access. Run the first-admin SQL or ask an existing admin to grant access."));
       verified=true;$('setupAdminPassword').value='';displayStep(4);
-    }catch(err){stateMessage(R.safeError(err),'error');}
+    }catch(err){if(version===connectionVersion)stateMessage(R.safeError(err),'error');}
     finally{b.disabled=false;}
   }
   function setup(){
     const cfg=R.config();
     $('setupUrl').value=cfg.supabaseUrl||'https://xbiklypjpnumhuohujwo.supabase.co';
     $('setupKey').value=cfg.supabaseKey||'';
-    document.querySelectorAll('input[name="dbMode"]').forEach(b=>b.addEventListener('change',()=>{mode=b.value;if(mode==='new'&&$('setupUrl').value==='https://xbiklypjpnumhuohujwo.supabase.co')$('setupUrl').value='';else if(mode==='existing'&&!$('setupUrl').value)$('setupUrl').value='https://xbiklypjpnumhuohujwo.supabase.co';$('newDatabaseInstructions').classList.toggle('hidden',mode!=='new');connected=false;verified=false;}));
+    document.querySelectorAll('input[name="dbMode"]').forEach(b=>b.addEventListener('change',()=>{mode=b.value;if(mode==='new'&&$('setupUrl').value==='https://xbiklypjpnumhuohujwo.supabase.co')$('setupUrl').value='';else if(mode==='existing'&&!$('setupUrl').value)$('setupUrl').value='https://xbiklypjpnumhuohujwo.supabase.co';$('newDatabaseInstructions').classList.toggle('hidden',mode!=='new');invalidateConnection();}));
     document.querySelectorAll('[data-next]').forEach(b=>b.addEventListener('click',()=>displayStep(step+1)));
     document.querySelectorAll('[data-back]').forEach(b=>b.addEventListener('click',()=>displayStep(step-1)));
     document.querySelectorAll('.steps button').forEach(b=>b.addEventListener('click',()=>displayStep(Number(b.dataset.step))));
     $('connectForm').addEventListener('submit',testConnection);
+    $('connectForm').addEventListener('input',()=>{invalidateConnection();stateMessage('');});
     $('makeBootstrap').addEventListener('click',makeBootstrap);
     $('copyBootstrap').addEventListener('click',()=>{
       if(!$('bootstrapSql').value){stateMessage(T("Generate SQL first."),'warning');return;}

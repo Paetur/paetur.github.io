@@ -2780,17 +2780,29 @@ window.RSVP_TRANSLATIONS = {
     "fo": "Loyv matvali",
     "de": "Speisenauswahl erlauben"
   },
-  "Set food selection": {
-    "fo": "Vel matvøru",
-    "de": "Speisenauswahl festlegen"
+  "1 item": {
+    "fo": "1 matvøra",
+    "de": "1 Speise"
   },
-  "Save food selection": {
-    "fo": "Goym matval",
-    "de": "Speisenauswahl speichern"
+  "{items}, {claimed}/{capacity} amounts": {
+    "fo": "{items}, {claimed}/{capacity} eindir",
+    "de": "{items}, {claimed}/{capacity} Einheiten"
   },
-  "Enter 0 to remove this selection.": {
-    "fo": "Skriva 0 fyri at taka valið burtur.",
-    "de": "0 eingeben, um diese Auswahl zu entfernen."
+  "+ Add": {
+    "fo": "+ Legg afturat",
+    "de": "+ Hinzufügen"
+  },
+  "Edit quantity for {household}": {
+    "fo": "Broyt nøgd hjá {household}",
+    "de": "Menge für {household} bearbeiten"
+  },
+  "Remove selection for {household}": {
+    "fo": "Tak val hjá {household} burtur",
+    "de": "Auswahl für {household} entfernen"
+  },
+  "Remove the food selection for {household}?": {
+    "fo": "Tak matvalið hjá {household} burtur?",
+    "de": "Die Speisenauswahl für {household} entfernen?"
   },
   "Add recipe": {
     "fo": "Legg uppskrift afturat",

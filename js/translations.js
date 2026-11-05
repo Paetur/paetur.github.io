@@ -2804,6 +2804,10 @@ window.RSVP_TRANSLATIONS = {
     "fo": "Tak matvalið hjá {household} burtur?",
     "de": "Die Speisenauswahl für {household} entfernen?"
   },
+  "+ Add recipe": {
+    "fo": "+ Legg uppskrift afturat",
+    "de": "+ Rezept hinzufügen"
+  },
   "Add recipe": {
     "fo": "Legg uppskrift afturat",
     "de": "Rezept hinzufügen"

@@ -503,3 +503,15 @@ html[data-theme="dark"] code{background:#253b32;color:var(--ink)}
 .food-selection-form input{width:5em}
 .food-selection-form .btn{padding:.35rem .6rem}
 .food-selection-editor>summary{cursor:pointer;width:max-content;padding:4px 0;font-size:.8rem;font-weight:700}
+
+.food-item-info .food-recipe-pdf{margin-inline-start:auto;flex-shrink:0}
+.food-recipe-dialog{width:min(36rem,calc(100vw - 32px));max-height:calc(100dvh - 32px);padding:20px;border:1px solid var(--line);border-radius:12px;background:var(--white);color:var(--ink)}
+.food-recipe-dialog::backdrop{background:#0008}
+.food-recipe-dialog label{grid-column:1/-1}
+.food-recipe-dialog textarea{width:100%;resize:vertical}
+.food-selections .data-table{width:100%;margin:0}
+.food-selections .data-table th,.food-selections .data-table td{padding:4px 8px}
+.food-selections .data-table th:nth-child(2){width:25%}
+.food-selections .data-table th:last-child{width:6rem}
+.food-selections .food-selection-editor{border:0;padding:0;margin:4px 8px;background:transparent}
+.food-selections .food-selection-editor:not([open]){width:max-content}

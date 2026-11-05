@@ -625,7 +625,7 @@
  function foodSelections(item,claims,claimed){
    const section=R.dom('div',{class:'food-selections edit-only'});
    const available=item.quantity_needed-claimed;
-   const eligible=ordered(store.households,'household_name').filter(h=>h.food&&!h.archived_at&&!h.food_confirmed);
+   const eligible=ordered(store.households,'household_name').filter(h=>h.food&&!h.archived_at);
    const canEdit=new Set(eligible.map(h=>h.id));
    const selectionArgs=(householdId,quantity,expected)=>({
      p_household_id:householdId,p_food_item_id:item.id,p_quantity:quantity,p_expected_quantity:expected
@@ -658,7 +658,7 @@
      section.append(makeTable([T('Household'),T('Quantity'),''],rows));
    }
    const selected=new Set(claims.map(c=>c.household_id));
-   const options=eligible.filter(h=>!selected.has(h.id)).map(h=>[h.id,h.household_name]);
+   const options=eligible.filter(h=>!h.food_confirmed&&!selected.has(h.id)).map(h=>[h.id,h.household_name]);
    if(item.active&&available>0&&options.length){
      const editor=disclosure(T('+ Add'),'food-selection-editor');
      const form=R.dom('form',{class:'food-selection-form'});
@@ -675,10 +675,6 @@
    const fields=[[T("Name"),'name_en'],[T("User Comment"),'description_en'],[T("Admin Comment"),'admin_comment']];
    for(const [labelText,key] of fields){const label=R.dom('label');label.append(R.dom('span',{},labelText));const input=R.dom(key==='name_en'?'input':'textarea',{name:key});input.value=key==='name_en'?foodItemName(item):key==='description_en'?(item.description_en||item.description_fo||item.description_de||''):item[key]||'';input.maxLength=key==='name_en'?300:4000;input.required=key==='name_en';label.append(input);form.append(label);}
    const quantityLabel=R.dom('label');quantityLabel.append(R.dom('span',{},T("Quantity needed")));const quantity=R.dom('input',{type:'number',min:'0',name:'quantity_needed'});quantity.value=String(item.quantity_needed);quantity.required=true;quantityLabel.append(quantity);form.insertBefore(quantityLabel,form.children[1]);
-   const recipeLabel=R.dom('label',{class:'span-2'});
-   const recipeInput=R.dom('textarea',{name:'recipe_text',maxlength:'12000',rows:'6'});
-   recipeInput.value=item.recipe_text||'';
-   recipeLabel.append(R.dom('span',{},T('Recipe')),recipeInput);form.append(recipeLabel);
    const activeLabel=R.dom('label',{class:'checkbox-label'});const active=R.dom('input',{type:'checkbox'});active.checked=item.active;activeLabel.append(active,R.dom('span',{},T("Available for guests")));form.append(activeLabel);
    const footer=R.dom('div',{class:'food-edit-buttons'});
    const save=R.dom('button',{type:'submit',class:'btn'},T("Save food item"));
@@ -689,7 +685,7 @@
      if(!Number.isInteger(required)||required<claim||(!active.checked&&claim>0)){
        show(T('Quantity cannot fall below {count} claimed; claimed items cannot be hidden.',{count:claim}),'error');return;
      }
-     const record={quantity_needed:required,active:active.checked,recipe_text:recipeInput.value.trim()||null};
+     const record={quantity_needed:required,active:active.checked};
      for(const [,key] of fields)record[key]=form.elements.namedItem(key).value.trim()||null;
      if(!record.name_en){show(T("Name is required."),'error');return;}if(!item.name_fo)record.name_fo=record.name_en;
      save.disabled=true;form.setAttribute('aria-busy','true');
@@ -697,6 +693,26 @@
      catch(error){show(R.safeError(error),'error');}finally{save.disabled=false;form.removeAttribute('aria-busy');}
    });
    return form;
+ }
+ function openFoodRecipe(item){
+   const dialog=R.dom('dialog',{class:'food-recipe-dialog'});
+   dialog.setAttribute('aria-label',T('Recipe'));
+   const heading=R.dom('h2',{},T('Recipe')+' · '+foodItemName(item));
+   const form=R.dom('form',{class:'form-grid'});
+   const recipe=field(form,T('Recipe'),item.recipe_text,null,'textarea',false,12000);
+   recipe.rows=10;
+   const cancel=R.dom('button',{type:'button',class:'btn secondary'},T('Cancel'));
+   cancel.addEventListener('click',()=>dialog.close());
+   form.append(cancel);
+   dialog.append(heading,saveForm(form,T('Save'),async()=>{
+     const {error}=await db.from('food_items').update({recipe_text:recipe.value.trim()||null}).eq('id',item.id);
+     if(error)throw error;
+     dialog.close();
+   }));
+   dialog.addEventListener('close',()=>dialog.remove(),{once:true});
+   $('adminApp').append(dialog);
+   dialog.showModal();
+   recipe.focus();
  }
  function renderFood(){
    R.closePopups();const box=$('adminFoodList');box.replaceChildren();
@@ -757,8 +773,9 @@
          {p_food_item_id:f.id,p_direction:-1},T("Food order saved.")),pos<=0));
        buttons.append(btn('↓',T("Move food item down"),()=>rpcAction('admin_move_food_item',
          {p_food_item_id:f.id,p_direction:1},T("Food order saved.")),pos===items.length-1));
-       const edit=buildFoodEditor(f);edit.classList.remove('hidden');edit.classList.add('edit-only');
-       buttons.append(btn(T("Edit"),T("Edit food item"),()=>{wrapper.open=true;edit.classList.remove('hidden');edit.querySelector('input')?.focus();}));
+       const edit=buildFoodEditor(f);edit.classList.add('edit-only');
+       wrapper.addEventListener('toggle',()=>{if(!wrapper.open)edit.classList.add('hidden');});
+       buttons.append(btn(T("Edit"),T("Edit food item"),()=>{edit.classList.toggle('hidden');if(!edit.classList.contains('hidden'))edit.querySelector('input')?.focus();}));
        buttons.append(iconAction('delete',T("Archive food item (preserve existing claims)"),async()=>{
          if(!confirm(T('Archive {item}? Existing claims are preserved; you can reactivate it using Edit.',{item:foodItemName(f)})))return;
          const {error}=await db.from('food_items').update({active:false}).eq('id',f.id);
@@ -779,6 +796,15 @@
        changeLabel.append(change);
        const move=iconAction('move',T('Move to category'),()=>{},false,'edit-only');
        const popup=R.iconPopup(move,changeLabel);popup.classList.add('edit-only');buttons.append(popup);
+       if(f.recipe_text){
+         const pdf=R.dom('button',{type:'button',class:'small-tool food-recipe-pdf',title:T('Print / Save as PDF')},'PDF');
+         pdf.setAttribute('aria-label',T('Print / Save as PDF'));
+         pdf.addEventListener('click',event=>{
+           event.preventDefault();event.stopPropagation();
+           if(!R.printRecipe(foodItemName(f),f.recipe_text))show(T('Allow pop-ups to save the recipe as PDF.'),'warning');
+         });
+         info.insertBefore(pdf,info.lastElementChild);
+       }
        main.append(info);
        if(claims.length){
          const commitments=R.dom('small',{class:'food-claim-summary muted'});
@@ -787,12 +813,11 @@
        }
        const detail=R.dom('div',{class:'food-expanded'}),comments=R.dom('div',{class:'food-comment-grid'});
        for(const [label,value] of [['User Comment',f.description_en||f.description_fo||f.description_de],['Admin Comment',f.admin_comment]])if(value?.trim())comments.append(R.dom('p',{class:'small'},T(label)+': '+value));
-       detail.dataset.hasComments=String(!!(comments.children.length||f.recipe_text));
+       detail.dataset.hasComments=String(!!comments.children.length);
        if(comments.children.length)detail.append(comments);
-       if(f.recipe_text){
-         const recipe=disclosure(T('Recipe'),'food-item-recipe');
-         recipe.append(R.recipeContent(f.recipe_text));detail.append(recipe);
-       }
+       const recipeButton=R.dom('button',{type:'button',class:'small-tool edit-only'},T(f.recipe_text?'Edit recipe':'+ Add recipe'));
+       recipeButton.addEventListener('click',()=>openFoodRecipe(f));
+       buttons.append(recipeButton);
        detail.append(foodSelections(f,claims,claim),buttons,edit);
        wrapper.append(main,detail);
        itemList.append(wrapper);
@@ -1014,7 +1039,7 @@
      const category=$('newFoodCategory').value;const count=Number($('newFoodQuantity').value);
      if(!Number.isInteger(count)||count<0){show(T("Enter a non-negative quantity."),'error');button.disabled=false;return;}
      const items=store.food.filter(f=>f.category===category);
-     const record={category,name_fo:$('newFoodFo').value.trim(),name_en:$('newFoodFo').value.trim(),description_en:$('newFoodUserComment').value.trim()||null,admin_comment:$('newFoodAdminComment').value.trim()||null,recipe_text:$('newFoodRecipe').value.trim()||null,quantity_needed:count,active:true,sort_order:Math.max(0,...items.map(f=>f.sort_order||0))+1};
+     const record={category,name_fo:$('newFoodFo').value.trim(),name_en:$('newFoodFo').value.trim(),description_en:$('newFoodUserComment').value.trim()||null,admin_comment:$('newFoodAdminComment').value.trim()||null,quantity_needed:count,active:true,sort_order:Math.max(0,...items.map(f=>f.sort_order||0))+1};
      try{const {error}=await db.from('food_items').insert(record);if(error)throw error;e.target.reset();await reload();show(T("Food item added."),'success');}
      catch(error){show(R.safeError(error),'error');}finally{button.disabled=false;}
    });

@@ -31,7 +31,7 @@ Apply the additive food-comment/capacity and administrator-task-sheet migrations
 
 ## Recipes
 
-Add or edit the recipe on the food item itself. Guests can expand the ingredient list and instructions and use **Print / Save as PDF**. In Edit mode, use Allow food in Household details to grant access. Set a household's selection and quantity under the food item. A quantity of zero removes an existing selection. The household must have food access, and confirmed selections stay locked. Existing reservations convert to one unit unless the household already selected the item.
+Use **+ Add recipe** or **Edit recipe** on the food item. Saving the dialog adds a **PDF** button beside its amount. Guests can expand the ingredient list and instructions and use **Print / Save as PDF**. In Edit mode, use Allow food in Household details to grant access. Set a household's selection and quantity under the food item. Use the pencil or trash icon to edit or remove an existing selection. Admins can correct an existing confirmed selection, while guest confirmation continues to lock guest edits. Existing reservations convert to one unit unless the household already selected the item.
 
 Deploy the frontend that removes the legacy recipe-group lookup before applying the legacy-table cleanup migration. The migration stops if the recipe-group table contains rows or the bring-list archive has records missing from Other. Backups and restores use the matching application schema.
 

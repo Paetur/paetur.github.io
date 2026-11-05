@@ -46,7 +46,12 @@ const {PGlite}=require('@electric-sql/pglite'),fs=require('node:fs'),assert=requ
  assert.equal(await value('SELECT household_name v FROM public.households WHERE id=$1',[selectedHousehold]),'One');
  await assert.rejects(()=>db.query('SELECT public.admin_set_food_selection($1,$2,1,0)',[selectedHousehold,brownie]),/changed/);
  await assert.rejects(()=>db.query('SELECT public.admin_set_food_selection($1,$2,3,2)',[selectedHousehold,brownie]),/Insufficient/);
- await db.query('SELECT public.admin_set_food_selection($1,$2,0,2)',[selectedHousehold,brownie]);
+ await db.exec('RESET ROLE');
+ await db.query('UPDATE public.households SET food_confirmed=true WHERE id=$1',[selectedHousehold]);
+ await db.exec('SET ROLE authenticated');
+ await db.query('SELECT public.admin_set_food_selection($1,$2,1,2)',[selectedHousehold,brownie]);
+ await assert.rejects(()=>db.query('SELECT public.admin_set_food_selection($1,$2,1,0)',[selectedHousehold,id]),/unavailable/);
+ await db.query('SELECT public.admin_set_food_selection($1,$2,0,1)',[selectedHousehold,brownie]);
  assert.equal(await value('SELECT count(*)::int v FROM public.food_claims WHERE food_item_id=$1',[brownie]),0);
  await db.query('SELECT public.admin_save_tasks($1)',[[draft,{task:'Tablecloths',assigned_to:'Second helper',status:'open',sort_order:1}]]);
  const saved=(await db.query('SELECT * FROM public.things_to_do WHERE id=$1',[task.id])).rows[0];assert.equal(saved.notes,'Keep this note');assert.equal(new Date(saved.due_date).toISOString().slice(0,10),'2027-01-01');

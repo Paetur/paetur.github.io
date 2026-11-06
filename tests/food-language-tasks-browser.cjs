@@ -11,7 +11,7 @@ const server=http.createServer((req,res)=>{
 async function run(type){const browser=await type.launch({headless:true});try{
  const page=await browser.newPage({viewport:{width:820,height:1180}}),errors=[];page.on('pageerror',e=>errors.push(e.message));
  await page.addInitScript(()=>localStorage.setItem('rsvp-interface-language','en'));
- const extra=`fixtures.event_sessions[0].location_id='venue-1';fixtures.event_locations=[{id:'venue-1',name:'Main hall',address:'12 Example Street',country_code:'FO',timezone:'Atlantic/Faroe',map_url:'https://maps.example.invalid/main-hall'},{id:'venue-2',name:'Garden'}];fixtures.households[1].food=true;fixtures.households[2].food=true;fixtures.household_session_defaults.push({household_id:h2,session_id:s1,is_invited:true});fixtures.other_categories=[{id:'other-cat',name:'Tasks',sort_order:0}];fixtures.other_items=[{id:'task-one',category_id:'other-cat',item:'Arrange chairs',assigned_to:'Example helper',status:'open',sort_order:0,updated_at:'2026-11-01T12:00:00Z'}];fixtures.food_items.forEach(f=>{f.description_en='Bring chilled';f.description_fo='Source amount: 4';f.admin_comment='Private supplier note';});const foodFrom=client.from;client.from=function(name){const table=foodFrom.call(this,name);if(name==='food_item_types')table.insert=async record=>{(fixtures.food_item_types??=[]).push(record);return {error:null};};if(name==='food_items')table.update=record=>({eq:async(_,id)=>{Object.assign(fixtures.food_items.find(f=>f.id===id),record);window.__savedFood=record;return {error:null};}});return table;};const oldTaskRpc=window.__managementRpc;window.__managementRpc=(name,args)=>{if(name==='admin_move_session'){const rows=[...fixtures.event_sessions].sort((a,b)=>a.sort_order-b.sort_order);const i=rows.findIndex(s=>s.id===args.p_session_id),j=i+args.p_direction;if(j>=0&&j<rows.length){[rows[i],rows[j]]=[rows[j],rows[i]];rows.forEach((s,index)=>s.sort_order=index+1);}return {data:null,error:null};}if(name==='admin_rename_member'){window.__renamedAdmin=args;return {data:null,error:null};}if(name==='admin_list_members'&&window.__renamedAdmin)return {data:[{user_id:h1,name:window.__renamedAdmin.p_name,email:'test-admin@example.invalid'}],error:null};if(name==='admin_edit_venue_food'){window.__venueFood=args;for(const id of args.p_add){const item=fixtures.food_items.find(f=>f.id===id);item.venue_ids=[...new Set([...(item.venue_ids||[]),args.p_venue_id])];}for(const id of args.p_remove){const item=fixtures.food_items.find(f=>f.id===id);item.venue_ids=item.venue_ids.filter(venue=>venue!==args.p_venue_id);}return {data:null,error:null};}if(name==='admin_save_translation'){(window.__savedTypeTranslations??=[]).push(args);return {data:null,error:null};}if(name==='admin_save_food_translations'){window.__savedTranslations=args;return {data:null,error:null};}if(name==='admin_set_food_selection'){const old=fixtures.food_claims.findIndex(c=>c.household_id===args.p_household_id&&c.food_item_id===args.p_food_item_id);if(old>=0)fixtures.food_claims.splice(old,1);if(args.p_quantity)fixtures.food_claims.push({household_id:args.p_household_id,food_item_id:args.p_food_item_id,quantity:args.p_quantity});window.__savedSelection=args;return {data:null,error:null};}if(name==='admin_save_other'){window.__savedOther=args;const value={...args.p_values,id:args.p_id,updated_at:new Date().toISOString()},old=fixtures.other_items.find(r=>r.id===args.p_id);if(old)Object.assign(old,value);else fixtures.other_items.push(value);return {data:value,error:null};}return oldTaskRpc(name,args);};`;
+ const extra=`fixtures.event_sessions[0].location_id='venue-1';fixtures.event_locations=[{id:'venue-1',name:'Main hall',address:'12 Example Street',country_code:'FO',timezone:'Atlantic/Faroe',map_url:'https://maps.example.invalid/main-hall'},{id:'venue-2',name:'Garden'}];fixtures.households[1].food=true;fixtures.households[2].food=true;fixtures.household_session_defaults.push({household_id:h2,session_id:s1,is_invited:true});fixtures.other_categories=[{id:'other-cat',name:'Tasks',sort_order:0}];fixtures.other_items=[{id:'task-one',category_id:'other-cat',item:'Arrange chairs',assigned_to:'Example helper',status:'open',sort_order:0,updated_at:'2026-11-01T12:00:00Z'}];fixtures.food_items.forEach(f=>{f.description_en='Bring chilled';f.description_fo='Source amount: 4';f.admin_comment='Private supplier note';});const foodFrom=client.from;client.from=function(name){const table=foodFrom.call(this,name);if(name==='food_item_types')table.insert=async record=>{(fixtures.food_item_types??=[]).push(record);return {error:null};};if(name==='food_items')table.update=record=>({eq:async(_,id)=>{Object.assign(fixtures.food_items.find(f=>f.id===id),record);window.__savedFood=record;return {error:null};}});return table;};const oldTaskRpc=window.__managementRpc;window.__managementRpc=(name,args)=>{if(name==='admin_move_session'){const rows=[...fixtures.event_sessions].sort((a,b)=>a.sort_order-b.sort_order);const i=rows.findIndex(s=>s.id===args.p_session_id),j=i+args.p_direction;if(j>=0&&j<rows.length){[rows[i],rows[j]]=[rows[j],rows[i]];rows.forEach((s,index)=>s.sort_order=index+1);}return {data:null,error:null};}if(name==='admin_rename_member'){window.__renamedAdmin=args;return {data:null,error:null};}if(name==='admin_list_members'&&window.__renamedAdmin)return {data:[{user_id:h1,name:window.__renamedAdmin.p_name,email:'test-admin@example.invalid'}],error:null};if(name==='admin_edit_venue_food'){window.__venueFood=args;for(const id of args.p_add){const item=fixtures.food_items.find(f=>f.id===id);item.venue_ids=[...new Set([...(item.venue_ids||[]),args.p_venue_id])];}for(const id of args.p_remove){const item=fixtures.food_items.find(f=>f.id===id);item.venue_ids=(item.venue_ids||fixtures.event_locations.filter(v=>!v.archived_at).map(v=>v.id)).filter(venue=>venue!==args.p_venue_id);}return {data:null,error:null};}if(name==='admin_save_translation'){(window.__savedTypeTranslations??=[]).push(args);return {data:null,error:null};}if(name==='admin_save_food_translations'){window.__savedTranslations=args;return {data:null,error:null};}if(name==='admin_set_food_selection'){const old=fixtures.food_claims.findIndex(c=>c.household_id===args.p_household_id&&c.food_item_id===args.p_food_item_id);if(old>=0)fixtures.food_claims.splice(old,1);if(args.p_quantity)fixtures.food_claims.push({household_id:args.p_household_id,food_item_id:args.p_food_item_id,quantity:args.p_quantity});window.__savedSelection=args;return {data:null,error:null};}if(name==='admin_save_other'){window.__savedOther=args;const value={...args.p_values,id:args.p_id,updated_at:new Date().toISOString()},old=fixtures.other_items.find(r=>r.id===args.p_id);if(old)Object.assign(old,value);else fixtures.other_items.push(value);return {data:value,error:null};}return oldTaskRpc(name,args);};`;
  await page.route('**/supabase.min.js',r=>r.fulfill({contentType:'text/javascript',body:mock+'\n'+extra}));
  await page.goto('http://127.0.0.1:'+server.address().port+'/admin/');await page.waitForFunction(()=>document.querySelectorAll('#statsGrid .stat-card').length===4);
  assert.equal(await page.locator('[data-tab="invites"]').textContent(),'Invites');
@@ -123,7 +123,7 @@ async function run(type){const browser=await type.launch({headless:true});try{
  if(process.env.RSVP_LAYOUT_PREVIEW&&type.name()==='chromium')await page.locator('[data-panel="language"]').screenshot({path:process.env.RSVP_LAYOUT_PREVIEW+'/food-language-grid.png'});
  await grid.locator('.food-translation-row input').first().fill('Updated sample dish');
  await grid.getByRole('button',{name:'Save translations'}).click();
- await page.waitForFunction(()=>window.__savedTranslations?.p_changes.length===1);
+ await page.waitForFunction(()=>window.__savedTranslations?.p_changes.length===1&&!document.querySelector('#foodTranslationGrid button').disabled);
  await page.locator('#translationCategory').selectOption('food-types');
  const typePicker=grid.getByLabel('Type',{exact:true});
  const typeKeys=await typePicker.locator('option').evaluateAll(options=>options.map(option=>option.value));
@@ -136,7 +136,7 @@ async function run(type){const browser=await type.launch({headless:true});try{
  await grid.getByLabel('Type · English',{exact:true}).fill('Trays');
  await grid.getByLabel('Type · Deutsch',{exact:true}).fill('Backbleche');
  await grid.getByRole('button',{name:'Save translations'}).click();
- await page.waitForFunction(()=>window.__savedTypeTranslations?.length===2);
+ await page.waitForFunction(()=>window.__savedTypeTranslations?.length===2&&!document.querySelector('#foodTranslationGrid button').disabled);
  assert.deepEqual(await page.evaluate(()=>window.__savedTypeTranslations.map(row=>row.p_language)),['en','de']);
  await page.locator('#translationCategory').selectOption('food');
  if(process.env.FOOD_LANGUAGE_PREVIEW&&type.name()==='chromium')await page.locator('[data-panel="language"]').screenshot({path:process.env.FOOD_LANGUAGE_PREVIEW+'/language-food-category-picker.png'});
@@ -144,7 +144,8 @@ async function run(type){const browser=await type.launch({headless:true});try{
  const settingsGrid=page.locator('#foodTranslationGrid');
  assert.equal(await settingsGrid.locator('textarea').count(),3);
  if(process.env.SETTINGS_PREVIEW&&type.name()==='chromium')await page.locator('#translationEditor').screenshot({path:process.env.SETTINGS_PREVIEW+'/settings-language-preview.png'});
- await page.locator('[data-settings-tab="venues"]').click();
+ await page.locator('#closeSettings').click();
+ await page.locator('[data-tab="venues"]').click();
  for(const id of ['venueList','sessionsList']){
    assert.equal(await page.locator('#'+id).evaluate(node=>node.closest('details').open),true);
  }
@@ -160,7 +161,7 @@ async function run(type){const browser=await type.launch({headless:true});try{
  await sessionRow.getByText('Later session',{exact:true}).waitFor();
  assert.equal(await sessionRow.evaluate(node=>node.open),false);
 
- if(process.env.SETTINGS_PREVIEW&&type.name()==='chromium')await page.locator('[data-settings-panel="venues"]').screenshot({path:process.env.SETTINGS_PREVIEW+'/settings-venues-sessions.png'});
+ if(process.env.SETTINGS_PREVIEW&&type.name()==='chromium')await page.locator('[data-panel="venues"]').screenshot({path:process.env.SETTINGS_PREVIEW+'/settings-venues-sessions.png'});
  const venue=page.locator('#venueList details').filter({hasText:'Main hall'});
  assert.equal(await venue.evaluate(d=>d.open),false);
  assert.ok(await venue.getByText('12 Example Street',{exact:false}).isVisible());
@@ -168,21 +169,33 @@ async function run(type){const browser=await type.launch({headless:true});try{
  if(process.env.SETTINGS_PREVIEW&&type.name()==='chromium')await page.locator('#venueList').screenshot({path:process.env.SETTINGS_PREVIEW+'/settings-venues-preview.png'});
  await venue.locator(':scope > summary').evaluate(summary=>summary.parentElement.open=true);
  assert.equal(await venue.getByRole('button',{name:'Add households',exact:true}).count(),0);
- await venue.getByRole('button',{name:'Add food',exact:true}).click();
- const foodDialog=page.getByRole('dialog',{name:'Add food'});
- await foodDialog.getByRole('checkbox',{name:'Select all',exact:true}).check();
- if(process.env.SETTINGS_PREVIEW&&type.name()==='chromium')await foodDialog.screenshot({path:process.env.SETTINGS_PREVIEW+'/venue-add-food-preview.png'});
+ await page.evaluate(()=>{window.__fixtures.food_items.find(item=>item.id==='dessert-example').venue_ids=['venue-2'];});
+ await page.locator('#refreshButton').click();
+ await page.waitForFunction(()=>!document.querySelector('#refreshButton').disabled);
+ await venue.locator(':scope > summary').evaluate(summary=>summary.parentElement.open=true);
+ await venue.getByRole('button',{name:'Manage food',exact:true}).click();
+ const foodDialog=page.getByRole('dialog',{name:'Venue food'});
+ assert.deepEqual(await foodDialog.locator('legend').allTextContents(),['Main dishes','Desserts']);
+ assert.deepEqual(await foodDialog.getByRole('group',{name:'Main dishes'}).locator('label').allTextContents(),['First dish','Sample dish']);
+ assert.ok(await foodDialog.getByRole('checkbox',{name:'First dish',exact:true}).isChecked());
+ await foodDialog.getByRole('checkbox',{name:'First dish',exact:true}).uncheck();
+ await foodDialog.getByRole('checkbox',{name:'Sample dessert',exact:true}).check();
+ if(process.env.SETTINGS_PREVIEW&&type.name()==='chromium')await foodDialog.screenshot({path:process.env.SETTINGS_PREVIEW+'/venue-manage-food-categories.png'});
  await foodDialog.getByRole('button',{name:'Save',exact:true}).click();
  await foodDialog.waitFor({state:'detached'});
- assert.equal(await page.evaluate(()=>window.__venueFood.p_add.length),3);
+ assert.deepEqual(await page.evaluate(()=>window.__venueFood.p_add),['dessert-example']);
+ assert.deepEqual(await page.evaluate(()=>window.__venueFood.p_remove),['first-example']);
+ assert.deepEqual(await page.evaluate(()=>window.__fixtures.food_items.find(item=>item.id==='first-example').venue_ids),['venue-2']);
  await venue.locator(':scope > summary').evaluate(summary=>summary.parentElement.open=true);
- await venue.getByRole('button',{name:'Add food',exact:true}).click();
+ await venue.getByRole('button',{name:'Manage food',exact:true}).click();
+ await foodDialog.getByRole('checkbox',{name:'Select all',exact:true}).check();
  await foodDialog.getByRole('checkbox',{name:'Select all',exact:true}).uncheck();
  assert.ok(await foodDialog.getByRole('button',{name:'Save',exact:true}).isEnabled());
  await foodDialog.getByRole('button',{name:'Save',exact:true}).click();
  await foodDialog.waitFor({state:'detached'});
  assert.equal(await page.evaluate(()=>window.__venueFood.p_add.length),0);
- assert.equal(await page.evaluate(()=>window.__venueFood.p_remove.length),3);
+ assert.equal(await page.evaluate(()=>window.__venueFood.p_remove.length),2);
+ await page.locator('#settingsToggle').click();
  await page.locator('[data-settings-tab="administrators"]').click();
  const admin=page.locator('#adminList .admin-member').first();
  await admin.getByRole('button',{name:/^Edit administrator name/}).click();

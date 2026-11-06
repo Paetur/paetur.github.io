@@ -24,7 +24,7 @@
  function settingsTab(name){activeSettingsTab=name;document.querySelectorAll('[data-settings-tab]').forEach(b=>{const active=b.dataset.settingsTab===name;b.classList.toggle('active',active);b.setAttribute('aria-pressed',String(active));});document.querySelectorAll('[data-settings-panel]').forEach(n=>n.classList.toggle('hidden',n.dataset.settingsPanel!==name));if(name==='logs')loadLogs(true);}
  function tab(name,updateUrl=true){
    if(name==='tasks')name='other';
-   if(!['dashboard','households','invites','food','other','language','settings'].includes(name))name='dashboard';
+   if(!['dashboard','venues','households','invites','food','other','language','settings'].includes(name))name='dashboard';
    activeTab=name;if(name!=='settings')lastMainTab=name;window.RSVP_ADMIN_TOOLS?.showTasks(name==='other');window.RSVP_ADMIN_TOOLS?.translationScope(name==='language'?'content':'settings');
    document.querySelectorAll('[data-tab]').forEach(b=>{
      const active=b.dataset.tab===name;b.classList.toggle('active',active);
@@ -1007,7 +1007,7 @@
    const footer=R.dom('div',{class:'venue-form-actions span-2'});
    footer.append(form.lastElementChild);
    if(v.id&&!v.archived_at){
-     const food=R.dom('button',{class:'small-tool',type:'button'},T('Add food'));
+     const food=R.dom('button',{class:'small-tool',type:'button'},T('Manage food'));
      food.addEventListener('click',()=>venueFoodDialog(v));footer.append(food);
    }
    const archiveLabel=archived.closest('label');archiveLabel.classList.add('checkbox-label');
@@ -1048,11 +1048,11 @@
    if(fields.length)d.append(f);else d.append(R.dom('p',{},T("Create sessions in Settings first.")));return d;
  }
  function venueFoodDialog(venue){
-   const title=T('Add food');
+   const title=T('Venue food');
    const dialog=R.dom('dialog',{class:'food-recipe-dialog venue-assignment-dialog'});
    dialog.setAttribute('aria-label',title);
    const form=R.dom('form');
-   form.append(R.dom('p',{class:'micro'},T('Adding unrestricted food here makes it available at this venue only. Items already assigned to other venues keep those assignments.')));
+   form.append(R.dom('p',{class:'micro'},T('Checked items are available at this venue. Changes apply here only. Existing household claims are kept.')));
    const list=R.dom('div',{class:'venue-assignment-list'});
    const selectAllLabel=R.dom('label',{class:'checkbox-label venue-select-all'});
    const selectAll=R.dom('input',{type:'checkbox'});
@@ -1065,24 +1065,29 @@
    cancel.addEventListener('click',()=>dialog.close());
    footer.append(cancel,save);
    form.append(selectAllLabel,list,status,footer);
-   const assigned=new Set(store.food.filter(item=>item.venue_ids?.includes(venue.id)).map(item=>item.id));
+   const assigned=new Set(store.food.filter(item=>item.venue_ids?.includes(venue.id)||(item.active&&item.venue_ids==null)).map(item=>item.id));
    const updateSelection=()=>{
      const count=checks.filter(check=>check.checked).length;
      selectAll.checked=!!checks.length&&count===checks.length;
      selectAll.indeterminate=count>0&&count<checks.length;
      save.disabled=!checks.some(check=>check.checked!==assigned.has(check.value));
    };
-   const choices=foodMenuCategories().flatMap(category=>
-     foodMenuItems(category.name).filter(item=>item.active||assigned.has(item.id))
-       .map(item=>[item.id,foodItemName(item)+(category.name?' · '+category.name:'')]));
-   const checks=choices.map(([id,name])=>{
-     const check=R.dom('input',{type:'checkbox',value:id});check.checked=assigned.has(id);
-     const label=R.dom('label',{class:'checkbox-label'});
-     label.append(check,document.createTextNode(name));list.append(label);
-     check.addEventListener('change',updateSelection);return check;
+   const checks=foodMenuCategories().flatMap(category=>{
+     const items=foodMenuItems(category.name).filter(item=>item.active||assigned.has(item.id));
+     if(!items.length)return [];
+     const group=R.dom('fieldset',{class:'venue-assignment-category'});
+     group.append(R.dom('legend',{},category.name||T('Uncategorized')));
+     const controls=items.map(item=>{
+       const check=R.dom('input',{type:'checkbox',value:item.id});check.checked=assigned.has(item.id);
+       const label=R.dom('label',{class:'checkbox-label'});
+       label.append(check,document.createTextNode(foodItemName(item)));group.append(label);
+       check.addEventListener('change',updateSelection);return check;
+     });
+     list.append(group);
+     return controls;
    });
    selectAllLabel.classList.toggle('hidden',!checks.length);
-   if(!checks.length)list.append(R.dom('p',{class:'small muted'},T('Nothing available to add.')));
+   if(!checks.length)list.append(R.dom('p',{class:'small muted'},T('No food items to manage.')));
    updateSelection();
    selectAll.addEventListener('change',()=>{
      checks.forEach(check=>{check.checked=selectAll.checked;});updateSelection();
@@ -1172,13 +1177,13 @@
    }
    $('acceptInvitationPanel').classList.add('hidden');pendingAdminInvitation=null;
    $('loginPanel').classList.add('hidden');$('adminApp').classList.remove('hidden');$('adminTopActions').classList.remove('hidden');$('loggedInAs').textContent=user.email||'';
-   const fragment=location.hash.slice(1)==='tasks'?'other':location.hash.slice(1);activeTab=['dashboard','households','invites','food','other','language','settings'].includes(fragment)?fragment:'dashboard';
+   const fragment=location.hash.slice(1)==='tasks'?'other':location.hash.slice(1);activeTab=['dashboard','venues','households','invites','food','other','language','settings'].includes(fragment)?fragment:'dashboard';
    tab(activeTab,false);mode(false);await reload();const logged=await R.adminRpc('admin_record_session',{p_action:'login'});if(logged.error)show(T("Signed in, but session logging is unavailable."),'warning');
  }
  async function init(){
    window.addEventListener('popstate',()=>{
      const fragment=location.hash.slice(1)==='tasks'?'other':location.hash.slice(1);
-     tab(['dashboard','households','invites','food','other','language','settings'].includes(fragment)?fragment:'dashboard',false);
+     tab(['dashboard','venues','households','invites','food','other','language','settings'].includes(fragment)?fragment:'dashboard',false);
    });
    await window.RSVP_I18N.load();
    db=R.getClient();

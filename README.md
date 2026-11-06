@@ -20,7 +20,7 @@ The repository source files do **not** contain guest data, invitation codes, or 
 
 **Household management:** create/edit households and guests, preserve invitations when moving guests, manage multiple contacts, archive/restore eligible records, and inspect append-only change history. See [Household management](docs/HOUSEHOLD_MANAGEMENT.md) for safeguards and migration order.
 
-**Venues and schedules:** both sections open by default. Collapsed venue and session rows show details and saved map links. In Edit mode, reorder sessions with the arrows and use **Add food** beside **Save venue** to add or remove food assignments in bulk. See [Venues and sessions](docs/VENUES_AND_SESSIONS.md).
+**Venues and schedules:** both sections open by default. Collapsed venue and session rows show details and saved map links. In Edit mode, reorder sessions with the arrows and use **Manage food** beside **Save venue** to add or remove food assignments in bulk. See [Venues and sessions](docs/VENUES_AND_SESSIONS.md).
 
 **Administration workflows:** device-based email, Messages and WhatsApp compose handoffs, separate reminder drafts, manual sending confirmation/history, reasoned RSVP corrections/reopening and household food-access controls. See [workflow guide](docs/DELIVERY_RSVP_FOOD_CONTROLS.md).
 
@@ -61,7 +61,7 @@ Live workflow acceptance and an independent recovery rehearsal remain open below
 - **Households:** use **Allow food** in Household details. Manage session invitations and RSVP responses under **Invites**.
 - **Food:** set each item’s unit and venue availability. Category headers show item counts and picked/total units. Household quantities stay visible on collapsed rows. Use **+ Add household**, the pencil, or the trash icon to manage selections.
 - **Recipes:** add or edit a recipe from the food item. The **Recipe** link opens the print view for saving as PDF.
-- **Venues:** open **Add food** in a venue’s edit form to select or clear assignments. Saving an empty selection removes that venue’s assignments while preserving other venues and existing claims.
+- **Venues:** open **Manage food** in a venue’s edit form to select or clear assignments. Saving an empty selection removes that venue’s assignments while preserving other venues and existing claims.
 - **Other:** manage tasks and things to bring in categories with per-row pencil and save controls.
 - **Invitations and reminders:** open drafts in Mail, Messages, or WhatsApp and record sending manually afterward. [iPad sending instructions](docs/DELIVERY_RSVP_FOOD_CONTROLS.md#sending-from-an-ipad)
 
@@ -120,7 +120,7 @@ The current repository is [Paetur/paetur.github.io](https://github.com/Paetur/pa
 5. The setup wizard will generate first-admin SQL for your verified email. Run it in **Supabase SQL Editor**, not in the public website. No unauthenticated user can self-claim admin through the website.
 6. Sign in through the setup wizard, download `config.js`, and commit it into `js/config.js` in the new repository.
 7. Sign in at `admin/` to configure the event. Invite additional administrators through Settings → Administrators after configuring its Edge Function, SMTP and allowed redirects.
-8. In Households, enable Edit mode to create households and guests. Create venues and sessions in Settings, then assign household defaults and guest exceptions in Invites before distributing links.
+8. In Households, enable Edit mode to create households and guests. Create venues and sessions in Venues, then assign household defaults and guest exceptions in Invites before distributing links.
 
 **Fresh installs and recovery:** `supabase/install.sql` is for empty databases and includes the full migration set. It is not a backup and contains no event guest data. Application import requires an empty, unpublished destination with matching schema and independently provisioned verified Auth accounts; see [Backup and restore](docs/BACKUP_RESTORE.md).
 

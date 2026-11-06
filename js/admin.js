@@ -614,6 +614,15 @@
   function claimedQuantity(item){return store.claims.filter(c=>c.food_item_id===item.id).reduce((n,c)=>n+c.quantity,0);}
  function foodCategoriesSorted(){return ordered(store.foodCategories,'name');}
  function foodItemName(item){return item.name_en||item.name_fo||item.name_de||T("Unnamed item");}
+ function foodMenuCategories(){
+   const categories=foodCategoriesSorted(),known=new Set(categories.map(c=>c.name));
+   const unregistered=[...new Set(store.food.map(f=>f.category||'').filter(c=>!known.has(c)))].sort();
+   return [...categories.map(c=>({name:c.name,id:c.id,registered:true})),
+     ...unregistered.map(name=>({name,id:null,registered:false}))];
+ }
+ function foodMenuItems(category){
+   return ordered(store.food.filter(item=>(item.category||'')===category),'name_fo');
+ }
  function foodCategoryOptions(select,current){
    foodCategoriesSorted().forEach(category=>select.append(R.dom('option',{value:category.name},category.name)));
    if(current&&!store.foodCategories.some(c=>c.name===current))select.append(R.dom('option',{value:current},current+T(" (unregistered)")));
@@ -776,12 +785,9 @@
    fillNewFoodTypes($('newFoodType').value);
    newFoodVenues=foodVenueFields($('newFoodVenues'));
    const search=$('foodSearch')?.value.trim().toLowerCase()||'';
-   const categories=foodCategoriesSorted(),known=new Set(categories.map(c=>c.name));
-   const unregistered=[...new Set(store.food.map(f=>f.category||'').filter(c=>!known.has(c)))].sort();
-   const list=[...categories.map(c=>({name:c.name,id:c.id,registered:true})),
-     ...unregistered.map(name=>({name,id:null,registered:false}))];
-   for(const [index,category] of list.entries()){
-     const items=ordered(store.food.filter(f=>(f.category||'')===category.name),'name_fo');
+   const categories=foodCategoriesSorted();
+   for(const [index,category] of foodMenuCategories().entries()){
+     const items=foodMenuItems(category.name);
      const visible=items.filter(f=>!search||[f.name_fo,f.name_en,f.name_de,f.category]
        .join(' ').toLowerCase().includes(search));
      if(search&&!visible.length)continue;
@@ -1167,5 +1173,5 @@
    });
 
  }
- document.addEventListener('DOMContentLoaded',()=>{(window.RSVP_ADMIN_TOOLS?.init({R,getStore:()=>store,reload,isEditing:()=>editMode,show}),initContent(),init()).catch(e=>show(R.safeError(e),'error'));});
+ document.addEventListener('DOMContentLoaded',()=>{(window.RSVP_ADMIN_TOOLS?.init({R,getStore:()=>store,reload,isEditing:()=>editMode,show,foodMenuCategories,foodMenuItems}),initContent(),init()).catch(e=>show(R.safeError(e),'error'));});
 }());

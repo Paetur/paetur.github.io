@@ -2836,6 +2836,22 @@ window.RSVP_TRANSLATIONS = {
     "fo": "Týðingar av slagi verða nýttar til allar matvørur av sama slagi.",
     "de": "Die Übersetzung der Einheit gilt für alle Speisen mit dieser Einheit."
   },
+  "No matching food types.": {
+    "fo": "Eingi samsvarandi matvørusløg.",
+    "de": "Keine passenden Speiseneinheiten."
+  },
+  "Food Types": {
+    "fo": "Matvørusløg",
+    "de": "Speiseneinheiten"
+  },
+  "Food categories": {
+    "fo": "Matvørubólkar",
+    "de": "Speisenkategorien"
+  },
+  "All categories": {
+    "fo": "Allir bólkar",
+    "de": "Alle Kategorien"
+  },
   "Save translations": {
     "fo": "Goym týðingar",
     "de": "Übersetzungen speichern"

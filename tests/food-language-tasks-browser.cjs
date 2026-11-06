@@ -11,7 +11,7 @@ const server=http.createServer((req,res)=>{
 async function run(type){const browser=await type.launch({headless:true});try{
  const page=await browser.newPage({viewport:{width:820,height:1180}}),errors=[];page.on('pageerror',e=>errors.push(e.message));
  await page.addInitScript(()=>localStorage.setItem('rsvp-interface-language','en'));
- const extra=`fixtures.event_locations=[{id:'venue-1',name:'Main hall'},{id:'venue-2',name:'Garden'}];fixtures.households[1].food=true;fixtures.households[2].food=true;fixtures.household_session_defaults.push({household_id:h2,session_id:s1,is_invited:true});fixtures.other_categories=[{id:'other-cat',name:'Tasks',sort_order:0}];fixtures.other_items=[{id:'task-one',category_id:'other-cat',item:'Arrange chairs',assigned_to:'Example helper',status:'open',sort_order:0,updated_at:'2026-11-01T12:00:00Z'}];fixtures.food_items.forEach(f=>{f.description_en='Bring chilled';f.description_fo='Source amount: 4';f.admin_comment='Private supplier note';});const foodFrom=client.from;client.from=function(name){const table=foodFrom.call(this,name);if(name==='food_item_types')table.insert=async record=>{(fixtures.food_item_types??=[]).push(record);return {error:null};};if(name==='food_items')table.update=record=>({eq:async(_,id)=>{Object.assign(fixtures.food_items.find(f=>f.id===id),record);window.__savedFood=record;return {error:null};}});return table;};const oldTaskRpc=window.__managementRpc;window.__managementRpc=(name,args)=>{if(name==='admin_save_food_translations'){window.__savedTranslations=args;return {data:null,error:null};}if(name==='admin_set_food_selection'){const old=fixtures.food_claims.findIndex(c=>c.household_id===args.p_household_id&&c.food_item_id===args.p_food_item_id);if(old>=0)fixtures.food_claims.splice(old,1);if(args.p_quantity)fixtures.food_claims.push({household_id:args.p_household_id,food_item_id:args.p_food_item_id,quantity:args.p_quantity});window.__savedSelection=args;return {data:null,error:null};}if(name==='admin_save_other'){window.__savedOther=args;const value={...args.p_values,id:args.p_id,updated_at:new Date().toISOString()},old=fixtures.other_items.find(r=>r.id===args.p_id);if(old)Object.assign(old,value);else fixtures.other_items.push(value);return {data:value,error:null};}return oldTaskRpc(name,args);};`;
+ const extra=`fixtures.event_locations=[{id:'venue-1',name:'Main hall'},{id:'venue-2',name:'Garden'}];fixtures.households[1].food=true;fixtures.households[2].food=true;fixtures.household_session_defaults.push({household_id:h2,session_id:s1,is_invited:true});fixtures.other_categories=[{id:'other-cat',name:'Tasks',sort_order:0}];fixtures.other_items=[{id:'task-one',category_id:'other-cat',item:'Arrange chairs',assigned_to:'Example helper',status:'open',sort_order:0,updated_at:'2026-11-01T12:00:00Z'}];fixtures.food_items.forEach(f=>{f.description_en='Bring chilled';f.description_fo='Source amount: 4';f.admin_comment='Private supplier note';});const foodFrom=client.from;client.from=function(name){const table=foodFrom.call(this,name);if(name==='food_item_types')table.insert=async record=>{(fixtures.food_item_types??=[]).push(record);return {error:null};};if(name==='food_items')table.update=record=>({eq:async(_,id)=>{Object.assign(fixtures.food_items.find(f=>f.id===id),record);window.__savedFood=record;return {error:null};}});return table;};const oldTaskRpc=window.__managementRpc;window.__managementRpc=(name,args)=>{if(name==='admin_save_translation'){(window.__savedTypeTranslations??=[]).push(args);return {data:null,error:null};}if(name==='admin_save_food_translations'){window.__savedTranslations=args;return {data:null,error:null};}if(name==='admin_set_food_selection'){const old=fixtures.food_claims.findIndex(c=>c.household_id===args.p_household_id&&c.food_item_id===args.p_food_item_id);if(old>=0)fixtures.food_claims.splice(old,1);if(args.p_quantity)fixtures.food_claims.push({household_id:args.p_household_id,food_item_id:args.p_food_item_id,quantity:args.p_quantity});window.__savedSelection=args;return {data:null,error:null};}if(name==='admin_save_other'){window.__savedOther=args;const value={...args.p_values,id:args.p_id,updated_at:new Date().toISOString()},old=fixtures.other_items.find(r=>r.id===args.p_id);if(old)Object.assign(old,value);else fixtures.other_items.push(value);return {data:value,error:null};}return oldTaskRpc(name,args);};`;
  await page.route('**/supabase.min.js',r=>r.fulfill({contentType:'text/javascript',body:mock+'\n'+extra}));
  await page.goto('http://127.0.0.1:'+server.address().port+'/admin/');await page.waitForFunction(()=>document.querySelectorAll('#statsGrid .stat-card').length===4);
  assert.equal(await page.locator('[data-tab="invites"]').textContent(),'Invites');
@@ -101,15 +101,45 @@ async function run(type){const browser=await type.launch({headless:true});try{
  await page.locator('#addFoodType').click();
  assert.equal(await page.locator('#newFoodType').inputValue(),'Basket(s)');
  if(process.env.FOOD_SETTINGS_PREVIEW&&type.name()==='chromium')await page.locator('#addFoodForm').screenshot({path:process.env.FOOD_SETTINGS_PREVIEW+'/food-add-type.png'});
+ await page.evaluate(()=>{
+   const items=window.__fixtures.food_items;
+   items.push({id:'dessert-example',category:'Desserts',name_en:'Sample dessert',name_fo:'Sample dessert',sort_order:0,quantity_needed:1,active:true});
+   items.push({id:'first-example',category:'Main dishes',name_en:'First dish',name_fo:'First dish',sort_order:0,quantity_needed:1,active:true});
+ });
+ await page.locator('#refreshButton').click();
+ await page.waitForFunction(()=>document.querySelectorAll('.food-compact-item').length===3);
+ const foodOrder=await page.locator('.food-compact-item').evaluateAll(items=>items.map(item=>item.dataset.treeKey.slice('food:item:'.length)));
  await page.locator('[data-tab="language"]').click();
  await page.locator('#translationCategory').selectOption('food');
  const grid=page.locator('#foodTranslationGrid');
+ assert.deepEqual(await grid.getByLabel('Food item',{exact:true}).locator('option').evaluateAll(options=>options.map(option=>option.value)),foodOrder);
+ await grid.getByLabel('Food categories',{exact:true}).selectOption('category:Desserts');
+ assert.equal(await grid.getByLabel('Food item',{exact:true}).inputValue(),'dessert-example');
+ await grid.getByLabel('Food categories',{exact:true}).selectOption('category:Main dishes');
+ await grid.getByLabel('Food item',{exact:true}).selectOption({label:'Sample dish'});
+
  assert.equal(await grid.locator('.food-translation-row').count(),3);
  for(const row of await grid.locator('.food-translation-row').all())assert.equal(await row.locator('input').count(),3);
  if(process.env.RSVP_LAYOUT_PREVIEW&&type.name()==='chromium')await page.locator('[data-panel="language"]').screenshot({path:process.env.RSVP_LAYOUT_PREVIEW+'/food-language-grid.png'});
  await grid.locator('.food-translation-row input').first().fill('Updated sample dish');
  await grid.getByRole('button',{name:'Save translations'}).click();
  await page.waitForFunction(()=>window.__savedTranslations?.p_changes.length===1);
+ await page.locator('#translationCategory').selectOption('food-types');
+ const typePicker=grid.getByLabel('Type',{exact:true});
+ const typeKeys=await typePicker.locator('option').evaluateAll(options=>options.map(option=>option.value));
+ for(const name of ['Batch(s)','Piece(s)','Tray(s)','Packet(s)','Kg','Grams'])assert.ok(typeKeys.includes('ui:'+name));
+ assert.ok(typeKeys.includes('ui:Food type: Basket(s)'));
+ await typePicker.selectOption('ui:Tray(s)');
+ assert.equal(await grid.locator('.food-type-translation-row').count(),3);
+ assert.equal(await grid.getByLabel('Type · English',{exact:true}).inputValue(),'Tray(s)');
+ if(process.env.FOOD_LANGUAGE_PREVIEW&&type.name()==='chromium')await page.locator('[data-panel="language"]').screenshot({path:process.env.FOOD_LANGUAGE_PREVIEW+'/language-food-types-category.png'});
+ await grid.getByLabel('Type · English',{exact:true}).fill('Trays');
+ await grid.getByLabel('Type · Deutsch',{exact:true}).fill('Backbleche');
+ await grid.getByRole('button',{name:'Save translations'}).click();
+ await page.waitForFunction(()=>window.__savedTypeTranslations?.length===2);
+ assert.deepEqual(await page.evaluate(()=>window.__savedTypeTranslations.map(row=>row.p_language)),['en','de']);
+ await page.locator('#translationCategory').selectOption('food');
+ if(process.env.FOOD_LANGUAGE_PREVIEW&&type.name()==='chromium')await page.locator('[data-panel="language"]').screenshot({path:process.env.FOOD_LANGUAGE_PREVIEW+'/language-food-category-picker.png'});
  await page.locator('#settingsToggle').click();assert.equal(await page.locator('#eventContentForm').isVisible(),false);await page.locator('[data-settings-tab="languages"]').click();assert.equal(await page.locator('#translationCategory option[value="food"]').count(),0);await page.locator('#translationCategory').selectOption('welcome');assert.equal(await page.locator('#translationKey').inputValue(),'welcome');
  await page.locator('#closeSettings').click();await page.locator('[data-tab="other"]').click();assert.equal(await page.locator('.other-line').count(),1);assert.equal(await page.locator('.other-line input').first().isDisabled(),true);const boxes=await page.locator('.other-line').first().locator('input,select').evaluateAll(ns=>ns.slice(0,4).map(n=>n.getBoundingClientRect().height));assert.ok(boxes.every(h=>Math.abs(h-boxes[0])<2),'four boxes have matching heights');
  await page.locator('#addOtherItem').click();const added=page.locator('.other-line').last();await added.locator('input').first().fill('Bring tablecloths');await added.locator('input').nth(1).fill('Remember linen');await added.locator('input').nth(2).fill('Another helper');await added.getByRole('button',{name:/^Save item/}).click();await page.waitForFunction(()=>window.__savedOther&&document.querySelectorAll('.other-line')[1].querySelector('input').disabled);assert.equal(await page.evaluate(()=>window.__savedOther.p_values.notes),'Remember linen');

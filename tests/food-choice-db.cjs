@@ -47,6 +47,9 @@ const {PGlite}=require('@electric-sql/pglite'),fs=require('node:fs'),assert=requ
  const task=(await db.query('SELECT * FROM public.things_to_do')).rows[0];
  const draft={id:task.id,task:'Arrange chairs',assigned_to:'Helper',status:'in_progress',sort_order:0,expected_updated_at:task.updated_at};
  await db.exec('SET ROLE authenticated');
+ await db.query('SELECT public.admin_add_venue_food($1,ARRAY[$2]::uuid[])',[location,id]);
+ await db.query('SELECT public.admin_add_venue_food($1,ARRAY[$2]::uuid[])',[location,id]);
+ assert.deepEqual(await value('SELECT venue_ids v FROM public.food_items WHERE id=$1',[id]),[location]);
  const saveTranslations='SELECT public.admin_save_food_translations($1,$2)';
  const nameKey='food:'+brownie+':name';
  await assert.rejects(()=>db.query(saveTranslations,[brownie,[{key:nameKey,language:'en',value:'Rollback'},{key:'ui:Kg',language:'en',value:'Invalid'}]]),/Invalid food translation key/);

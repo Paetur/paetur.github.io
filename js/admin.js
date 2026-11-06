@@ -1021,6 +1021,61 @@
    saveForm(f,T("Save session invitations"),()=>managementRpc('admin_save_session_assignments',{p_household_id:h.id,p_assignments:fields.map(x=>({session_id:x.session_id,guest_id:x.guest_id,is_invited:x.control.value==='inherit'?null:x.control.value==='true'}))}));
    if(fields.length)d.append(f);else d.append(R.dom('p',{},T("Create sessions in Settings first.")));return d;
  }
+ function venueFoodDialog(venue){
+   const title=T('Add food');
+   const dialog=R.dom('dialog',{class:'food-recipe-dialog venue-assignment-dialog'});
+   dialog.setAttribute('aria-label',title);
+   const form=R.dom('form');
+   form.append(R.dom('p',{class:'micro'},T('Adding unrestricted food here makes it available at this venue only. Items already assigned to other venues keep those assignments.')));
+   const list=R.dom('div',{class:'venue-assignment-list'});
+   const selectAllLabel=R.dom('label',{class:'checkbox-label venue-select-all'});
+   const selectAll=R.dom('input',{type:'checkbox'});
+   selectAllLabel.append(selectAll,document.createTextNode(T('Select all')));
+   const footer=R.dom('div',{class:'venue-assignment-footer'});
+   const status=R.dom('p',{class:'small'});
+   status.setAttribute('role','status');
+   const cancel=R.dom('button',{class:'btn secondary',type:'button'},T('Cancel'));
+   const save=R.dom('button',{class:'btn',type:'submit'},T('Save'));
+   cancel.addEventListener('click',()=>dialog.close());
+   footer.append(cancel,save);
+   form.append(selectAllLabel,list,status,footer);
+   let checks=[];
+   const updateSelection=()=>{
+     const count=checks.filter(check=>check.checked).length;
+     selectAll.checked=!!checks.length&&count===checks.length;
+     selectAll.indeterminate=count>0&&count<checks.length;
+     save.disabled=!count;
+   };
+   const choices=foodMenuCategories().flatMap(category=>
+     foodMenuItems(category.name).filter(item=>item.active&&!item.venue_ids?.includes(venue.id))
+       .map(item=>[item.id,foodItemName(item)+(category.name?' · '+category.name:'')]));
+   checks=choices.map(([id,name])=>{
+     const check=R.dom('input',{type:'checkbox',value:id});
+     const label=R.dom('label',{class:'checkbox-label'});
+     label.append(check,document.createTextNode(name));list.append(label);
+     check.addEventListener('change',updateSelection);return check;
+   });
+   selectAllLabel.classList.toggle('hidden',!checks.length);
+   if(!checks.length)list.append(R.dom('p',{class:'small muted'},T('Nothing available to add.')));
+   updateSelection();
+   selectAll.addEventListener('change',()=>{
+     checks.forEach(check=>{check.checked=selectAll.checked;});updateSelection();
+   });
+   form.addEventListener('submit',async event=>{
+     event.preventDefault();if(!editMode||save.disabled||form.getAttribute('aria-busy')==='true')return;
+     const ids=checks.filter(check=>check.checked).map(check=>check.value);
+     save.disabled=true;form.setAttribute('aria-busy','true');status.textContent='';
+     try{
+       await managementRpc('admin_add_venue_food',{p_venue_id:venue.id,p_food_item_ids:ids});
+       dialog.close();await reload();show(T('Changes saved.'),'success');
+     }catch(error){status.textContent=R.safeError(error);}
+     finally{form.removeAttribute('aria-busy');updateSelection();}
+   });
+   dialog.append(R.dom('h2',{},title+' · '+venue.name),form);
+   dialog.addEventListener('close',()=>dialog.remove(),{once:true});
+   $('adminApp').append(dialog);
+   dialog.showModal();
+ }
  function renderSessions(){
    const venues=$('venueList');venues.replaceChildren();
    for(const v of ordered(store.locations,'name')){
@@ -1045,6 +1100,12 @@
        }catch(_){}
      }
      summary.append(layout);
+     if(!v.archived_at){
+       const actions=R.dom('div',{class:'venue-assignment-actions edit-only'});
+       const button=R.dom('button',{class:'small-tool',type:'button'},T('Add food'));
+       button.addEventListener('click',()=>venueFoodDialog(v));actions.append(button);
+       venue.append(actions);
+     }
      venue.append(venueForm(v));venues.append(venue);
    }
    $('newVenueForm').replaceChildren(venueForm({}));

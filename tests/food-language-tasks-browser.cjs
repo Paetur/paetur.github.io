@@ -11,10 +11,18 @@ const server=http.createServer((req,res)=>{
 async function run(type){const browser=await type.launch({headless:true});try{
  const page=await browser.newPage({viewport:{width:820,height:1180}}),errors=[];page.on('pageerror',e=>errors.push(e.message));
  await page.addInitScript(()=>localStorage.setItem('rsvp-interface-language','en'));
- const extra=`fixtures.households[1].food=true;fixtures.households[2].food=true;fixtures.other_categories=[{id:'other-cat',name:'Tasks',sort_order:0}];fixtures.other_items=[{id:'task-one',category_id:'other-cat',item:'Arrange chairs',assigned_to:'Example helper',status:'open',sort_order:0,updated_at:'2026-11-01T12:00:00Z'}];fixtures.food_items.forEach(f=>{f.description_en='Bring chilled';f.admin_comment='Private supplier note';});const foodFrom=client.from;client.from=function(name){const table=foodFrom.call(this,name);if(name==='food_items')table.update=record=>({eq:async(_,id)=>{Object.assign(fixtures.food_items.find(f=>f.id===id),record);window.__savedFood=record;return {error:null};}});return table;};const oldTaskRpc=window.__managementRpc;window.__managementRpc=(name,args)=>{if(name==='admin_set_food_selection'){const old=fixtures.food_claims.findIndex(c=>c.household_id===args.p_household_id&&c.food_item_id===args.p_food_item_id);if(old>=0)fixtures.food_claims.splice(old,1);if(args.p_quantity)fixtures.food_claims.push({household_id:args.p_household_id,food_item_id:args.p_food_item_id,quantity:args.p_quantity});window.__savedSelection=args;return {data:null,error:null};}if(name==='admin_save_other'){window.__savedOther=args;const value={...args.p_values,id:args.p_id,updated_at:new Date().toISOString()},old=fixtures.other_items.find(r=>r.id===args.p_id);if(old)Object.assign(old,value);else fixtures.other_items.push(value);return {data:value,error:null};}return oldTaskRpc(name,args);};`;
+ const extra=`fixtures.event_locations=[{id:'venue-1',name:'Main hall'},{id:'venue-2',name:'Garden'}];fixtures.households[1].food=true;fixtures.households[2].food=true;fixtures.household_session_defaults.push({household_id:h2,session_id:s1,is_invited:true});fixtures.other_categories=[{id:'other-cat',name:'Tasks',sort_order:0}];fixtures.other_items=[{id:'task-one',category_id:'other-cat',item:'Arrange chairs',assigned_to:'Example helper',status:'open',sort_order:0,updated_at:'2026-11-01T12:00:00Z'}];fixtures.food_items.forEach(f=>{f.description_en='Bring chilled';f.description_fo='Source amount: 4';f.admin_comment='Private supplier note';});const foodFrom=client.from;client.from=function(name){const table=foodFrom.call(this,name);if(name==='food_item_types')table.insert=async record=>{(fixtures.food_item_types??=[]).push(record);return {error:null};};if(name==='food_items')table.update=record=>({eq:async(_,id)=>{Object.assign(fixtures.food_items.find(f=>f.id===id),record);window.__savedFood=record;return {error:null};}});return table;};const oldTaskRpc=window.__managementRpc;window.__managementRpc=(name,args)=>{if(name==='admin_save_food_translations'){window.__savedTranslations=args;return {data:null,error:null};}if(name==='admin_set_food_selection'){const old=fixtures.food_claims.findIndex(c=>c.household_id===args.p_household_id&&c.food_item_id===args.p_food_item_id);if(old>=0)fixtures.food_claims.splice(old,1);if(args.p_quantity)fixtures.food_claims.push({household_id:args.p_household_id,food_item_id:args.p_food_item_id,quantity:args.p_quantity});window.__savedSelection=args;return {data:null,error:null};}if(name==='admin_save_other'){window.__savedOther=args;const value={...args.p_values,id:args.p_id,updated_at:new Date().toISOString()},old=fixtures.other_items.find(r=>r.id===args.p_id);if(old)Object.assign(old,value);else fixtures.other_items.push(value);return {data:value,error:null};}return oldTaskRpc(name,args);};`;
  await page.route('**/supabase.min.js',r=>r.fulfill({contentType:'text/javascript',body:mock+'\n'+extra}));
  await page.goto('http://127.0.0.1:'+server.address().port+'/admin/');await page.waitForFunction(()=>document.querySelectorAll('#statsGrid .stat-card').length===4);
  assert.equal(await page.locator('[data-tab="invites"]').textContent(),'Invites');
+ await page.locator('[data-tab="invites"]').click();
+ await page.locator('#inviteRows details').evaluateAll(nodes=>nodes.forEach(n=>n.open=true));
+ await page.getByRole('button',{name:'RSVP management · Example child',exact:true}).click();
+ const rsvpPanel=page.locator('.invite-detail-panel');
+ assert.ok(await rsvpPanel.getByText('Open for responses',{exact:true}).isVisible());
+ assert.ok(await rsvpPanel.getByRole('cell',{name:'Dinner',exact:true}).first().isVisible());
+ if(process.env.RSVP_LAYOUT_PREVIEW&&type.name()==='chromium')await rsvpPanel.screenshot({path:process.env.RSVP_LAYOUT_PREVIEW+'/invites-rsvp-management.png'});
+ await rsvpPanel.getByRole('button',{name:'Back to households'}).click();
  await page.locator('[data-tab="food"]').click();
  const food=page.locator('.food-compact-item').first();assert.equal(await food.evaluate(n=>n.open),false);assert.ok((await food.boundingBox()).height<70);
  await food.locator(':scope > summary').click();assert.equal(await food.locator('.food-expanded').isVisible(),true);assert.ok((await food.textContent()).includes('Private supplier note'));
@@ -24,10 +32,23 @@ async function run(type){const browser=await type.launch({headless:true});try{
  await food.getByRole('button',{name:'Edit food item',exact:true}).click();
  const nameBox=await food.locator('[name="name_en"]').boundingBox(),qtyBox=await food.locator('[name="quantity_needed"]').boundingBox(),userBox=await food.locator('[name="description_en"]').boundingBox(),adminBox=await food.locator('[name="admin_comment"]').boundingBox();
  assert.ok(Math.abs(nameBox.y-qtyBox.y)<2&&Math.abs(userBox.y-adminBox.y)<2&&userBox.y>nameBox.y,'Name/Quantity above paired comments');
- if(process.env.FOOD_PREVIEW&&type.name()==='chromium')await food.screenshot({path:process.env.FOOD_PREVIEW+'/food-item-pencil-editor.png'});
- assert.equal(await page.locator('#addFoodForm').evaluate(n=>!!(n.compareDocumentPosition(document.querySelector('#adminFoodList'))&Node.DOCUMENT_POSITION_FOLLOWING)),true);
- const recipeText='Melt:\n - 360g dark chocolate\n - 300g butter\n\nStir well';
+ await food.getByLabel('Type',{exact:true}).selectOption('Tray(s)');
+ assert.ok(await food.getByRole('checkbox',{name:'Main hall'}).isChecked());
+ assert.ok(await food.getByRole('checkbox',{name:'Garden'}).isChecked());
+ if(process.env.FOOD_SETTINGS_PREVIEW&&type.name()==='chromium'){
+   await food.getByRole('checkbox',{name:'Garden'}).uncheck();
+   await food.screenshot({path:process.env.FOOD_SETTINGS_PREVIEW+'/food-types-venues-editor.png'});
+   await food.getByRole('checkbox',{name:'Garden'}).check();
+ }
+ await food.locator('[name="description_en"]').fill('');
+ await food.getByRole('button',{name:'Save food item',exact:true}).click();
+ await page.waitForFunction(()=>window.__savedFood?.description_en==='');
+ await food.getByRole('button',{name:'Edit food item',exact:true}).click();
+ assert.equal(await food.locator('[name="description_en"]').inputValue(),'');
+ assert.equal(await food.getByLabel('Type',{exact:true}).inputValue(),'Tray(s)');
+ assert.equal(await food.getByText('Source amount:',{exact:false}).count(),0);
  await food.getByRole('button',{name:'Cancel',exact:true}).click();
+ const recipeText='Melt:\n - 360g dark chocolate\n - 300g butter\n\nStir well';
  await food.getByRole('button',{name:'+ Add recipe',exact:true}).click();
  const recipeDialog=page.getByRole('dialog',{name:'Recipe'});
  await recipeDialog.getByLabel('Recipe',{exact:true}).fill(recipeText);
@@ -46,6 +67,7 @@ async function run(type){const browser=await type.launch({headless:true});try{
  await itemSelection.getByLabel('Quantity',{exact:true}).fill('2');
  await itemSelection.getByRole('button',{name:'Save',exact:true}).click();
  await food.locator('.food-selections tbody tr').waitFor();
+ if(process.env.FOOD_SETTINGS_PREVIEW&&type.name()==='chromium')await page.locator('[data-panel="food"]').screenshot({path:process.env.FOOD_SETTINGS_PREVIEW+'/food-toolbar-households.png'});
  assert.match(await food.locator('.food-selections tbody tr').textContent(),/Example child\s*2/);
  await page.locator('[data-tab="households"]').click();
  await page.locator('#expandHouseholds').click();
@@ -74,8 +96,20 @@ async function run(type){const browser=await type.launch({headless:true});try{
  await summary.locator('.food-claim-summary').waitFor({state:'detached'});
  assert.equal(await page.locator('.food-category-heading .tree-count').first().textContent(),'1 item, 0/4 amounts');
  await page.evaluate(()=>window.__fixtures.food_items.forEach(f=>{f.description_fo=null;f.description_en=null;f.description_de=null;f.admin_comment=null;}));await page.locator('#refreshButton').click();await page.waitForFunction(()=>!document.querySelector('#refreshButton').disabled);assert.equal(await page.locator('.food-comment-grid').count(),0,'empty read-only comments are omitted');
- await page.locator('[data-tab="language"]').click();assert.equal(await page.locator('#translationEditor').isVisible(),true);await page.locator('#translationCategory').selectOption('food');assert.ok(await page.locator('#translationKey option').count());
- if(process.env.PREVIEW_OUTPUT)await page.locator('[data-panel="language"]').screenshot({path:process.env.PREVIEW_OUTPUT+'/language-draft.png'});
+ await page.locator('#addFoodForm').evaluate(form=>form.closest('details').open=true);
+ page.once('dialog',dialog=>dialog.accept('Basket(s)'));
+ await page.locator('#addFoodType').click();
+ assert.equal(await page.locator('#newFoodType').inputValue(),'Basket(s)');
+ if(process.env.FOOD_SETTINGS_PREVIEW&&type.name()==='chromium')await page.locator('#addFoodForm').screenshot({path:process.env.FOOD_SETTINGS_PREVIEW+'/food-add-type.png'});
+ await page.locator('[data-tab="language"]').click();
+ await page.locator('#translationCategory').selectOption('food');
+ const grid=page.locator('#foodTranslationGrid');
+ assert.equal(await grid.locator('.food-translation-row').count(),3);
+ for(const row of await grid.locator('.food-translation-row').all())assert.equal(await row.locator('input').count(),3);
+ if(process.env.RSVP_LAYOUT_PREVIEW&&type.name()==='chromium')await page.locator('[data-panel="language"]').screenshot({path:process.env.RSVP_LAYOUT_PREVIEW+'/food-language-grid.png'});
+ await grid.locator('.food-translation-row input').first().fill('Updated sample dish');
+ await grid.getByRole('button',{name:'Save translations'}).click();
+ await page.waitForFunction(()=>window.__savedTranslations?.p_changes.length===1);
  await page.locator('#settingsToggle').click();assert.equal(await page.locator('#eventContentForm').isVisible(),false);await page.locator('[data-settings-tab="languages"]').click();assert.equal(await page.locator('#translationCategory option[value="food"]').count(),0);await page.locator('#translationCategory').selectOption('welcome');assert.equal(await page.locator('#translationKey').inputValue(),'welcome');
  await page.locator('#closeSettings').click();await page.locator('[data-tab="other"]').click();assert.equal(await page.locator('.other-line').count(),1);assert.equal(await page.locator('.other-line input').first().isDisabled(),true);const boxes=await page.locator('.other-line').first().locator('input,select').evaluateAll(ns=>ns.slice(0,4).map(n=>n.getBoundingClientRect().height));assert.ok(boxes.every(h=>Math.abs(h-boxes[0])<2),'four boxes have matching heights');
  await page.locator('#addOtherItem').click();const added=page.locator('.other-line').last();await added.locator('input').first().fill('Bring tablecloths');await added.locator('input').nth(1).fill('Remember linen');await added.locator('input').nth(2).fill('Another helper');await added.getByRole('button',{name:/^Save item/}).click();await page.waitForFunction(()=>window.__savedOther&&document.querySelectorAll('.other-line')[1].querySelector('input').disabled);assert.equal(await page.evaluate(()=>window.__savedOther.p_values.notes),'Remember linen');

@@ -515,3 +515,20 @@ html[data-theme="dark"] code{background:#253b32;color:var(--ink)}
 .food-selections .data-table th:last-child{width:6rem}
 .food-selections .food-selection-editor{border:0;padding:0;margin:4px 8px;background:transparent}
 .food-selections .food-selection-editor:not([open]){width:max-content}
+
+#adminApp .food-edit-form{grid-template-columns:repeat(6,minmax(0,1fr))}
+#adminApp .food-edit-form>label{grid-column:span 2}
+#adminApp .food-edit-form>label:nth-child(4),#adminApp .food-edit-form>label:nth-child(5){grid-column:span 3}
+#adminApp .food-edit-form>.span-2,#adminApp .food-edit-form>.food-edit-buttons{grid-column:1/-1}
+.food-venue-options{display:flex;flex-wrap:wrap;gap:6px 16px;border:1px solid var(--line);border-radius:8px;padding:6px 12px 10px;min-width:0}
+.food-venue-options label{display:flex;align-items:center;gap:6px}
+.food-venue-options input[type="checkbox"]{width:auto}
+@media(max-width:600px){#adminApp .food-edit-form>label{grid-column:span 3}}
+
+#translationForm.food-matrix-active>:nth-child(n+3){display:none!important}
+.food-translation-picker{display:grid;gap:4px;max-width:30rem;margin:12px 0}
+.food-translation-grid{overflow-x:auto}
+.food-translation-row{display:grid;grid-template-columns:minmax(90px,.65fr) repeat(3,minmax(120px,1fr));gap:8px;align-items:end;min-width:485px;padding:8px 0;border-bottom:1px solid var(--line)}
+.food-translation-row label{display:grid;gap:3px;font-size:.75rem;min-width:0}
+.food-translation-row input{width:100%;min-width:0}
+.food-translation-grid>button{margin-top:10px}

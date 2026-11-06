@@ -28,6 +28,14 @@ const {PGlite}=require('@electric-sql/pglite'),fs=require('node:fs'),assert=requ
  const selectedHousehold=await value('SELECT id v FROM public.households WHERE invite_code=$1',[h[0]]);
  const brownie=await value("INSERT INTO public.food_items(name_fo,recipe_text,quantity_needed) VALUES('Brownies','Melt chocolate',2) RETURNING id v");
  assert.equal((await food(h[0])).items.find(item=>item.id===brownie).recipe_text,'Melt chocolate');
+ const location=await value("INSERT INTO public.event_locations(name) VALUES('Garden') RETURNING id v");
+ const venueSession=await value("INSERT INTO public.event_sessions(session_key,name,location_id) VALUES('garden','Garden session',$1) RETURNING id v",[location]);
+ await db.query('INSERT INTO public.household_session_defaults VALUES($1,$2,true)',[selectedHousehold,venueSession]);
+ await db.exec("INSERT INTO public.food_item_types(name) VALUES('Basket(s)')");
+ await db.query("UPDATE public.food_items SET quantity_type='Basket(s)',venue_ids=ARRAY[$1]::uuid[] WHERE id=$2",[location,brownie]);
+ assert.equal((await food(h[0])).items.find(item=>item.id===brownie).quantity_type,'Basket(s)');
+ assert.equal((await food(h[2])).items.some(item=>item.id===brownie),false);
+ await assert.rejects(()=>db.query('SELECT public.set_household_food_claim($1,$2,1,null)',[h[2],brownie]),/unavailable at/);
  await db.exec('UPDATE public.event_settings SET is_published=false WHERE id=1');assert.equal(await food(h[0]),null);
  await assert.rejects(()=>db.query('SELECT public.set_household_food_claim($1,$2,1,null)',[h[0],id]),/not published/);
  const grants=await db.query("SELECT has_function_privilege('anon','public.get_household_food(text)','execute') anon,has_function_privilege('authenticated','public.get_household_food(text)','execute') authenticated");assert.equal(grants.rows[0].anon,false);assert.equal(grants.rows[0].authenticated,false);
@@ -39,6 +47,13 @@ const {PGlite}=require('@electric-sql/pglite'),fs=require('node:fs'),assert=requ
  const task=(await db.query('SELECT * FROM public.things_to_do')).rows[0];
  const draft={id:task.id,task:'Arrange chairs',assigned_to:'Helper',status:'in_progress',sort_order:0,expected_updated_at:task.updated_at};
  await db.exec('SET ROLE authenticated');
+ const saveTranslations='SELECT public.admin_save_food_translations($1,$2)';
+ const nameKey='food:'+brownie+':name';
+ await assert.rejects(()=>db.query(saveTranslations,[brownie,[{key:nameKey,language:'en',value:'Rollback'},{key:'ui:Kg',language:'en',value:'Invalid'}]]),/Invalid food translation key/);
+ assert.equal(await value('SELECT name_en v FROM public.food_items WHERE id=$1',[brownie]),null);
+ await db.query(saveTranslations,[brownie,[{key:nameKey,language:'en',value:'Brownies'},{key:'ui:Food type: Basket(s)',language:'en',value:'Baskets'},{key:'food:'+brownie+':description',language:'en',value:''}]]);
+ assert.equal(await value('SELECT description_en v FROM public.food_items WHERE id=$1',[brownie]),'');
+ assert.equal(await value("SELECT content_value v FROM public.event_content WHERE content_key='ui:Food type: Basket(s)'"),'Baskets');
  await db.query('SELECT public.admin_set_food_selection($1,$2,2,0)',[selectedHousehold,brownie]);
  assert.equal(await value('SELECT quantity v FROM public.food_claims WHERE household_id=$1 AND food_item_id=$2',[selectedHousehold,brownie]),2);
  const householdDetails={household_name:'Should roll back',side:'paetur_hentze',language:'en'};

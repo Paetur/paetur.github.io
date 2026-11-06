@@ -1,22 +1,73 @@
 (function(){
  'use strict';
  const I=window.RSVP_I18N,T=(text,params)=>I.t(text,params);
- let ctx,backup=null,preview=null,renderedLanguageCount=0,fileGeneration=0,translationScopeValue='settings';
+ let ctx,backup=null,preview=null,renderedLanguageCount=0,fileGeneration=0,translationScopeValue='settings',foodTranslationId='';
  const $=id=>document.getElementById(id);
  function enabled(){const rows=ctx.getStore().languages;return rows.length?rows.filter(l=>l.enabled).sort((a,b)=>(a.sort_order||0)-(b.sort_order||0)||a.language_code.localeCompare(b.language_code)):I.languages;}
  function options(select,rows,selected){select.replaceChildren(...rows.map(([value,label])=>ctx.R.dom('option',{value},label)));if(rows.some(([value])=>value===selected))select.value=selected;}
  async function rpc(name,args){const {data,error}=await ctx.R.adminRpc(name,args);if(error)throw error;return data;}
  function mode(){
   for(const form of document.querySelectorAll('#languageRows form'))for(const control of form.elements)control.disabled=!ctx.isEditing();
+  for(const control of $('foodTranslationGrid').querySelectorAll('form input,form button'))control.disabled=!ctx.isEditing();
   taskMode();
   $('restoreBackupButton').disabled=!ctx.isEditing()||!preview?.can_restore||!$('restoreBackupAck').checked||$('restoreBackupConfirmation').value!=='RESTORE '+preview.event_name;
  }
- function translationKeys(){const s=ctx.getStore();return [['welcome',T('Welcome messages')],...s.locations.map(v=>['venue:'+v.id+':welcome',T('Venue')+' · '+v.name]),...s.sessions.map(v=>['session:'+v.id+':name',T('Session')+' · '+v.name]),...s.food.flatMap(v=>[['food:'+v.id+':name',T('Food')+' · '+(v.name_en||v.name_fo)],['food:'+v.id+':description',T('User Comment')+' · '+(v.name_en||v.name_fo)]]),...Object.keys(I.catalog).sort().map(key=>['ui:'+key,key])];}
- function keyCategory(key){if(key==='welcome')return 'welcome';return key.split(':')[0];}
+ function translationKeys(){const s=ctx.getStore();return [['welcome',T('Welcome messages')],...s.locations.map(v=>['venue:'+v.id+':welcome',T('Venue')+' · '+v.name]),...s.sessions.map(v=>['session:'+v.id+':name',T('Session')+' · '+v.name]),...s.food.flatMap(v=>[['food:'+v.id+':name',T('Food')+' · '+(v.name_en||v.name_fo)],['food:'+v.id+':description',T('User Comment')+' · '+(v.name_en||v.name_fo)]]),...s.foodTypes.map(type=>['ui:Food type: '+type.name,T('Type')+' · '+type.name]),...Object.keys(I.catalog).sort().map(key=>['ui:'+key,ctx.R.foodTypes.includes(key)?T('Type')+' · '+key:key])];}
+ function keyCategory(key){if(key==='welcome')return 'welcome';if(key.startsWith('ui:Food type: ')||ctx.R.foodTypes.includes(key.slice(3)))return 'food';return key.split(':')[0];}
+ function renderFoodTranslations(search){
+  const R=ctx.R,s=ctx.getStore(),host=$('foodTranslationGrid');
+  host.replaceChildren();
+  const items=s.food.filter(item=>(item.name_en||item.name_fo||'').toLowerCase().includes(search));
+  if(!items.length){host.append(R.dom('p',{class:'muted'},T('No matching food items.')));return;}
+  const pickerLabel=R.dom('label',{class:'food-translation-picker'},T('Food item'));
+  const picker=R.dom('select');picker.setAttribute('aria-label',T('Food item'));
+  options(picker,items.map(item=>[item.id,item.name_en||item.name_fo]),foodTranslationId);
+  foodTranslationId=picker.value;
+  picker.addEventListener('change',()=>{foodTranslationId=picker.value;renderFoodTranslations(search);});
+  pickerLabel.append(picker);host.append(pickerLabel);
+  const item=items.find(item=>item.id===foodTranslationId);
+  const type=item.quantity_type||'Piece(s)';
+  const typeKey=R.foodTypes.includes(type)?'ui:'+type:'ui:Food type: '+type;
+  const columns=[['Name','food:'+item.id+':name'],['Type',typeKey],['User Comment','food:'+item.id+':description']];
+  host.append(R.dom('p',{class:'micro'},T('Type translations are shared by food items with the same type.')));
+  const form=R.dom('form',{class:'food-translation-grid'});
+  const cells=[];
+  for(const language of enabled()){
+   const row=R.dom('div',{class:'food-translation-row'});
+   row.append(R.dom('strong',{},language.display_name));
+   for(const [label,key] of columns){
+    const wrap=R.dom('label',{},T(label));
+    const value=s.content.find(c=>c.content_key===key&&c.language_code===language.language_code)?.content_value
+      ??(key===typeKey?(R.foodTypes.includes(type)?I.t(type,{},language.language_code):type):legacyTranslation(key)[language.language_code]||'');
+    const input=R.dom('input',{type:'text',value});
+    input.setAttribute('aria-label',T(label)+' · '+language.display_name);
+    input.disabled=!ctx.isEditing();
+    cells.push({key,language:language.language_code,input,original:value});
+    wrap.append(input);row.append(wrap);
+   }
+   form.append(row);
+  }
+  const save=R.dom('button',{class:'btn edit-only',type:'submit'},T('Save translations'));
+  save.disabled=!ctx.isEditing();form.append(save);
+  form.addEventListener('submit',async event=>{
+   event.preventDefault();if(!ctx.isEditing()||save.disabled)return;
+   const changes=cells.filter(c=>c.input.value!==c.original).map(c=>({key:c.key,language:c.language,value:c.input.value}));
+   if(!changes.length)return;
+   save.disabled=true;
+   try{await rpc('admin_save_food_translations',{p_food_item_id:item.id,p_changes:changes});await ctx.reload();ctx.show(T('Translation saved.'),'success');}
+   catch(error){ctx.show(R.safeError(error),'error');}
+   finally{save.disabled=!ctx.isEditing();}
+  });
+  host.append(form);
+ }
  function renderTranslationKeys(){
   const categories=translationScopeValue==='settings'?[['ui',T('Interface wording')],['welcome',T('Welcome messages')]]:[['food',T('Food')],['venue',T('Venues')],['session',T('Sessions')]];
   options($('translationCategory'),categories,$('translationCategory').value);
   const category=$('translationCategory').value,search=$('translationSearch').value.toLowerCase();
+  const foodMatrix=translationScopeValue==='content'&&category==='food';
+  $('translationForm').classList.toggle('food-matrix-active',foodMatrix);
+  $('foodTranslationGrid').classList.toggle('hidden',!foodMatrix);
+  if(foodMatrix){renderFoodTranslations(search);return;}
   options($('translationKey'),translationKeys().filter(([key,label])=>keyCategory(key)===category&&(!search||label.toLowerCase().includes(search))),$('translationKey').value);
   $('translationForm').querySelector('button[type="submit"]').disabled=!$('translationKey').value;loadTranslation();
  }
@@ -26,7 +77,7 @@
   const s=ctx.getStore(),key=$('translationKey').value,lang=$('translationLanguage').value;
   $('translationValue').value=s.content.find(c=>c.content_key===key&&c.language_code===lang)?.content_value||legacyTranslation(key)[lang]||'';
   const values=Object.assign(legacyTranslation(key),Object.fromEntries(s.content.filter(c=>c.content_key===key).map(c=>[c.language_code,c.content_value])));
-  const fallback=key.startsWith('ui:')?I.t(key.slice(3),{},lang):I.resolve(values,lang);
+  const fallback=key.startsWith('ui:Food type: ')?I.resolve(values,lang)||key.slice('ui:Food type: '.length):key.startsWith('ui:')?I.t(key.slice(3),{},lang):I.resolve(values,lang);
   $('translationFallbackPreview').textContent=T('Fallback preview')+': '+(fallback||'—');
  }
  const otherFields=['item','notes','assigned_to','status'];

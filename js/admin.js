@@ -2,7 +2,7 @@
  'use strict';
  const T=(text,params)=>window.RSVP_I18N?.t(text,params)||text;
  const R=window.RSVP,$=R.byId;
- let db=null,user=null,store={settings:null,sessions:[],locations:[],households:[],guests:[],food:[],claims:[],submissions:[],defaults:[],content:[],admins:[],adminInvitations:[],relationGroups:[],foodCategories:[],languages:[],contacts:[],overrides:[],responses:[],queue:[],deliveries:[],tasks:[],otherCategories:[]};
+ let db=null,user=null,store={settings:null,sessions:[],locations:[],households:[],guests:[],food:[],claims:[],submissions:[],defaults:[],content:[],admins:[],adminInvitations:[],relationGroups:[],foodCategories:[],foodTypes:[],languages:[],contacts:[],overrides:[],responses:[],queue:[],deliveries:[],tasks:[],otherCategories:[]};
  let inviteDetail=null;
  let activeTab='dashboard',lastMainTab='dashboard',activeSettingsTab='event',editMode=false;
  const expandedGroups=new Map();
@@ -47,8 +47,8 @@
  async function reload(){
    show(T("Loading event data…"));
    try{
-     const keys=['languages','settings','sessions','locations','households','guests','food','claims','submissions','defaults','content','relationGroups','foodCategories','contacts','overrides','responses','queue','deliveries','tasks','otherCategories'];
-     const jobs=[fetchTable('event_languages'),fetchTable('event_settings'),fetchTable('event_sessions'),fetchTable('event_locations'),fetchTable('households','id,household_name,invite_code,language,side,relation_group_id,email,phone,food,food_confirmed,rsvp_state,rsvp_submitted_at,late_submission_until,sort_order,parent_id,notes,archived_at,whatsapp,postal_address,preferred_contact_method'),fetchTable('guests','id,household_id,first_name,last_name,courtesy_title,relation,language,is_child,rsvp_status,dietary_requirements,notes,archived_at'),fetchTable('food_items'),fetchTable('food_claims'),fetchTable('rsvp_submissions','id,household_id,submitted_at'),fetchTable('household_session_defaults'),fetchTable('event_content'),fetchTable('relation_groups'),fetchTable('food_categories'),fetchTable('household_contacts'),fetchTable('guest_session_overrides'),fetchTable('guest_session_responses'),fetchTable('invitation_send_queue'),fetchTable('invitation_deliveries'),fetchTable('other_items'),fetchTable('other_categories')];
+     const keys=['languages','settings','sessions','locations','households','guests','food','claims','submissions','defaults','content','relationGroups','foodCategories','foodTypes','contacts','overrides','responses','queue','deliveries','tasks','otherCategories'];
+     const jobs=[fetchTable('event_languages'),fetchTable('event_settings'),fetchTable('event_sessions'),fetchTable('event_locations'),fetchTable('households','id,household_name,invite_code,language,side,relation_group_id,email,phone,food,food_confirmed,rsvp_state,rsvp_submitted_at,late_submission_until,sort_order,parent_id,notes,archived_at,whatsapp,postal_address,preferred_contact_method'),fetchTable('guests','id,household_id,first_name,last_name,courtesy_title,relation,language,is_child,rsvp_status,dietary_requirements,notes,archived_at'),fetchTable('food_items'),fetchTable('food_claims'),fetchTable('rsvp_submissions','id,household_id,submitted_at'),fetchTable('household_session_defaults'),fetchTable('event_content'),fetchTable('relation_groups'),fetchTable('food_categories'),fetchTable('food_item_types'),fetchTable('household_contacts'),fetchTable('guest_session_overrides'),fetchTable('guest_session_responses'),fetchTable('invitation_send_queue'),fetchTable('invitation_deliveries'),fetchTable('other_items'),fetchTable('other_categories')];
      const values=await Promise.all(jobs);keys.forEach((key,i)=>store[key]=values[i]);store.settings=store.settings[0]||null;
      const {data:admins,error:adminsError}=await R.adminRpc('admin_list_members');
      store.admins=adminsError?[]:(admins||[]);
@@ -202,8 +202,7 @@
      const info=R.dom('div',{class:'household-guest-info'});
      const name=[g.courtesy_title,g.first_name,g.last_name].filter(Boolean).join(' ');
      info.append(R.dom('strong',{},name||T("Unnamed guest")));
-     const responses=store.responses.filter(r=>r.guest_id===g.id);const responseSummary=responses.length?T('{attending} attending · {declined} declined',{attending:responses.filter(r=>r.rsvp_status==='attending').length,declined:responses.filter(r=>r.rsvp_status==='declined').length}):T('Pending');
-     const meta=[g.archived_at?T("Archived"):null,g.is_child?T("Child"):null,g.relation,'RSVP '+responseSummary].filter(Boolean).join(' · ');
+     const meta=[g.archived_at?T("Archived"):null,g.is_child?T("Child"):null,g.relation].filter(Boolean).join(' · ');
      info.append(R.dom('small',{class:'muted'},meta));header.append(info);
      const editor=buildGuestEditor(g);
      header.append(iconAction('edit',T("Edit guest: ")+name,()=>editor.classList.toggle('hidden'),!!g.archived_at||!!store.households.find(h=>h.id===g.household_id)?.archived_at,'edit-only'));
@@ -461,7 +460,7 @@
    const active=guests.filter(g=>!g.archived_at).length;
    const descendants=store.households.filter(x=>!x.archived_at&&isDescendantOf(x.id,h.id));
    const nestedGuests=store.guests.filter(g=>!g.archived_at&&descendants.some(x=>x.id===g.household_id)).length;
-   return [active?T(active===1?'{count} guest':'{count} guests',{count:active}):null,descendants.length||!active?T(descendants.length===1?'{count} sub-household':'{count} sub-households',{count:descendants.length})+' · '+T(nestedGuests===1?'{count} guest in sub-households':'{count} guests in sub-households',{count:nestedGuests}):null,h.language?.toUpperCase(),h.archived_at?T("Archived"):active?'RSVP '+T(h.rsvp_state==='locked'?'Locked after submission':'Open for responses'):T("Grouping household")].filter(Boolean).join(' · ');
+   return [active?T(active===1?'{count} guest':'{count} guests',{count:active}):null,descendants.length||!active?T(descendants.length===1?'{count} sub-household':'{count} sub-households',{count:descendants.length})+' · '+T(nestedGuests===1?'{count} guest in sub-households':'{count} guests in sub-households',{count:nestedGuests}):null,h.language?.toUpperCase(),h.archived_at?T("Archived"):active?null:T("Grouping household")].filter(Boolean).join(' · ');
  }
  function renderInvites(){
    const box=$('inviteRows');box.replaceChildren();const search=$('inviteSearch').value.trim().toLowerCase();
@@ -475,11 +474,11 @@
        back.addEventListener('click',()=>{const id=inviteDetail.id;inviteDetail=null;renderInvites();box.querySelector('[data-invite-household="'+id+'"] button')?.focus();});
        panel.append(back,R.dom('h3',{},h.household_name));
        const tabs=R.dom('div',{class:'invite-detail-tabs'});
-       for(const [key,label] of [['sessions','Session invitations'],['delivery','Invitation delivery']]){
+       for(const [key,label] of [['sessions','Session invitations'],['rsvp','RSVP management'],['delivery','Invitation delivery']]){
          const button=R.dom('button',{type:'button',class:'small-tool'},T(label));button.setAttribute('aria-pressed',String(inviteDetail.section===key));
          button.addEventListener('click',()=>{inviteDetail.section=key;renderInvites();box.querySelector('h3')?.focus();});tabs.append(button);
        }
-       panel.append(tabs);const content=inviteDetail.section==='sessions'?sessionAssignmentForm(h):deliverySection(h);content.open=true;panel.append(content);box.append(panel);
+       panel.append(tabs);const content=inviteDetail.section==='sessions'?sessionAssignmentForm(h):inviteDetail.section==='rsvp'?rsvpSection(h):deliverySection(h);content.open=true;panel.append(content);box.append(panel);
        const heading=panel.querySelector('h3');heading.tabIndex=-1;return;
      }inviteDetail=null;
    }
@@ -491,8 +490,9 @@
      const name=R.dom('strong',{class:'invite-compact-name',title:h.household_name},h.household_name);row.append(name);
      const actions=R.dom('div',{class:'invite-compact-actions'});
      if(all.some(x=>x.id===h.id)){
-     for(const [key,label] of [['sessions','Session invitations'],['delivery','Invitation delivery']]){
-       const button=R.dom('button',{type:'button',class:'small-tool'},T(label));button.setAttribute('aria-label',T(label)+' · '+h.household_name);
+     for(const [key,label] of [['sessions','Session invitations'],['rsvp','RSVP management'],['delivery','Invitation delivery']]){
+       const caption=key==='rsvp'?T(h.rsvp_state==='locked'?'Locked after submission':'Open for responses'):T(label);
+       const button=R.dom('button',{type:'button',class:'small-tool',title:T(label)},caption);button.setAttribute('aria-label',T(label)+' · '+h.household_name);
        button.addEventListener('click',()=>{inviteDetail={id:h.id,section:key};renderInvites();box.querySelector('h3')?.focus();});actions.append(button);
      }
      const copy=R.dom('button',{type:'button',class:'small-tool'},T('Copy invitation link'));copy.setAttribute('aria-label',T('Copy invitation link')+' · '+h.household_name);
@@ -593,7 +593,7 @@
          const expanded=R.dom('div',{class:'household-expanded'});
          expanded.append(editor,buildGuestList(guests));
          if(!h.archived_at){const add=disclosure(T("Add guest"),'edit-only');const form=buildGuestEditor({household_id:h.id});form.classList.remove('hidden');add.append(form);expanded.append(add);}
-         expanded.append(rsvpSection(h),contactSection(h));
+         expanded.append(contactSection(h));
          if(nested){
            const childList=R.dom('div',{class:'tree-children'});
            childList.append(R.dom('div',{class:'guest-list-heading'},T("Child households")));
@@ -619,6 +619,50 @@
    if(current&&!store.foodCategories.some(c=>c.name===current))select.append(R.dom('option',{value:current},current+T(" (unregistered)")));
    select.value=current||'';
  }
+ function foodTypeOptions(current){
+   const names=[...new Set([...R.foodTypes,...store.foodTypes.map(type=>type.name),...(current?[current]:[])])];
+   return names.map(name=>[name,foodTypeLabel(name)]);
+ }
+ function foodTypeLabel(name){
+   if(R.foodTypes.includes(name))return T(name);
+   const values=Object.fromEntries(store.content.filter(c=>c.content_key==='ui:Food type: '+name)
+     .map(c=>[c.language_code,c.content_value]));
+   return window.RSVP_I18N.resolve(values)||name;
+ }
+ function fillNewFoodTypes(selected=''){
+   const select=$('newFoodType');
+   select.replaceChildren(R.dom('option',{value:''},T('Default type ({type})',{type:foodTypeLabel('Piece(s)')})));
+   for(const [value,label] of foodTypeOptions())select.append(R.dom('option',{value},label));
+   select.value=selected;
+ }
+ function foodVenueFields(host,current=null){
+   host.replaceChildren();
+   const venues=ordered(store.locations,'name').filter(venue=>!venue.archived_at);
+   if(!venues.length||(venues.length<2&&current===null))return ()=>current;
+   const group=R.dom('fieldset',{class:'food-venue-options'});
+   group.append(R.dom('legend',{},T('Venues')));
+   const checks=venues.map(venue=>{
+     const check=R.dom('input',{type:'checkbox',value:venue.id});
+     check.checked=current===null||current.includes(venue.id);
+     const label=R.dom('label',{class:'checkbox-label'});
+     label.append(check,document.createTextNode(venue.name));group.append(label);
+     return check;
+   });
+   host.append(group);
+   return ()=>{
+     const selected=checks.filter(check=>check.checked).map(check=>check.value);
+     return selected.length===venues.length?null:selected;
+   };
+ }
+ function foodVenueEligible(h,item){
+   if(item.venue_ids==null)return true;
+   return store.sessions.some(session=>session.is_active&&item.venue_ids.includes(session.location_id)
+     &&store.locations.some(venue=>venue.id===session.location_id&&!venue.archived_at)
+     &&store.guests.some(guest=>guest.household_id===h.id&&!guest.archived_at&&(
+       store.overrides.find(o=>o.guest_id===guest.id&&o.session_id===session.id)?.is_invited
+       ??store.defaults.find(d=>d.household_id===h.id&&d.session_id===session.id)?.is_invited)));
+ }
+ let newFoodVenues=()=>null;
  function foodClaimName(claim){
    return store.households.find(h=>h.id===claim.household_id)?.household_name||T('Household');
  }
@@ -641,7 +685,7 @@
        const actions=R.dom('div',{class:'food-selection-actions'});
        if(item.active&&canEdit.has(claim.household_id)){
          const form=R.dom('form',{class:'food-selection-form hidden'});
-         const quantity=quantityField(form,claim.quantity,available+claim.quantity);
+         const quantity=quantityField(form,claim.quantity,foodVenueEligible(eligible.find(h=>h.id===claim.household_id),item)?available+claim.quantity:claim.quantity);
          amount.append(saveForm(form,T('Save'),()=>managementRpc('admin_set_food_selection',
            selectionArgs(claim.household_id,Number(quantity.value),claim.quantity))));
          actions.append(iconAction('edit',T('Edit quantity for {household}',{household:name}),()=>{
@@ -658,9 +702,9 @@
      section.append(makeTable([T('Household'),T('Quantity'),''],rows));
    }
    const selected=new Set(claims.map(c=>c.household_id));
-   const options=eligible.filter(h=>!h.food_confirmed&&!selected.has(h.id)).map(h=>[h.id,h.household_name]);
+   const options=eligible.filter(h=>!h.food_confirmed&&!selected.has(h.id)&&foodVenueEligible(h,item)).map(h=>[h.id,h.household_name]);
    if(item.active&&available>0&&options.length){
-     const editor=disclosure(T('+ Add'),'food-selection-editor');
+     const editor=disclosure(T('+ Add household'),'food-selection-editor');
      const form=R.dom('form',{class:'food-selection-form'});
      const choice=field(form,T('Household'),'', [['',T('Choose…')],...options],'text',true);
      const quantity=quantityField(form,1,available);
@@ -673,8 +717,15 @@
  function buildFoodEditor(item){
    const form=R.dom('form',{class:'food-edit-form hidden'});
    const fields=[[T("Name"),'name_en'],[T("User Comment"),'description_en'],[T("Admin Comment"),'admin_comment']];
-   for(const [labelText,key] of fields){const label=R.dom('label');label.append(R.dom('span',{},labelText));const input=R.dom(key==='name_en'?'input':'textarea',{name:key});input.value=key==='name_en'?foodItemName(item):key==='description_en'?(item.description_en||item.description_fo||item.description_de||''):item[key]||'';input.maxLength=key==='name_en'?300:4000;input.required=key==='name_en';label.append(input);form.append(label);}
+   for(const [labelText,key] of fields){const label=R.dom('label');label.append(R.dom('span',{},labelText));const input=R.dom(key==='name_en'?'input':'textarea',{name:key});input.value=key==='name_en'?foodItemName(item):key==='description_en'?(item.description_en??item.description_fo??item.description_de??''):item[key]||'';input.maxLength=key==='name_en'?300:4000;input.required=key==='name_en';label.append(input);form.append(label);}
+   const originalComment=form.elements.namedItem('description_en').value;
    const quantityLabel=R.dom('label');quantityLabel.append(R.dom('span',{},T("Quantity needed")));const quantity=R.dom('input',{type:'number',min:'0',name:'quantity_needed'});quantity.value=String(item.quantity_needed);quantity.required=true;quantityLabel.append(quantity);form.insertBefore(quantityLabel,form.children[1]);
+   const currentType=item.quantity_type||'Piece(s)';
+   const type=field(form,T('Type'),currentType,foodTypeOptions(currentType));
+   form.insertBefore(type.parentElement,form.children[2]);
+   const venueHost=R.dom('div',{class:'span-2'});
+   const venueIds=foodVenueFields(venueHost,item.venue_ids??null);
+   if(venueHost.childElementCount)form.append(venueHost);
    const activeLabel=R.dom('label',{class:'checkbox-label'});const active=R.dom('input',{type:'checkbox'});active.checked=item.active;activeLabel.append(active,R.dom('span',{},T("Available for guests")));form.append(activeLabel);
    const footer=R.dom('div',{class:'food-edit-buttons'});
    const save=R.dom('button',{type:'submit',class:'btn'},T("Save food item"));
@@ -685,8 +736,12 @@
      if(!Number.isInteger(required)||required<claim||(!active.checked&&claim>0)){
        show(T('Quantity cannot fall below {count} claimed; claimed items cannot be hidden.',{count:claim}),'error');return;
      }
-     const record={quantity_needed:required,active:active.checked};
-     for(const [,key] of fields)record[key]=form.elements.namedItem(key).value.trim()||null;
+     const record={quantity_needed:required,active:active.checked,quantity_type:type.value,venue_ids:venueIds()};
+     for(const [,key] of fields){
+       const value=form.elements.namedItem(key).value;
+       if(key==='description_en'&&value===originalComment)continue;
+       record[key]=value.trim()||(key==='description_en'?'':null);
+     }
      if(!record.name_en){show(T("Name is required."),'error');return;}if(!item.name_fo)record.name_fo=record.name_en;
      save.disabled=true;form.setAttribute('aria-busy','true');
      try{const {error}=await db.from('food_items').update(record).eq('id',item.id);if(error)throw error;await reload();show(T("Food item updated."),'success');}
@@ -718,6 +773,8 @@
    R.closePopups();const box=$('adminFoodList');box.replaceChildren();
    const categorySelect=$('newFoodCategory');categorySelect.replaceChildren();
    foodCategoryOptions(categorySelect,foodCategoriesSorted()[0]?.name||'');
+   fillNewFoodTypes($('newFoodType').value);
+   newFoodVenues=foodVenueFields($('newFoodVenues'));
    const search=$('foodSearch')?.value.trim().toLowerCase()||'';
    const categories=foodCategoriesSorted(),known=new Set(categories.map(c=>c.name));
    const unregistered=[...new Set(store.food.map(f=>f.category||'').filter(c=>!known.has(c)))].sort();
@@ -767,7 +824,7 @@
        const main=R.dom('summary',{class:'food-manage-main'});
        const info=R.dom('div',{class:'food-item-info'});
        info.append(R.dom('strong',{},foodItemName(f)),
-         R.dom('small',{class:'muted'},T('Amount: {claimed}/{needed}, Shown: {shown}',{needed:f.quantity_needed,claimed:claim,shown:f.active&&f.quantity_needed>claim?'✓':'–'})));
+         R.dom('small',{class:'muted'},T('Amount: {claimed}/{needed} {type}, Shown: {shown}',{needed:f.quantity_needed,claimed:claim,type:foodTypeLabel(f.quantity_type||'Piece(s)'),shown:f.active&&f.quantity_needed>claim?'✓':'–'})));
        const buttons=R.dom('div',{class:'food-item-actions'});
        buttons.append(btn('↑',T("Move food item up"),()=>rpcAction('admin_move_food_item',
          {p_food_item_id:f.id,p_direction:-1},T("Food order saved.")),pos<=0));
@@ -812,7 +869,7 @@
          main.append(commitments);
        }
        const detail=R.dom('div',{class:'food-expanded'}),comments=R.dom('div',{class:'food-comment-grid'});
-       for(const [label,value] of [['User Comment',f.description_en||f.description_fo||f.description_de],['Admin Comment',f.admin_comment]])if(value?.trim())comments.append(R.dom('p',{class:'small'},T(label)+': '+value));
+       for(const [label,value] of [['User Comment',f.description_en??f.description_fo??f.description_de],['Admin Comment',f.admin_comment]])if(value?.trim())comments.append(R.dom('p',{class:'small'},T(label)+': '+value));
        detail.dataset.hasComments=String(!!comments.children.length);
        if(comments.children.length)detail.append(comments);
        const recipeButton=R.dom('button',{type:'button',class:'small-tool edit-only'},T(f.recipe_text?'Edit recipe':'+ Add recipe'));
@@ -1026,8 +1083,28 @@
    $('householdSearch').addEventListener('input',renderHouseholds);
    $('inviteSearch').addEventListener('input',renderInvites);$('deliveryStatusFilter').addEventListener('change',renderDeliveryLog);
    $('showArchived').addEventListener('change',renderHouseholds);
-   $('expandFood').addEventListener('click',()=>{document.querySelectorAll('#adminFoodList > .food-category').forEach(d=>{d.open=true;expandedGroups.set(d.dataset.treeKey,true);});});
-   $('collapseFood').addEventListener('click',()=>{R.closePopups();document.querySelectorAll('#adminFoodList > .food-category').forEach(d=>{d.open=false;expandedGroups.set(d.dataset.treeKey,false);});});
+   function setFoodDisclosure(selector,open){
+     if(!open)R.closePopups();
+     document.querySelectorAll('#adminFoodList '+selector).forEach(d=>{
+       d.open=open;if(d.dataset.treeKey)expandedGroups.set(d.dataset.treeKey,open);
+     });
+   }
+   $('expandFood').addEventListener('click',()=>setFoodDisclosure('.food-category',true));
+   $('collapseFood').addEventListener('click',()=>setFoodDisclosure('details[data-tree-key], details[open]',false));
+   $('expandFoodItems').addEventListener('click',()=>setFoodDisclosure('.food-category, .food-compact-item',true));
+   $('collapseFoodItems').addEventListener('click',()=>setFoodDisclosure('.food-compact-item, .food-compact-item details[open]',false));
+   $('addFoodType').addEventListener('click',async()=>{
+     if(!editMode)return;
+     const name=prompt(T('New food item type'))?.trim();
+     if(!name)return;
+     if(name.length>60){show(T('Food item type must be at most 60 characters.'),'error');return;}
+     if(!foodTypeOptions().some(([value])=>value===name)){
+       const {error}=await db.from('food_item_types').insert({name});
+       if(error){show(R.safeError(error),'error');return;}
+       store.foodTypes.push({name});
+     }
+     fillNewFoodTypes(name);
+   });
    $('foodSearch').addEventListener('input',renderFood);
    $('addCategoryForm').addEventListener('submit',async e=>{
      e.preventDefault();const input=$('categoryName'),name=input.value.trim();if(!name)return;const button=e.target.querySelector('button');button.disabled=true;
@@ -1039,7 +1116,7 @@
      const category=$('newFoodCategory').value;const count=Number($('newFoodQuantity').value);
      if(!Number.isInteger(count)||count<0){show(T("Enter a non-negative quantity."),'error');button.disabled=false;return;}
      const items=store.food.filter(f=>f.category===category);
-     const record={category,name_fo:$('newFoodFo').value.trim(),name_en:$('newFoodFo').value.trim(),description_en:$('newFoodUserComment').value.trim()||null,admin_comment:$('newFoodAdminComment').value.trim()||null,quantity_needed:count,active:true,sort_order:Math.max(0,...items.map(f=>f.sort_order||0))+1};
+     const record={category,name_fo:$('newFoodFo').value.trim(),name_en:$('newFoodFo').value.trim(),description_en:$('newFoodUserComment').value.trim()||null,admin_comment:$('newFoodAdminComment').value.trim()||null,quantity_needed:count,quantity_type:$('newFoodType').value||'Piece(s)',venue_ids:newFoodVenues(),active:true,sort_order:Math.max(0,...items.map(f=>f.sort_order||0))+1};
      try{const {error}=await db.from('food_items').insert(record);if(error)throw error;e.target.reset();await reload();show(T("Food item added."),'success');}
      catch(error){show(R.safeError(error),'error');}finally{button.disabled=false;}
    });

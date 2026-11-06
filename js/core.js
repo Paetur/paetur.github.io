@@ -206,6 +206,7 @@
     popup.print();
     return true;
   }
-  window.RSVP={config,getClient,adminRpc,guestRpc,normalizeUrl,validateKey,savePreview,invitationURL,getInviteCode,codePattern,siteRoot,dom,byId,showStatus,formatDate,zonedInput,zonedInstant,safeError,dl,configSource,iconPopup,closePopups,recipeContent,printRecipe};
+  const foodTypes=['Batch(s)','Piece(s)','Tray(s)','Packet(s)','Kg','Grams'];
+  window.RSVP={config,getClient,adminRpc,guestRpc,normalizeUrl,validateKey,savePreview,invitationURL,getInviteCode,codePattern,siteRoot,dom,byId,showStatus,formatDate,zonedInput,zonedInstant,safeError,dl,configSource,iconPopup,closePopups,recipeContent,printRecipe,foodTypes};
 }());
 

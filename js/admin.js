@@ -499,23 +499,26 @@
      copy.addEventListener('click',async()=>{try{await navigator.clipboard.writeText(R.invitationURL(h.invite_code));show(T('Invitation link copied.'),'success');}catch(error){show(R.safeError(error),'error');}});actions.append(copy);
      }row.append(actions);container.append(row);
    }
+   renderInvitationHierarchy(list,tree,visible,drawRow,'invites',!!search);
+   box.append(list);if(!list.children.length)box.append(R.dom('p',{class:'muted'},T('No matching invitations. Empty and archived households have no active invitation.')));
+ }
+
+ function renderInvitationHierarchy(list,tree,visible,drawRow,scope,forceOpen=false){
    for(const side of [...new Set(tree.map(h=>h.side||'unassigned'))].sort()){
      const sideMembers=tree.filter(h=>(h.side||'unassigned')===side);if(!sideMembers.some(h=>visible.has(h.id)))continue;
-     const sideBox=R.dom('details',{class:'hierarchy-section tree-disclosure'});setDisclosure(sideBox,'invites:side:'+side,true,!!search);
+     const sideBox=R.dom('details',{class:'hierarchy-section tree-disclosure'});if(scope)setDisclosure(sideBox,scope+':side:'+side,true,forceOpen);else sideBox.open=true;
      sideBox.append(R.dom('summary',{class:'tree-side'},side.split('_').map(w=>w[0]?.toUpperCase()+w.slice(1)).join(' ')));
      const sideBody=R.dom('div',{class:'tree-children'});sideBox.append(sideBody);list.append(sideBox);
      const groups=[...new Set(sideMembers.map(h=>h.relation_group_id||''))].sort((a,b)=>{const ar=store.relationGroups.find(g=>g.id===a),br=store.relationGroups.find(g=>g.id===b);return (ar?.sort_order||0)-(br?.sort_order||0)||(ar?.name||'').localeCompare(br?.name||'');});
      for(const gid of groups){
        const members=sideMembers.filter(h=>(h.relation_group_id||'')===gid);if(!members.some(h=>visible.has(h.id)))continue;
-       const group=R.dom('details',{class:'hierarchy-group tree-disclosure'});setDisclosure(group,'invites:group:'+side+':'+gid,true,!!search);
+       const group=R.dom('details',{class:'hierarchy-group tree-disclosure'});if(scope)setDisclosure(group,scope+':group:'+side+':'+gid,true,forceOpen);else group.open=true;
        group.append(R.dom('summary',{class:'tree-group'},householdGroupName(members[0])));const body=R.dom('div',{class:'tree-children'});group.append(body);sideBody.append(group);
        const visited=new Set();function draw(h,parent){if(visited.has(h.id)||!visible.has(h.id))return;visited.add(h.id);drawRow(h,parent);const children=ordered(members.filter(c=>c.parent_id===h.id&&c.id!==h.id),'household_name');if(children.some(c=>visible.has(c.id))){const nested=R.dom('div',{class:'tree-children invite-nested-rows'});parent.append(nested);children.forEach(c=>draw(c,nested));}}
        ordered(members.filter(h=>!members.some(p=>p.id===h.parent_id)),'household_name').forEach(h=>draw(h,body));ordered(members,'household_name').forEach(h=>draw(h,body));
      }
    }
-   box.append(list);if(!list.children.length)box.append(R.dom('p',{class:'muted'},T('No matching invitations. Empty and archived households have no active invitation.')));
  }
-
  function renderHouseholds(){
    const box=$('householdRows');box.replaceChildren();
    const search=$('householdSearch').value.trim().toLowerCase();
@@ -1047,12 +1050,11 @@
    saveForm(f,T("Save session invitations"),()=>managementRpc('admin_save_session_assignments',{p_household_id:h.id,p_assignments:fields.map(x=>({session_id:x.session_id,guest_id:x.guest_id,is_invited:x.control.value==='inherit'?null:x.control.value==='true'}))}));
    if(fields.length)d.append(f);else d.append(R.dom('p',{},T("Create sessions in Settings first.")));return d;
  }
- function venueFoodDialog(venue){
-   const title=T('Venue food');
+ function assignmentDialog({title,name,help,empty,drawChoices,saveChanges}){
    const dialog=R.dom('dialog',{class:'food-recipe-dialog venue-assignment-dialog'});
    dialog.setAttribute('aria-label',title);
    const form=R.dom('form');
-   form.append(R.dom('p',{class:'micro'},T('Checked items are available at this venue. Changes apply here only. Existing household claims are kept.')));
+   form.append(R.dom('p',{class:'micro'},help));
    const list=R.dom('div',{class:'venue-assignment-list'});
    const selectAllLabel=R.dom('label',{class:'checkbox-label venue-select-all'});
    const selectAll=R.dom('input',{type:'checkbox'});
@@ -1065,48 +1067,102 @@
    cancel.addEventListener('click',()=>dialog.close());
    footer.append(cancel,save);
    form.append(selectAllLabel,list,status,footer);
-   const assigned=new Set(store.food.filter(item=>item.venue_ids?.includes(venue.id)||(item.active&&item.venue_ids==null)).map(item=>item.id));
+   const assigned=new Set();
    const updateSelection=()=>{
-     const count=checks.filter(check=>check.checked).length;
-     selectAll.checked=!!checks.length&&count===checks.length;
-     selectAll.indeterminate=count>0&&count<checks.length;
-     save.disabled=!checks.some(check=>check.checked!==assigned.has(check.value));
+     const count=editable.filter(check=>check.checked).length;
+     selectAll.checked=!!editable.length&&count===editable.length;
+     selectAll.indeterminate=count>0&&count<editable.length;
+     save.disabled=!editable.some(check=>check.checked!==assigned.has(check.value));
    };
-   const checks=foodMenuCategories().flatMap(category=>{
-     const items=foodMenuItems(category.name).filter(item=>item.active||assigned.has(item.id));
-     if(!items.length)return [];
-     const group=R.dom('fieldset',{class:'venue-assignment-category'});
-     group.append(R.dom('legend',{},category.name||T('Uncategorized')));
-     const controls=items.map(item=>{
-       const check=R.dom('input',{type:'checkbox',value:item.id});check.checked=assigned.has(item.id);
-       const label=R.dom('label',{class:'checkbox-label'});
-       label.append(check,document.createTextNode(foodItemName(item)));group.append(label);
-       check.addEventListener('change',updateSelection);return check;
-     });
-     list.append(group);
-     return controls;
+   const checks=[];
+   drawChoices(list,(parent,id,label,checked,disabled=false,detail='')=>{
+     const check=R.dom('input',{type:'checkbox',value:id});check.checked=checked;check.disabled=disabled;
+     if(checked)assigned.add(id);
+     const row=R.dom('label',{class:'checkbox-label'});
+     row.append(check,document.createTextNode(label));
+     if(detail){
+       const badge=R.dom('small',{class:'muted'},detail);
+       row.append(badge);
+     }
+     parent.append(row);checks.push(check);check.addEventListener('change',updateSelection);
    });
-   selectAllLabel.classList.toggle('hidden',!checks.length);
-   if(!checks.length)list.append(R.dom('p',{class:'small muted'},T('No food items to manage.')));
+   const editable=checks.filter(check=>!check.disabled);
+   selectAllLabel.classList.toggle('hidden',!editable.length);
+   if(!checks.length)list.append(R.dom('p',{class:'small muted'},empty));
    updateSelection();
    selectAll.addEventListener('change',()=>{
-     checks.forEach(check=>{check.checked=selectAll.checked;});updateSelection();
+     editable.forEach(check=>{check.checked=selectAll.checked;});updateSelection();
    });
    form.addEventListener('submit',async event=>{
      event.preventDefault();if(!editMode||save.disabled||form.getAttribute('aria-busy')==='true')return;
-     const add=checks.filter(check=>check.checked&&!assigned.has(check.value)).map(check=>check.value);
-     const remove=checks.filter(check=>!check.checked&&assigned.has(check.value)).map(check=>check.value);
+     const add=editable.filter(check=>check.checked&&!assigned.has(check.value)).map(check=>check.value);
+     const remove=editable.filter(check=>!check.checked&&assigned.has(check.value)).map(check=>check.value);
      save.disabled=true;form.setAttribute('aria-busy','true');status.textContent='';
      try{
-       await managementRpc('admin_edit_venue_food',{p_venue_id:venue.id,p_add:add,p_remove:remove});
+       await saveChanges(add,remove);
        dialog.close();await reload();show(T('Changes saved.'),'success');
      }catch(error){status.textContent=R.safeError(error);}
      finally{form.removeAttribute('aria-busy');updateSelection();}
    });
-   dialog.append(R.dom('h2',{},title+' · '+venue.name),form);
+   dialog.append(R.dom('h2',{},title+' · '+name),form);
    dialog.addEventListener('close',()=>dialog.remove(),{once:true});
    $('adminApp').append(dialog);
    dialog.showModal();
+ }
+ function venueFoodDialog(venue){
+   assignmentDialog({
+     title:T('Venue food'),name:venue.name,
+     help:T('Checked items are available at this venue. Changes apply here only. Existing household claims are kept.'),
+     empty:T('No food items to manage.'),
+     drawChoices(list,addCheck){
+       for(const category of foodMenuCategories()){
+         const items=foodMenuItems(category.name).filter(item=>item.active||item.venue_ids?.includes(venue.id));
+         if(!items.length)continue;
+         const group=R.dom('fieldset',{class:'venue-assignment-category'});
+         group.append(R.dom('legend',{},category.name||T('Uncategorized')));
+         for(const item of items){
+           const checked=item.venue_ids?.includes(venue.id)||(item.active&&item.venue_ids==null);
+           addCheck(group,item.id,foodItemName(item),checked);
+         }
+         list.append(group);
+       }
+     },
+     saveChanges:(add,remove)=>managementRpc('admin_edit_venue_food',{p_venue_id:venue.id,p_add:add,p_remove:remove})
+   });
+ }
+ async function sessionHouseholdDialog(session){
+   const protectedIds=new Set(await managementRpc('admin_session_invitation_locks'));
+   if(!editMode)return;
+   const guests=new Map();
+   for(const guest of store.guests.filter(g=>!g.archived_at)){
+     if(!guests.has(guest.household_id))guests.set(guest.household_id,[]);
+     guests.get(guest.household_id).push(guest.id);
+   }
+   const invited=new Set(store.defaults.filter(d=>d.session_id===session.id&&d.is_invited).map(d=>d.household_id));
+   const overrides=new Set(store.overrides.filter(o=>o.session_id===session.id).map(o=>o.guest_id));
+   const tree=ordered(store.households.filter(h=>!h.archived_at),'household_name');
+   const visible=new Set(tree.filter(h=>guests.has(h.id)).map(h=>h.id));
+   const byId=new Map(tree.map(h=>[h.id,h]));
+   for(const id of [...visible]){
+     let parent=byId.get(id)?.parent_id;
+     while(parent&&byId.has(parent)&&!visible.has(parent)){visible.add(parent);parent=byId.get(parent).parent_id;}
+   }
+   assignmentDialog({
+     title:T('Manage households'),name:session.name,
+     help:T('Checked households are invited to this session. Individual guest exceptions stay in place.'),
+     empty:T('No households to manage.'),
+     drawChoices(list,addCheck){
+       renderInvitationHierarchy(list,tree,visible,(h,parent)=>{
+         const members=guests.get(h.id);
+         if(!members){parent.append(R.dom('p',{class:'micro muted'},h.household_name));return;}
+         const locked=protectedIds.has(h.id);
+         const flags=[members.some(id=>overrides.has(id))?T('Guest exceptions'):null,
+           locked?T('Protected by RSVP history'):null].filter(Boolean).join(' · ');
+         addCheck(parent,h.id,h.household_name,invited.has(h.id),locked,flags);
+       });
+     },
+     saveChanges:(add,remove)=>managementRpc('admin_edit_session_households',{p_session_id:session.id,p_add:add,p_remove:remove})
+   });
  }
  function venueSummaryRow(name,metadata,mapUrl,archived=false,actions=null){
    const venue=disclosure('');
@@ -1157,7 +1213,16 @@
        btn('↓',T('Move session down'),()=>rpcAction('admin_move_session',{p_session_id:s.id,p_direction:1},T('Session order saved.')),index===sessions.length-1)
      );
      const d=venueSummaryRow(s.name+(s.is_active?'':T(" · Inactive")),metadata,v?.map_url,false,actions);
-     d.append(sessionForm(s));div.append(d);
+     const form=sessionForm(s);
+     const households=R.dom('button',{class:'small-tool',type:'button'},T('Manage households'));
+     households.addEventListener('click',async()=>{
+       if(!editMode)return;
+       households.disabled=true;
+       try{await sessionHouseholdDialog(s);}catch(error){show(R.safeError(error),'error');}
+       finally{households.disabled=false;}
+     });
+     form.append(households);
+     d.append(form);div.append(d);
    }
    $('newSessionEditor').replaceChildren(sessionForm({}));
  }

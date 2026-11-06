@@ -42,10 +42,6 @@ const {PGlite}=require('@electric-sql/pglite'),fs=require('node:fs'),assert=requ
  const admin='11111111-1111-4111-8111-111111111111',session='aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
  await db.query("INSERT INTO auth.users VALUES($1,'admin@example.invalid',now(),'unused')",[admin]);await db.query("INSERT INTO public.admins(user_id,name) VALUES($1,'Example')",[admin]);await db.query('INSERT INTO auth.sessions(id,user_id) VALUES($1,$2)',[session,admin]);
  await db.query("SELECT set_config('request.jwt.claim.sub',$1,false),set_config('request.jwt.claims',$2,false)",[admin,JSON.stringify({sub:admin,session_id:session})]);
- await db.exec("INSERT INTO public.other_categories(name,legacy_key) VALUES('Tasks','tasks')");
- await db.exec("INSERT INTO public.other_items(item,notes,due_date,source_kind,category_id) VALUES('Chairs','Keep this note','2027-01-01','task',(SELECT id FROM public.other_categories WHERE legacy_key='tasks'))");
- const task=(await db.query('SELECT * FROM public.things_to_do')).rows[0];
- const draft={id:task.id,task:'Arrange chairs',assigned_to:'Helper',status:'in_progress',sort_order:0,expected_updated_at:task.updated_at};
  await db.exec('SET ROLE authenticated');
  await db.query('SELECT public.admin_add_venue_food($1,ARRAY[$2]::uuid[])',[location,id]);
  await db.query('SELECT public.admin_add_venue_food($1,ARRAY[$2]::uuid[])',[location,id]);
@@ -61,6 +57,19 @@ const {PGlite}=require('@electric-sql/pglite'),fs=require('node:fs'),assert=requ
  assert.deepEqual(new Set(await value('SELECT venue_ids v FROM public.food_items WHERE id=$1',[id])),new Set([secondVenue,otherVenue]));
 
 
+ const invitedHousehold=await value('SELECT id v FROM public.households WHERE invite_code=$1',[h[2]]);
+ const member=await value('SELECT id v FROM public.guests WHERE household_id=$1',[selectedHousehold]);
+ await db.query('SELECT public.admin_save_session_assignments($1,$2)',[selectedHousehold,[{session_id:venueSession,guest_id:member,is_invited:true}]]);
+ await db.query('SELECT public.admin_edit_session_households($1,ARRAY[$2]::uuid[],ARRAY[$3]::uuid[])',[venueSession,invitedHousehold,selectedHousehold]);
+ assert.equal(await value('SELECT is_invited v FROM public.household_session_defaults WHERE household_id=$1 AND session_id=$2',[invitedHousehold,venueSession]),true);
+ assert.equal(await value('SELECT is_invited v FROM public.household_session_defaults WHERE household_id=$1 AND session_id=$2',[selectedHousehold,venueSession]),false);
+ assert.equal(await value('SELECT is_invited v FROM public.guest_session_overrides WHERE guest_id=$1 AND session_id=$2',[member,venueSession]),true);
+ await db.exec('RESET ROLE');
+ await db.query("UPDATE public.households SET rsvp_state='locked' WHERE id=$1",[invitedHousehold]);
+ await db.exec('SET ROLE authenticated');
+ assert.ok((await value('SELECT public.admin_session_invitation_locks() v')).includes(invitedHousehold));
+ await assert.rejects(()=>db.query('SELECT public.admin_edit_session_households($1,ARRAY[$2]::uuid[],ARRAY[$3]::uuid[])',[venueSession,selectedHousehold,invitedHousehold]),/RSVP history/);
+ assert.equal(await value('SELECT is_invited v FROM public.household_session_defaults WHERE household_id=$1 AND session_id=$2',[selectedHousehold,venueSession]),false);
  const newSession=await value('SELECT public.admin_save_session(NULL,$1) v',[{name:'Later session',session_key:'later-session'}]);
  const sessionOrder=async()=>(await db.query('SELECT id FROM public.event_sessions ORDER BY sort_order,lower(name),id')).rows.map(row=>row.id);
  const beforeMove=await sessionOrder();
@@ -91,17 +100,9 @@ const {PGlite}=require('@electric-sql/pglite'),fs=require('node:fs'),assert=requ
  await assert.rejects(()=>db.query('SELECT public.admin_set_food_selection($1,$2,1,0)',[selectedHousehold,id]),/unavailable/);
  await db.query('SELECT public.admin_set_food_selection($1,$2,0,1)',[selectedHousehold,brownie]);
  assert.equal(await value('SELECT count(*)::int v FROM public.food_claims WHERE food_item_id=$1',[brownie]),0);
- await db.query('SELECT public.admin_save_tasks($1)',[[draft,{task:'Tablecloths',assigned_to:'Second helper',status:'open',sort_order:1}]]);
- const saved=(await db.query('SELECT * FROM public.things_to_do WHERE id=$1',[task.id])).rows[0];assert.equal(saved.notes,'Keep this note');assert.equal(new Date(saved.due_date).toISOString().slice(0,10),'2027-01-01');
- await assert.rejects(()=>db.query('SELECT public.admin_save_tasks($1)',[[draft]]),/Task changed/);
- await assert.rejects(()=>db.query('SELECT public.admin_save_tasks($1)',[[{...draft,task:'Should roll back',expected_updated_at:saved.updated_at},{task:'',status:'open',sort_order:3}]]),/valid task/);
- assert.equal(await value('SELECT task v FROM public.things_to_do WHERE id=$1',[task.id]),'Arrange chairs');
- const latest=(await db.query('SELECT * FROM public.things_to_do WHERE id=$1',[task.id])).rows[0];
- await db.query('SELECT public.admin_save_tasks($1)',[[{...draft,notes:'New comment',expected_updated_at:latest.updated_at}]]);assert.equal(await value('SELECT notes v FROM public.things_to_do WHERE id=$1',[task.id]),'New comment');
  const backup=await value('SELECT public.admin_export_backup() v');
  assert.equal(backup.payload.tables['public.food_recipes'],undefined);
  assert.equal(await value("SELECT to_regclass('public.food_recipes') v"),null);
  assert.equal(await value("SELECT to_regclass('public.legacy_stuff_to_bring') v"),null);
- await db.exec('RESET ROLE');await db.query("SELECT set_config('request.jwt.claim.sub','',false)");await db.exec('SET ROLE authenticated');await assert.rejects(()=>db.query('SELECT public.admin_save_tasks($1)',[[]]),/session|sign in|administrator/i);await db.exec('RESET ROLE');
  console.log('PASS food choices: private comments, unit capacity, full-item hiding, reopen, removal, locks, publication and gateway-only access.');
 }finally{await db.close();}})().catch(e=>{console.error(e);process.exitCode=1;});

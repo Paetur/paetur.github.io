@@ -31,5 +31,13 @@ const {PGlite}=require('@electric-sql/pglite'),fs=require('node:fs'),assert=requ
  await assert.rejects(()=>db.query("INSERT INTO public.other_items(item,category_id) VALUES('Bypass',$1)",[cat.id]),/permission denied/);
  const backup=await value('SELECT public.admin_export_backup() v');assert.ok(backup.payload.tables['public.other_items']);assert.ok(backup.payload.tables['public.other_categories']);assert.equal(backup.payload.tables['public.things_to_do'],undefined);assert.equal(backup.payload.tables['public.legacy_stuff_to_bring'],undefined);
  await db.exec('RESET ROLE');await db.query("SELECT set_config('request.jwt.claim.sub','',false)");await db.exec('SET ROLE authenticated');assert.equal((await db.query('SELECT * FROM public.other_items')).rows.length,0);assert.equal((await db.query('SELECT * FROM public.things_to_do')).rows.length,0);await assert.rejects(()=>db.query('SELECT public.admin_save_other($1,$2,null)',[newId,payload]),/Sign in|Administrator/);await db.exec('RESET ROLE;SET ROLE anon');await assert.rejects(()=>db.query('SELECT * FROM public.other_items'),/permission denied/);await assert.rejects(()=>db.query('SELECT * FROM public.things_to_do'),/permission denied/);
+ await db.exec('RESET ROLE');
+ const beforeRetirement=(await db.query('SELECT * FROM public.other_items ORDER BY id')).rows;
+ const retirement=files.find(f=>f.endsWith('_retire_legacy_other_views.sql'));
+ await db.exec(fs.readFileSync('supabase/migrations/'+retirement,'utf8'));
+ assert.deepEqual((await db.query('SELECT * FROM public.other_items ORDER BY id')).rows,beforeRetirement);
+ assert.equal(await value("SELECT to_regclass('public.things_to_do') v"),null);
+ assert.equal(await value("SELECT to_regclass('public.stuff_to_bring') v"),null);
+ assert.equal(await value("SELECT to_regprocedure('public.admin_save_tasks(jsonb)') v"),null);
  console.log('PASS Other: lossless source merge, UUID collisions, legacy reads/writes, metadata preservation, row conflicts, retry safety, backups and authorization.');
 }finally{await db.close();}})().catch(e=>{console.error(e);process.exitCode=1;});

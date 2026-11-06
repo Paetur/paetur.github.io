@@ -2840,6 +2840,38 @@ window.RSVP_TRANSLATIONS = {
     "fo": "Eingi samsvarandi matvørusløg.",
     "de": "Keine passenden Speiseneinheiten."
   },
+  "Map link": {
+    "fo": "Kortleinki",
+    "de": "Kartenlink"
+  },
+  "Add food": {
+    "fo": "Legg matvørur afturat",
+    "de": "Speisen hinzufügen"
+  },
+  "Select all": {
+    "fo": "Vel øll",
+    "de": "Alle auswählen"
+  },
+  "Adding unrestricted food here makes it available at this venue only. Items already assigned to other venues keep those assignments.": {
+    "fo": "Matvørur uttan avmarking verða bert tøkar á hesum staði. Verandi staðartillutanir verða varðveittar.",
+    "de": "Bisher uneingeschränkte Speisen sind danach nur an diesem Ort verfügbar. Vorhandene Ortszuordnungen bleiben erhalten."
+  },
+  "Nothing available to add.": {
+    "fo": "Einki er tøkt at leggja afturat.",
+    "de": "Es gibt nichts zum Hinzufügen."
+  },
+  "Edit administrator name": {
+    "fo": "Broyt navn á fyrisitara",
+    "de": "Administratornamen bearbeiten"
+  },
+  "Move language up": {
+    "fo": "Flyt mál uppeftir",
+    "de": "Sprache nach oben verschieben"
+  },
+  "Move language down": {
+    "fo": "Flyt mál niðureftir",
+    "de": "Sprache nach unten verschieben"
+  },
   "Food Types": {
     "fo": "Matvørusløg",
     "de": "Speiseneinheiten"

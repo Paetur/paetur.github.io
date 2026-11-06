@@ -37,12 +37,14 @@ async function run(browserType){
    await page.locator('#settingsToggle').click();await page.locator('#editModeButton').click();
    await page.locator('[data-settings-tab="languages"]').click();
    await page.locator('#translationCategory').selectOption('welcome');
-   for(const l of ['fo','en','de']){await page.locator('#translationLanguage').selectOption(l);await page.locator('#translationValue').fill('Message '+l);await page.locator('#translationForm button').click();await page.waitForFunction(lang=>document.querySelector('#translationForm').getAttribute('aria-busy')!=='true'&&window.__fixtures.event_content.some(c=>c.content_key==='welcome'&&c.language_code===lang&&c.content_value==='Message '+lang),l).catch(async e=>{console.error(await page.evaluate(()=>({notice:document.querySelector('#adminMessage').textContent,content:window.__fixtures.event_content,key:document.querySelector('#translationKey').value,lang:document.querySelector('#translationLanguage').value})));throw e;});}
+   for(const l of ['fo','en','de'])await page.locator('#foodTranslationGrid [data-language-code="'+l+'"] textarea').fill('Message '+l);
+   await page.locator('#foodTranslationGrid button[type="submit"]').click();
+   await page.waitForFunction(()=>['fo','en','de'].every(l=>window.__fixtures.event_content.some(c=>c.content_key==='welcome'&&c.language_code===l&&c.content_value==='Message '+l)));
    assert.equal(await page.evaluate(()=>window.__fixtures.event_settings[0].is_published),false);
-   await page.locator('#translationCategory').selectOption('ui');await page.locator('#translationKey').selectOption('ui:Households');await page.locator('#translationLanguage').selectOption(lang);await page.locator('#translationValue').fill('<img src=x onerror=alert(1)>');
-   await page.locator('#translationForm button[type="submit"]').click();
+   await page.locator('#translationCategory').selectOption('ui');await page.locator('#translationKey').selectOption('ui:Households');await page.locator('#foodTranslationGrid [data-language-code="'+lang+'"] textarea').fill('<img src=x onerror=alert(1)>');
+   await page.locator('#foodTranslationGrid button[type="submit"]').click();
    await page.waitForFunction(l=>window.RSVP_I18N.t('Households',{},l)==='<img src=x onerror=alert(1)>',lang);
-   assert.equal(await page.locator('#translationFallbackPreview img').count(),0);
+   assert.equal(await page.locator('#foodTranslationGrid img').count(),0);
    assert.equal(await page.evaluate(()=>{try{window.RSVP_I18N.applyWording('Quantity for {item}','de','Menge');return false;}catch{return true;}}),true);
    const overflow=await page.evaluate(()=>Array.from(document.querySelectorAll('body *')).filter(n=>n.getBoundingClientRect().right>innerWidth+1).map(n=>n.tagName+'#'+n.id+'.'+n.className).slice(0,12));
    assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),true,'Mobile admin overflow: '+overflow.join(', '));

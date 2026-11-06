@@ -999,10 +999,20 @@
    const map=field(f,T("Map link (HTTPS)"),v.map_url,null,'url',false,2000);
    const notes=field(f,T("Guest venue notes"),v.notes,null,'textarea');
    const welcome=Object.fromEntries(['fo','en','de'].map(lang=>[lang,field(f,T("Welcome message — ")+({fo:T("Faroese"),en:T("English"),de:T("German")}[lang]),v['welcome_'+lang],null,'textarea',false,4000)]));
-   const welcomeBox=R.dom('fieldset',{class:'span-2 venue-welcome-editor'});welcomeBox.append(R.dom('legend',{},T("Welcome messages for this venue")));
+   const welcomeBox=R.dom('fieldset',{class:'span-2 venue-welcome-editor'});welcomeBox.append(R.dom('legend',{},T("Venue welcome")),
+     R.dom('p',{class:'micro'},T('Appears under the session at this venue on the guest invitation.')));
    for(const control of Object.values(welcome))welcomeBox.append(control.closest('label'));f.append(welcomeBox);
    const archived=field(f,T("Archived venue"),!!v.archived_at,null,'checkbox');
-   return saveForm(f,v.id?T("Save venue"):T("Create venue"),()=>managementRpc('admin_save_venue',{p_id:v.id||null,p_values:{name:name.value.trim(),country_code:country.value.trim().toUpperCase()||null,address:address.value.trim(),timezone:timezone.value.trim(),map_url:map.value.trim(),notes:notes.value.trim(),...Object.fromEntries(Object.entries(welcome).map(([lang,control])=>['welcome_'+lang,control.value.trim()])),archived:archived.checked}}));
+   const form=saveForm(f,v.id?T("Save venue"):T("Create venue"),()=>managementRpc('admin_save_venue',{p_id:v.id||null,p_values:{name:name.value.trim(),country_code:country.value.trim().toUpperCase()||null,address:address.value.trim(),timezone:timezone.value.trim(),map_url:map.value.trim(),notes:notes.value.trim(),...Object.fromEntries(Object.entries(welcome).map(([lang,control])=>['welcome_'+lang,control.value.trim()])),archived:archived.checked}}));
+   const footer=R.dom('div',{class:'venue-form-actions span-2'});
+   footer.append(form.lastElementChild);
+   if(v.id&&!v.archived_at){
+     const food=R.dom('button',{class:'small-tool',type:'button'},T('Add food'));
+     food.addEventListener('click',()=>venueFoodDialog(v));footer.append(food);
+   }
+   const archiveLabel=archived.closest('label');archiveLabel.classList.add('checkbox-label');
+   archiveLabel.prepend(archived);footer.append(archiveLabel);form.append(footer);
+   return form;
  }
  function sessionForm(s){
    const f=managementForm();const name=field(f,T("Session name"),s.name,null,'text',true,140);
@@ -1014,8 +1024,7 @@
    const hint=R.dom('p',{class:'micro span-2'});const updateHint=()=>{hint.textContent=T('Times are entered in {zone}. Changing venue keeps the typed local time; review before saving.',{zone:zone()});};updateHint();venue.addEventListener('change',updateHint);f.append(hint);
    const rsvp=field(f,T("RSVP required"),s.requires_rsvp!==false,null,'checkbox');
    const active=field(f,T("Active session"),s.is_active!==false,null,'checkbox');
-   const order=field(f,T("Display order"),s.sort_order||0,null,'number');order.min='0';order.step='1';
-   return saveForm(f,s.id?T("Save session"):T("Create session"),()=>managementRpc('admin_save_session',{p_id:s.id||null,p_values:{name:name.value.trim(),session_key:key.value.trim(),location_id:venue.value||null,starts_at:R.zonedInstant(starts.value,zone()),ends_at:R.zonedInstant(ends.value,zone()),requires_rsvp:rsvp.checked,is_active:active.checked,sort_order:Number(order.value)}}));
+   return saveForm(f,s.id?T("Save session"):T("Create session"),()=>managementRpc('admin_save_session',{p_id:s.id||null,p_values:{name:name.value.trim(),session_key:key.value.trim(),location_id:venue.value||null,starts_at:R.zonedInstant(starts.value,zone()),ends_at:R.zonedInstant(ends.value,zone()),requires_rsvp:rsvp.checked,is_active:active.checked}}));
  }
  function sessionAssignmentForm(h){
    const d=disclosure(T("Session invitations"));
@@ -1056,18 +1065,18 @@
    cancel.addEventListener('click',()=>dialog.close());
    footer.append(cancel,save);
    form.append(selectAllLabel,list,status,footer);
-   let checks=[];
+   const assigned=new Set(store.food.filter(item=>item.venue_ids?.includes(venue.id)).map(item=>item.id));
    const updateSelection=()=>{
      const count=checks.filter(check=>check.checked).length;
      selectAll.checked=!!checks.length&&count===checks.length;
      selectAll.indeterminate=count>0&&count<checks.length;
-     save.disabled=!count;
+     save.disabled=!checks.some(check=>check.checked!==assigned.has(check.value));
    };
    const choices=foodMenuCategories().flatMap(category=>
-     foodMenuItems(category.name).filter(item=>item.active&&!item.venue_ids?.includes(venue.id))
+     foodMenuItems(category.name).filter(item=>item.active||assigned.has(item.id))
        .map(item=>[item.id,foodItemName(item)+(category.name?' · '+category.name:'')]));
-   checks=choices.map(([id,name])=>{
-     const check=R.dom('input',{type:'checkbox',value:id});
+   const checks=choices.map(([id,name])=>{
+     const check=R.dom('input',{type:'checkbox',value:id});check.checked=assigned.has(id);
      const label=R.dom('label',{class:'checkbox-label'});
      label.append(check,document.createTextNode(name));list.append(label);
      check.addEventListener('change',updateSelection);return check;
@@ -1080,10 +1089,11 @@
    });
    form.addEventListener('submit',async event=>{
      event.preventDefault();if(!editMode||save.disabled||form.getAttribute('aria-busy')==='true')return;
-     const ids=checks.filter(check=>check.checked).map(check=>check.value);
+     const add=checks.filter(check=>check.checked&&!assigned.has(check.value)).map(check=>check.value);
+     const remove=checks.filter(check=>!check.checked&&assigned.has(check.value)).map(check=>check.value);
      save.disabled=true;form.setAttribute('aria-busy','true');status.textContent='';
      try{
-       await managementRpc('admin_add_venue_food',{p_venue_id:venue.id,p_food_item_ids:ids});
+       await managementRpc('admin_edit_venue_food',{p_venue_id:venue.id,p_add:add,p_remove:remove});
        dialog.close();await reload();show(T('Changes saved.'),'success');
      }catch(error){status.textContent=R.safeError(error);}
      finally{form.removeAttribute('aria-busy');updateSelection();}
@@ -1093,45 +1103,58 @@
    $('adminApp').append(dialog);
    dialog.showModal();
  }
+ function venueSummaryRow(name,metadata,mapUrl,archived=false,actions=null){
+   const venue=disclosure('');
+   const summary=venue.firstElementChild;
+   summary.classList.add('venue-summary');
+   const layout=R.dom('span',{class:'venue-summary-layout'});
+   const details=R.dom('span',{class:'venue-summary-details'});
+   details.append(R.dom('strong',{},name));
+   if(metadata)details.append(R.dom('small',{class:'muted'},metadata));
+   layout.append(details);
+   const links=R.dom('span',{class:'venue-summary-links'});
+   if(archived)links.append(R.dom('small',{class:'muted'},T('Archived')));
+   if(mapUrl){
+     try{
+       const url=new URL(mapUrl);
+       if(url.protocol==='https:'){
+         const link=R.dom('a',{class:'venue-map-link'},T('Map link')+' ↗');
+         link.href=url.href;link.target='_blank';link.rel='noopener noreferrer';
+         link.addEventListener('click',event=>event.stopPropagation());
+         links.append(link);
+       }
+     }catch(_){}
+   }
+   if(actions)links.append(actions);
+   if(links.childElementCount)layout.append(links);
+   summary.append(layout);
+   return venue;
+ }
  function renderSessions(){
    const venues=$('venueList');venues.replaceChildren();
    for(const v of ordered(store.locations,'name')){
-     const venue=disclosure('');
-     const summary=venue.firstElementChild;
-     summary.classList.add('venue-summary');
-     const layout=R.dom('span',{class:'venue-summary-layout'});
-     const details=R.dom('span',{class:'venue-summary-details'});
-     details.append(R.dom('strong',{},v.name+(v.archived_at?T(" · Archived"):'')));
-     const metadata=[v.address,v.country_code,v.timezone].filter(Boolean).join(' · ');
-     if(metadata)details.append(R.dom('small',{class:'muted'},metadata));
-     layout.append(details);
-     if(v.map_url){
-       try{
-         const url=new URL(v.map_url);
-         if(url.protocol==='https:'){
-           const link=R.dom('a',{class:'venue-map-link'},T('Map link')+' ↗');
-           link.href=url.href;link.target='_blank';link.rel='noopener noreferrer';
-           link.addEventListener('click',event=>event.stopPropagation());
-           layout.append(link);
-         }
-       }catch(_){}
-     }
-     summary.append(layout);
-     if(!v.archived_at){
-       const actions=R.dom('div',{class:'venue-assignment-actions edit-only'});
-       const button=R.dom('button',{class:'small-tool',type:'button'},T('Add food'));
-       button.addEventListener('click',()=>venueFoodDialog(v));actions.append(button);
-       venue.append(actions);
-     }
+     const venue=venueSummaryRow(v.name,
+       [v.address,v.country_code,v.timezone].filter(Boolean).join(' · '),v.map_url,!!v.archived_at);
      venue.append(venueForm(v));venues.append(venue);
    }
    $('newVenueForm').replaceChildren(venueForm({}));
    const div=$('sessionsList');div.replaceChildren();
-   for(const s of ordered(store.sessions,'name')){
-     const v=store.locations.find(v=>v.id===s.location_id);const d=disclosure(s.name+(s.is_active?'':T(" · Inactive")));
-     d.append(R.dom('p',{class:'micro'},[v?.name,s.starts_at?R.formatDate(s.starts_at,window.RSVP_I18N?.language||'en',v?.timezone||store.settings?.timezone):T("Unscheduled"),v?.timezone,s.requires_rsvp?T("RSVP required"):T("Information only")].filter(Boolean).join(' · ')),sessionForm(s));div.append(d);
+   const sessions=ordered(store.sessions,'name');
+   for(const [index,s] of sessions.entries()){
+     const v=store.locations.find(v=>v.id===s.location_id);
+     const metadata=[v?.name,
+       s.starts_at?R.formatDate(s.starts_at,window.RSVP_I18N?.language||'en',v?.timezone||store.settings?.timezone):T("Unscheduled"),
+       v?.timezone,s.requires_rsvp?T("RSVP required"):T("Information only")
+     ].filter(Boolean).join(' · ');
+     const actions=R.dom('span',{class:'session-order-actions edit-only'});
+     actions.append(
+       btn('↑',T('Move session up'),()=>rpcAction('admin_move_session',{p_session_id:s.id,p_direction:-1},T('Session order saved.')),index===0),
+       btn('↓',T('Move session down'),()=>rpcAction('admin_move_session',{p_session_id:s.id,p_direction:1},T('Session order saved.')),index===sessions.length-1)
+     );
+     const d=venueSummaryRow(s.name+(s.is_active?'':T(" · Inactive")),metadata,v?.map_url,false,actions);
+     d.append(sessionForm(s));div.append(d);
    }
-   $('newSessionEditor').replaceChildren(sessionForm({sort_order:store.sessions.length+1}));
+   $('newSessionEditor').replaceChildren(sessionForm({}));
  }
  async function checkAccess(){
    const {data:access,error}=await R.adminRpc('is_admin');

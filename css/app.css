@@ -425,7 +425,7 @@ html[data-theme="dark"] code{background:#253b32;color:var(--ink)}
 #adminApp .admin-management:not([open])>summary{margin:0}
 #adminApp .hierarchy-view,#adminApp .food-admin-list{align-content:start;align-items:start}
 
-.language-rows{display:grid;gap:12px;margin-top:20px}
+.language-rows{display:grid;gap:0;padding:0 10px 6px}
 .language-row{padding:12px 0;border-top:1px solid var(--line);align-items:center}
 .language-enabled,.restore-ack{display:flex!important;align-items:center;gap:9px}
 .language-enabled input,.restore-ack input{width:auto;min-height:0}
@@ -459,10 +459,10 @@ html[data-theme="dark"] code{background:#253b32;color:var(--ink)}
 .food-compact-item .food-item-info small{white-space:nowrap;font-size:.72rem}
 .food-expanded{padding:8px 12px}.food-expanded .food-item-actions{flex-wrap:wrap;margin-bottom:12px}
 .food-edit-form{grid-template-columns:repeat(2,minmax(0,1fr))}
-.language-row.form-grid{display:grid;grid-template-columns:38px minmax(100px,1fr) 62px 90px auto;gap:8px;padding:6px 0;align-items:center}
-.language-row input{padding:6px 8px;min-height:34px}.language-row .btn{font-size:.76rem;padding:7px 10px;min-height:34px}
+.language-row{display:grid;grid-template-columns:38px minmax(100px,1fr) 62px 90px auto;gap:8px;padding:6px 0;align-items:center}
+.language-row input:not([type="checkbox"]){width:100%;min-width:0;padding:6px 8px;min-height:34px}.language-row .btn{font-size:.76rem;padding:7px 10px;min-height:34px}
 .language-enabled{display:flex;align-items:center;gap:5px;font-size:.76rem}.language-enabled input{width:auto}
-@media(max-width:600px){.language-row.form-grid{grid-template-columns:32px minmax(80px,1fr) 48px 70px}.language-row button{grid-column:2/-1;justify-self:end}.food-compact-item .food-item-info{gap:8px}.food-compact-item .food-item-info small{font-size:.65rem}}
+@media(max-width:600px){.language-row{grid-template-columns:32px minmax(80px,1fr) 48px 70px}.language-row button{grid-column:2/-1;justify-self:end}.food-compact-item .food-item-info{gap:8px}.food-compact-item .food-item-info small{font-size:.65rem}}
 
 .guest-food-disclosure{display:block!important;padding:0!important}.guest-food-disclosure>summary{padding:12px;cursor:pointer}.guest-food-disclosure>summary .tag{margin-left:12px}.guest-food-details{padding:0 12px 12px}
 
@@ -534,3 +534,13 @@ html[data-theme="dark"] code{background:#253b32;color:var(--ink)}
 .food-translation-grid>button{margin-top:10px}
 
 .food-type-translation-row{grid-template-columns:minmax(85px,.65fr) minmax(0,1fr);min-width:0;max-width:35rem}
+
+#translationForm.settings-matrix-active>:nth-child(n+4){display:none!important}
+.food-translation-row textarea{width:100%;min-width:0;resize:vertical}
+.venue-summary-layout{display:inline-flex;width:calc(100% - 24px);gap:12px;justify-content:space-between;align-items:center;vertical-align:middle}
+.venue-summary-details{display:grid;gap:2px;min-width:0;overflow-wrap:anywhere}
+.venue-summary-details small{font-size:.75rem;font-weight:400}
+.venue-map-link{white-space:nowrap;font-size:.78rem;font-weight:600;text-underline-offset:2px}
+
+#languagePreferences{max-width:38rem}
+#languagePreferences select{width:100%;min-height:34px}

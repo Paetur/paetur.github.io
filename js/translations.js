@@ -2840,6 +2840,10 @@ window.RSVP_TRANSLATIONS = {
     "fo": "Eingi samsvarandi matvørusløg.",
     "de": "Keine passenden Speiseneinheiten."
   },
+  "Map link": {
+    "fo": "Kortleinki",
+    "de": "Kartenlink"
+  },
   "Food Types": {
     "fo": "Matvørusløg",
     "de": "Speiseneinheiten"

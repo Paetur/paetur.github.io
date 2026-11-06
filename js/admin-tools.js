@@ -8,7 +8,7 @@
  async function rpc(name,args){const {data,error}=await ctx.R.adminRpc(name,args);if(error)throw error;return data;}
  function mode(){
   for(const form of document.querySelectorAll('#languageRows form'))for(const control of form.elements)control.disabled=!ctx.isEditing();
-  for(const control of $('foodTranslationGrid').querySelectorAll('form input,form button'))control.disabled=!ctx.isEditing();
+  for(const control of $('foodTranslationGrid').querySelectorAll('form input,form textarea,form button'))control.disabled=!ctx.isEditing();
   taskMode();
   $('restoreBackupButton').disabled=!ctx.isEditing()||!preview?.can_restore||!$('restoreBackupAck').checked||$('restoreBackupConfirmation').value!=='RESTORE '+preview.event_name;
  }
@@ -62,25 +62,37 @@
   label.append(picker);pickers.append(label);host.append(pickers);
   renderTranslationRows(host,[['Type',picker.value]],(key,language)=>
    key.startsWith('ui:Food type: ')?key.slice('ui:Food type: '.length):I.t(key.slice(3),{},language),
-   async (changes,markSaved)=>{
-    for(const change of changes){
-     await rpc('admin_save_translation',{p_key:change.key,p_language:change.language,p_value:change.value});
-     markSaved(change);
-    }
-   });
+   saveTranslationRows);
  }
- function renderTranslationRows(host,columns,fallback,saveChanges){
+ async function saveTranslationRows(changes,markSaved){
+  for(const change of changes){
+   await rpc('admin_save_translation',{p_key:change.key,p_language:change.language,p_value:change.value});
+   markSaved(change);
+  }
+ }
+ function renderSettingsTranslations(){
+  const host=$('foodTranslationGrid'),key=$('translationKey').value;
+  host.replaceChildren();
+  if(!key)return;
+  renderTranslationRows(host,[['Translation',key]],(key,language)=>
+   key.startsWith('ui:')?I.t(key.slice(3),{},language):'',saveTranslationRows,true);
+ }
+ function renderTranslationRows(host,columns,fallback,saveChanges,multiline=false){
   const R=ctx.R,s=ctx.getStore();
   const form=R.dom('form',{class:'food-translation-grid'});
   const cells=[];
   for(const language of enabled()){
    const row=R.dom('div',{class:'food-translation-row'+(columns.length===1?' food-type-translation-row':'')});
+   row.dataset.languageCode=language.language_code;
    row.append(R.dom('strong',{},language.display_name));
    for(const [label,key] of columns){
     const wrap=R.dom('label',{},T(label));
     const value=s.content.find(c=>c.content_key===key&&c.language_code===language.language_code)?.content_value
       ??fallback(key,language.language_code);
-    const input=R.dom('input',{type:'text',value});
+    const input=R.dom(multiline?'textarea':'input',{type:'text'});
+    input.value=value;
+    input.maxLength=12000;
+    if(multiline)input.rows=2;
     input.setAttribute('aria-label',T(label)+' · '+language.display_name);
     input.disabled=!ctx.isEditing();
     cells.push({key,language:language.language_code,input,original:value});
@@ -112,10 +124,13 @@
   options($('translationCategory'),categories,$('translationCategory').value);
   const category=$('translationCategory').value,search=$('translationSearch').value.toLowerCase();
   const foodMatrix=translationScopeValue==='content'&&(category==='food'||category==='food-types');
+  const settingsMatrix=translationScopeValue==='settings';
   $('translationForm').classList.toggle('food-matrix-active',foodMatrix);
-  $('foodTranslationGrid').classList.toggle('hidden',!foodMatrix);
+  $('translationForm').classList.toggle('settings-matrix-active',settingsMatrix);
+  $('foodTranslationGrid').classList.toggle('hidden',!foodMatrix&&!settingsMatrix);
   if(foodMatrix){if(category==='food')renderFoodTranslations(search);else renderFoodTypeTranslations(search);return;}
   options($('translationKey'),translationKeys().filter(([key,label])=>keyCategory(key)===category&&(!search||label.toLowerCase().includes(search))),$('translationKey').value);
+  if(settingsMatrix){renderSettingsTranslations();return;}
   $('translationForm').querySelector('button[type="submit"]').disabled=!$('translationKey').value;loadTranslation();
  }
  function translationScope(scope){translationScopeValue=scope;if(!ctx)return;$(scope==='content'?'contentTranslationHost':'settingsTranslationHost').append($('translationEditor'));renderTranslationKeys();}
@@ -179,12 +194,12 @@
   options($('translationLanguage'),langs,keep||I.language);renderTranslationKeys();
   const host=$('languageRows');host.replaceChildren();
   for(const l of [...(s.languages.length?s.languages:I.languages)].sort((a,b)=>(a.sort_order||0)-(b.sort_order||0)||a.language_code.localeCompare(b.language_code))){
-   const form=ctx.R.dom('form',{class:'form-grid language-row'});form.dataset.languageCode=l.language_code;
+   const form=ctx.R.dom('form',{class:'language-row'});form.dataset.languageCode=l.language_code;
    const name=ctx.R.dom('input',{value:l.display_name});name.maxLength=80;name.required=true;name.setAttribute('aria-label',T('Display name')+' · '+l.language_code);
    const order=ctx.R.dom('input',{type:'number',value:l.sort_order||0});order.setAttribute('aria-label',T('Display order')+' · '+l.language_code);
    const active=ctx.R.dom('input',{type:'checkbox'});active.checked=l.enabled!==false;active.setAttribute('aria-label',T('Enabled')+' · '+l.language_code);
    const label=ctx.R.dom('label');label.className='language-enabled';label.append(active,ctx.R.dom('span',{},T('Enabled')));
-   const save=ctx.R.dom('button',{class:'btn secondary',type:'submit'},T('Save language'));
+   const save=ctx.R.dom('button',{class:'btn secondary edit-only',type:'submit'},T('Save language'));
    form.append(ctx.R.dom('strong',{},l.language_code),name,order,label,save);
    form.addEventListener('submit',async e=>{e.preventDefault();if(!ctx.isEditing())return;save.disabled=true;try{await rpc('admin_save_language',{p_code:l.language_code,p_name:name.value.trim(),p_enabled:active.checked,p_order:Number(order.value)});await ctx.reload();ctx.show(T('Language saved.'),'success');}catch(error){ctx.show(ctx.R.safeError(error),'error');}finally{mode();}});host.append(form);
   }
@@ -198,7 +213,7 @@
   $('languagePreferences').addEventListener('submit',async e=>{e.preventDefault();if(!ctx.isEditing())return;try{await rpc('admin_set_language_preferences',{p_default:$('languageDefault').value,p_fallback:$('languageFallback').value});await ctx.reload();ctx.show(T('Language preferences saved.'),'success');}catch(error){ctx.show(ctx.R.safeError(error),'error');}});
   $('addLanguageForm').addEventListener('submit',async e=>{e.preventDefault();if(!ctx.isEditing())return;try{const code=Intl.getCanonicalLocales($('newLanguageCode').value.trim())[0];await rpc('admin_save_language',{p_code:code,p_name:$('newLanguageName').value.trim(),p_enabled:true,p_order:renderedLanguageCount+1});e.target.reset();await ctx.reload();ctx.show(T('Language saved.'),'success');}catch(error){ctx.show(ctx.R.safeError(error),'error');}});
   $('translationCategory').addEventListener('change',renderTranslationKeys);$('translationSearch').addEventListener('input',renderTranslationKeys);
-  $('translationKey').addEventListener('change',loadTranslation);$('translationLanguage').addEventListener('change',loadTranslation);
+  $('translationKey').addEventListener('change',()=>{if(translationScopeValue==='settings')renderSettingsTranslations();else loadTranslation();});$('translationLanguage').addEventListener('change',loadTranslation);
   $('translationForm').addEventListener('submit',async e=>{e.preventDefault();if(!ctx.isEditing()||e.target.getAttribute('aria-busy')==='true')return;const form=e.target,button=form.querySelector('button[type="submit"]');form.setAttribute('aria-busy','true');button.disabled=true;try{await rpc('admin_save_translation',{p_key:$('translationKey').value,p_language:$('translationLanguage').value,p_value:$('translationValue').value});await ctx.reload();ctx.show(T('Translation saved.'),'success');}catch(error){ctx.show(ctx.R.safeError(error),'error');}finally{form.removeAttribute('aria-busy');button.disabled=!$('translationKey').value;}});
   $('exportBackup').addEventListener('click',async()=>{const button=$('exportBackup');button.disabled=true;$('backupStatus').textContent=T('Preparing backup…');try{const data=await rpc('admin_export_backup');if(!data?.payload)throw Error(T('Backup export is unavailable. Install the matching migration first.'));ctx.R.dl('rsvp-application-backup-'+new Date().toISOString().slice(0,10)+'.json',JSON.stringify(data,null,2),'application/json;charset=utf-8');$('backupStatus').textContent=T('Backup downloaded. Store it privately and rehearse restoration.');}catch(error){$('backupStatus').textContent=ctx.R.safeError(error);}finally{button.disabled=false;}});
   $('backupFile').addEventListener('change',async()=>{const generation=++fileGeneration;backup=null;preview=null;$('backupPreview').replaceChildren();$('previewBackup').disabled=true;$('restoreBackupConfirmation').value='';$('restoreBackupAck').checked=false;mode();const file=$('backupFile').files[0];if(!file)return;try{if(file.size>20971520)throw Error(T('Backup exceeds 20 MB.'));const parsed=JSON.parse(await file.text());if(generation!==fileGeneration)return;backup=parsed;if(backup.format!=='rsvp-application-backup'||backup.version!==1||!backup.payload)throw Error(T('Unsupported backup format or version.'));$('previewBackup').disabled=false;}catch(error){if(generation===fileGeneration){backup=null;$('backupPreview').textContent=ctx.R.safeError(error);}}});

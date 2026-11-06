@@ -23,8 +23,17 @@ async function run(type){const browser=await type.launch({headless:true});try{
  assert.equal(await page.locator('#settingLanguage option[value="sv"]').count(),1);assert.equal(await page.locator('#interfaceLanguage option[value="sv"]').count(),1);
  await page.locator('#languageDefault').selectOption('sv');await page.locator('#languageFallback').selectOption('de');await page.locator('#languagePreferences button').click();await page.waitForFunction(()=>document.querySelector('#adminMessage').textContent.includes('Language preferences saved.'),null,{timeout:5000}).catch(async error=>{console.error(await page.evaluate(()=>({notice:document.querySelector('#adminMessage').textContent,language:document.documentElement.lang,settings:window.__fixtures.event_settings,default:document.querySelector('#languageDefault').value,fallback:document.querySelector('#languageFallback').value})),errors);throw error;});
  await page.locator('#languageRows').evaluate(n=>n.parentElement.open=true);
+ await page.setViewportSize({width:1040,height:850});
+ const languageRow=page.locator('#languageRows form').first();
+ assert.ok(await languageRow.evaluate(row=>{
+  const tops=[...row.children].map(node=>node.getBoundingClientRect().top);
+  return Math.max(...tops)-Math.min(...tops)<24;
+ }));
+ if(process.env.COMPACT_LANGUAGE_PREVIEW&&type.name()==='chromium')await page.locator('#languageRows').screenshot({path:process.env.COMPACT_LANGUAGE_PREVIEW+'/settings-compact-languages.png'});
+ await page.setViewportSize({width:390,height:844});
+ assert.ok(await page.locator('#languageRows').evaluate(node=>node.scrollWidth<=node.clientWidth+1));
  const de=page.locator('[data-language-code="de"]');await de.locator('input[type="checkbox"]').uncheck();await de.locator('button').click();await page.waitForFunction(()=>document.querySelector('#adminMessage').textContent.includes('fallback'));assert.equal(await page.evaluate(()=>window.__fixtures.event_languages.find(l=>l.language_code==='de').enabled),true);
- await page.locator('#translationKey').selectOption('ui:Households');await page.locator('#translationLanguage').selectOption('sv');await page.locator('#translationValue').fill('Hushåll');await page.locator('#translationForm button').click();await page.waitForFunction(()=>window.RSVP_I18N.t('Households',{},'sv')==='Hushåll');
+ await page.locator('#translationKey').selectOption('ui:Households');await page.locator('#foodTranslationGrid [data-language-code="sv"] textarea').fill('Hushåll');await page.locator('#foodTranslationGrid button').click();await page.waitForFunction(()=>window.RSVP_I18N.t('Households',{},'sv')==='Hushåll');
  assert.equal(await page.evaluate(()=>window.RSVP_I18N.t('Households',{},'sv')),'Hushåll');assert.equal(await page.evaluate(()=>window.RSVP_I18N.t('Quantity for {item}',{item:'Food'},'sv')),'Menge für Food');
  await page.locator('[data-settings-tab="backups"]').click();const downloadPromise=page.waitForEvent('download');await page.locator('#exportBackup').click();const download=await downloadPromise;const contents=JSON.parse(fs.readFileSync(await download.path(),'utf8'));assert.equal(contents.format,'rsvp-application-backup');
  const file=()=>({name:'test-backup.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(contents))});await page.locator('#backupFile').setInputFiles(file());await page.locator('#previewBackup:not([disabled])').waitFor();assert.equal(await page.locator('#restoreBackupButton').isDisabled(),true);

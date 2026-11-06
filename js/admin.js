@@ -927,6 +927,22 @@
    if(!store.admins.length){div.append(R.dom('p',{class:'muted'},T("Administrator list unavailable. Apply migration 006 if needed.")));return;}
    store.admins.forEach(a=>{
      const wrap=R.dom('div',{class:'admin-member'}),left=R.dom('div');left.append(R.dom('div',{class:'name'},a.name),R.dom('div',{class:'email'},a.email));
+     const rename=R.dom('form',{class:'admin-member-rename edit-only hidden'});
+     const name=field(rename,T('Display name'),a.name,null,'text',true,120);
+     const cancel=R.dom('button',{class:'btn secondary',type:'button'},T('Cancel'));
+     const edit=iconAction('edit',T('Edit administrator name')+' · '+a.name,()=>{
+       rename.classList.remove('hidden');name.focus();name.select();
+     },false,'edit-only');
+     cancel.addEventListener('click',()=>{
+       name.value=a.name;rename.classList.add('hidden');edit.focus();
+     });
+     rename.append(cancel);
+     left.append(saveForm(rename,T('Save'),()=>{
+       const value=name.value.trim();
+       if(!value)throw Error(T('Name is required.'));
+       if(value===a.name){cancel.click();return false;}
+       return managementRpc('admin_rename_member',{p_user_id:a.user_id,p_name:value});
+     }));
      const remove=iconAction('delete',T("Revoke administrator access for ")+a.email,null,false,'edit-only danger');
      remove.disabled=store.admins.length<=1;
      remove.title=store.admins.length<=1?T("You cannot remove the last administrator."):T("Revoke administrator access");remove.setAttribute('aria-label',remove.title);
@@ -936,7 +952,8 @@
        if(error)show(R.safeError(error),'error');else {show(T("Administrator access revoked."),'success');await reload();}
        remove.disabled=false;
      });
-     wrap.append(left,remove);div.append(wrap);
+     const actions=R.dom('div',{class:'admin-member-actions'});actions.append(edit,remove);
+     wrap.append(left,actions);div.append(wrap);
    });
    renderAdminInvitations();
  }

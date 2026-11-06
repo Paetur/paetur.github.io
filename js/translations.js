@@ -2860,6 +2860,10 @@ window.RSVP_TRANSLATIONS = {
     "fo": "Einki er tøkt at leggja afturat.",
     "de": "Es gibt nichts zum Hinzufügen."
   },
+  "Edit administrator name": {
+    "fo": "Broyt navn á fyrisitara",
+    "de": "Administratornamen bearbeiten"
+  },
   "Move language up": {
     "fo": "Flyt mál uppeftir",
     "de": "Sprache nach oben verschieben"

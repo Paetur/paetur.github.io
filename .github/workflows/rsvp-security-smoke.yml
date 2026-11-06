@@ -50,7 +50,7 @@ jobs:
           node tests/languages-backup-db.cjs && node tests/food-choice-db.cjs && node tests/other-db.cjs
           node tests/household-management-db.cjs
   browser-smoke:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 12
     steps:
       - uses: actions/checkout@v4

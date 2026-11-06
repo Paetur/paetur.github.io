@@ -572,3 +572,7 @@ html[data-theme="dark"] code{background:#253b32;color:var(--ink)}
 .venue-assignment-category:last-child{margin-bottom:0}
 .venue-assignment-category legend{padding:0 4px;font-size:.8rem;font-weight:700}
 .venue-assignment-category .checkbox-label{margin-inline-start:6px}
+
+.venue-assignment-list .hierarchy-section,.venue-assignment-list .hierarchy-group{padding:4px 8px;margin:4px 0}
+.venue-assignment-list .tree-children{min-width:0}
+.venue-assignment-list label small{margin-inline-start:auto;text-align:end}

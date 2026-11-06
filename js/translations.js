@@ -2860,6 +2860,26 @@ window.RSVP_TRANSLATIONS = {
     "fo": "Kortleinki",
     "de": "Kartenlink"
   },
+  "Manage households": {
+    "fo": "Umsit húski",
+    "de": "Haushalte verwalten"
+  },
+  "Checked households are invited to this session. Individual guest exceptions stay in place.": {
+    "fo": "Vald húski eru boðin til hesa løtu. Persónlig undantøk verða varðveitt.",
+    "de": "Markierte Haushalte sind zu diesem Programmpunkt eingeladen. Individuelle Ausnahmen bleiben erhalten."
+  },
+  "No households to manage.": {
+    "fo": "Ongin húski at umsita.",
+    "de": "Keine Haushalte zur Verwaltung vorhanden."
+  },
+  "Guest exceptions": {
+    "fo": "Persónlig undantøk",
+    "de": "Gästeausnahmen"
+  },
+  "Protected by RSVP history": {
+    "fo": "Vart av svarsøgu",
+    "de": "Durch Antwortverlauf geschützt"
+  },
   "Manage food": {
     "fo": "Umsit matvørur",
     "de": "Speisen verwalten"

@@ -2860,6 +2860,22 @@ window.RSVP_TRANSLATIONS = {
     "fo": "Kortleinki",
     "de": "Kartenlink"
   },
+  "Manage food": {
+    "fo": "Umsit matvørur",
+    "de": "Speisen verwalten"
+  },
+  "Venue food": {
+    "fo": "Matvørur á staðnum",
+    "de": "Speisen am Veranstaltungsort"
+  },
+  "Checked items are available at this venue. Changes apply here only. Existing household claims are kept.": {
+    "fo": "Valdar matvørur eru tøkar á hesum staði. Broytingar galda bert her. Verandi matval verða varðveitt.",
+    "de": "Markierte Speisen sind an diesem Ort verfügbar. Änderungen gelten nur hier. Bestehende Zusagen bleiben erhalten."
+  },
+  "No food items to manage.": {
+    "fo": "Ongar matvørur at umsita.",
+    "de": "Keine Speisen zur Verwaltung vorhanden."
+  },
   "Add food": {
     "fo": "Legg matvørur afturat",
     "de": "Speisen hinzufügen"

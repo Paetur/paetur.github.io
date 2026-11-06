@@ -567,3 +567,8 @@ html[data-theme="dark"] code{background:#253b32;color:var(--ink)}
 .venue-form-actions input[type="checkbox"]{width:auto}
 
 .session-order-actions{display:inline-flex;gap:4px;align-self:flex-start}
+
+.venue-assignment-category{min-width:0;margin:0 0 8px;padding:4px 10px 8px;border:1px solid var(--line);border-radius:8px}
+.venue-assignment-category:last-child{margin-bottom:0}
+.venue-assignment-category legend{padding:0 4px;font-size:.8rem;font-weight:700}
+.venue-assignment-category .checkbox-label{margin-inline-start:6px}

@@ -53,6 +53,13 @@ const {PGlite}=require('@electric-sql/pglite'),fs=require('node:fs'),assert=requ
  const otherVenue=await value("SELECT id v FROM public.event_locations WHERE name='Garden'");
  await db.query('SELECT public.admin_edit_venue_food($1,ARRAY[]::uuid[],ARRAY[$2]::uuid[])',[otherVenue,id]);
  assert.deepEqual(await value('SELECT venue_ids v FROM public.food_items WHERE id=$1',[id]),[]);
+ const secondVenue=await value('SELECT public.admin_save_venue(NULL,$1) v',[{name:'Hall',timezone:'UTC'}]);
+ await db.query('UPDATE public.food_items SET venue_ids=NULL WHERE id=$1',[id]);
+ await db.query('SELECT public.admin_edit_venue_food($1,ARRAY[]::uuid[],ARRAY[$2]::uuid[])',[otherVenue,id]);
+ assert.deepEqual(await value('SELECT venue_ids v FROM public.food_items WHERE id=$1',[id]),[secondVenue]);
+ await db.query('SELECT public.admin_edit_venue_food($1,ARRAY[$2]::uuid[],ARRAY[]::uuid[])',[otherVenue,id]);
+ assert.deepEqual(new Set(await value('SELECT venue_ids v FROM public.food_items WHERE id=$1',[id])),new Set([secondVenue,otherVenue]));
+
 
  const newSession=await value('SELECT public.admin_save_session(NULL,$1) v',[{name:'Later session',session_key:'later-session'}]);
  const sessionOrder=async()=>(await db.query('SELECT id FROM public.event_sessions ORDER BY sort_order,lower(name),id')).rows.map(row=>row.id);

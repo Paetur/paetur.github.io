@@ -1,7 +1,7 @@
 (function(){
  'use strict';
  const I=window.RSVP_I18N,T=(text,params)=>I.t(text,params);
- let ctx,backup=null,preview=null,renderedLanguageCount=0,fileGeneration=0,translationScopeValue='settings',foodTranslationId='';
+ let ctx,backup=null,preview=null,renderedLanguageCount=0,fileGeneration=0,translationScopeValue='settings',foodTranslationId='',foodTranslationCategory='',foodTypeTranslationKey='';
  const $=id=>document.getElementById(id);
  function enabled(){const rows=ctx.getStore().languages;return rows.length?rows.filter(l=>l.enabled).sort((a,b)=>(a.sort_order||0)-(b.sort_order||0)||a.language_code.localeCompare(b.language_code)):I.languages;}
  function options(select,rows,selected){select.replaceChildren(...rows.map(([value,label])=>ctx.R.dom('option',{value},label)));if(rows.some(([value])=>value===selected))select.value=selected;}
@@ -13,32 +13,73 @@
   $('restoreBackupButton').disabled=!ctx.isEditing()||!preview?.can_restore||!$('restoreBackupAck').checked||$('restoreBackupConfirmation').value!=='RESTORE '+preview.event_name;
  }
  function translationKeys(){const s=ctx.getStore();return [['welcome',T('Welcome messages')],...s.locations.map(v=>['venue:'+v.id+':welcome',T('Venue')+' · '+v.name]),...s.sessions.map(v=>['session:'+v.id+':name',T('Session')+' · '+v.name]),...s.food.flatMap(v=>[['food:'+v.id+':name',T('Food')+' · '+(v.name_en||v.name_fo)],['food:'+v.id+':description',T('User Comment')+' · '+(v.name_en||v.name_fo)]]),...s.foodTypes.map(type=>['ui:Food type: '+type.name,T('Type')+' · '+type.name]),...Object.keys(I.catalog).sort().map(key=>['ui:'+key,ctx.R.foodTypes.includes(key)?T('Type')+' · '+key:key])];}
- function keyCategory(key){if(key==='welcome')return 'welcome';if(key.startsWith('ui:Food type: ')||ctx.R.foodTypes.includes(key.slice(3)))return 'food';return key.split(':')[0];}
+ function keyCategory(key){if(key==='welcome')return 'welcome';if(key.startsWith('ui:Food type: ')||ctx.R.foodTypes.includes(key.slice(3)))return 'food-types';return key.split(':')[0];}
  function renderFoodTranslations(search){
   const R=ctx.R,s=ctx.getStore(),host=$('foodTranslationGrid');
   host.replaceChildren();
-  const items=s.food.filter(item=>(item.name_en||item.name_fo||'').toLowerCase().includes(search));
+  const categories=ctx.foodMenuCategories();
+  const categoryLabel=R.dom('label',{},T('Food categories'));
+  const categoryPicker=R.dom('select');categoryPicker.setAttribute('aria-label',T('Food categories'));
+  options(categoryPicker,[['',T('All categories')],...categories.map(category=>[
+    'category:'+category.name,category.name||T('Uncategorized')
+  ])],foodTranslationCategory);
+  foodTranslationCategory=categoryPicker.value;
+  categoryPicker.addEventListener('change',()=>{
+   foodTranslationCategory=categoryPicker.value;renderFoodTranslations(search);
+  });
+  categoryLabel.append(categoryPicker);
+  const pickers=R.dom('div',{class:'food-translation-picker'});
+  pickers.append(categoryLabel);host.append(pickers);
+  const items=categories.filter(category=>!foodTranslationCategory||foodTranslationCategory==='category:'+category.name)
+    .flatMap(category=>ctx.foodMenuItems(category.name))
+    .filter(item=>[item.name_en,item.name_fo,item.name_de,item.category].join(' ').toLowerCase().includes(search));
   if(!items.length){host.append(R.dom('p',{class:'muted'},T('No matching food items.')));return;}
-  const pickerLabel=R.dom('label',{class:'food-translation-picker'},T('Food item'));
+  const pickerLabel=R.dom('label',{},T('Food item'));
   const picker=R.dom('select');picker.setAttribute('aria-label',T('Food item'));
   options(picker,items.map(item=>[item.id,item.name_en||item.name_fo]),foodTranslationId);
   foodTranslationId=picker.value;
   picker.addEventListener('change',()=>{foodTranslationId=picker.value;renderFoodTranslations(search);});
-  pickerLabel.append(picker);host.append(pickerLabel);
+  pickerLabel.append(picker);pickers.append(pickerLabel);
   const item=items.find(item=>item.id===foodTranslationId);
   const type=item.quantity_type||'Piece(s)';
   const typeKey=R.foodTypes.includes(type)?'ui:'+type:'ui:Food type: '+type;
   const columns=[['Name','food:'+item.id+':name'],['Type',typeKey],['User Comment','food:'+item.id+':description']];
   host.append(R.dom('p',{class:'micro'},T('Type translations are shared by food items with the same type.')));
+  renderTranslationRows(host,columns,(key,language)=>key===typeKey?(R.foodTypes.includes(type)?I.t(type,{},language):type):legacyTranslation(key)[language]||'',
+   changes=>rpc('admin_save_food_translations',{p_food_item_id:item.id,p_changes:changes}));
+ }
+ function renderFoodTypeTranslations(search){
+  const R=ctx.R,host=$('foodTranslationGrid');
+  host.replaceChildren();
+  const rows=translationKeys().filter(([key,label])=>keyCategory(key)==='food-types'&&label.toLowerCase().includes(search));
+  if(!rows.length){host.append(R.dom('p',{class:'muted'},T('No matching food types.')));return;}
+  const pickers=R.dom('div',{class:'food-translation-picker'});
+  const label=R.dom('label',{},T('Type'));
+  const picker=R.dom('select');picker.setAttribute('aria-label',T('Type'));
+  options(picker,rows,foodTypeTranslationKey);
+  foodTypeTranslationKey=picker.value;
+  picker.addEventListener('change',()=>{foodTypeTranslationKey=picker.value;renderFoodTypeTranslations(search);});
+  label.append(picker);pickers.append(label);host.append(pickers);
+  renderTranslationRows(host,[['Type',picker.value]],(key,language)=>
+   key.startsWith('ui:Food type: ')?key.slice('ui:Food type: '.length):I.t(key.slice(3),{},language),
+   async (changes,markSaved)=>{
+    for(const change of changes){
+     await rpc('admin_save_translation',{p_key:change.key,p_language:change.language,p_value:change.value});
+     markSaved(change);
+    }
+   });
+ }
+ function renderTranslationRows(host,columns,fallback,saveChanges){
+  const R=ctx.R,s=ctx.getStore();
   const form=R.dom('form',{class:'food-translation-grid'});
   const cells=[];
   for(const language of enabled()){
-   const row=R.dom('div',{class:'food-translation-row'});
+   const row=R.dom('div',{class:'food-translation-row'+(columns.length===1?' food-type-translation-row':'')});
    row.append(R.dom('strong',{},language.display_name));
    for(const [label,key] of columns){
     const wrap=R.dom('label',{},T(label));
     const value=s.content.find(c=>c.content_key===key&&c.language_code===language.language_code)?.content_value
-      ??(key===typeKey?(R.foodTypes.includes(type)?I.t(type,{},language.language_code):type):legacyTranslation(key)[language.language_code]||'');
+      ??fallback(key,language.language_code);
     const input=R.dom('input',{type:'text',value});
     input.setAttribute('aria-label',T(label)+' · '+language.display_name);
     input.disabled=!ctx.isEditing();
@@ -54,20 +95,26 @@
    const changes=cells.filter(c=>c.input.value!==c.original).map(c=>({key:c.key,language:c.language,value:c.input.value}));
    if(!changes.length)return;
    save.disabled=true;
-   try{await rpc('admin_save_food_translations',{p_food_item_id:item.id,p_changes:changes});await ctx.reload();ctx.show(T('Translation saved.'),'success');}
+   try{
+    await saveChanges(changes,change=>{
+     const cell=cells.find(c=>c.key===change.key&&c.language===change.language);
+     cell.original=change.value;
+    });
+    await ctx.reload();ctx.show(T('Translation saved.'),'success');
+   }
    catch(error){ctx.show(R.safeError(error),'error');}
    finally{save.disabled=!ctx.isEditing();}
   });
   host.append(form);
  }
  function renderTranslationKeys(){
-  const categories=translationScopeValue==='settings'?[['ui',T('Interface wording')],['welcome',T('Welcome messages')]]:[['food',T('Food')],['venue',T('Venues')],['session',T('Sessions')]];
+  const categories=translationScopeValue==='settings'?[['ui',T('Interface wording')],['welcome',T('Welcome messages')]]:[['food',T('Food')],['food-types',T('Food Types')],['venue',T('Venues')],['session',T('Sessions')]];
   options($('translationCategory'),categories,$('translationCategory').value);
   const category=$('translationCategory').value,search=$('translationSearch').value.toLowerCase();
-  const foodMatrix=translationScopeValue==='content'&&category==='food';
+  const foodMatrix=translationScopeValue==='content'&&(category==='food'||category==='food-types');
   $('translationForm').classList.toggle('food-matrix-active',foodMatrix);
   $('foodTranslationGrid').classList.toggle('hidden',!foodMatrix);
-  if(foodMatrix){renderFoodTranslations(search);return;}
+  if(foodMatrix){if(category==='food')renderFoodTranslations(search);else renderFoodTypeTranslations(search);return;}
   options($('translationKey'),translationKeys().filter(([key,label])=>keyCategory(key)===category&&(!search||label.toLowerCase().includes(search))),$('translationKey').value);
   $('translationForm').querySelector('button[type="submit"]').disabled=!$('translationKey').value;loadTranslation();
  }

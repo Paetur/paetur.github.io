@@ -526,9 +526,11 @@ html[data-theme="dark"] code{background:#253b32;color:var(--ink)}
 @media(max-width:600px){#adminApp .food-edit-form>label{grid-column:span 3}}
 
 #translationForm.food-matrix-active>:nth-child(n+3){display:none!important}
-.food-translation-picker{display:grid;gap:4px;max-width:30rem;margin:12px 0}
+.food-translation-picker{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin:12px 0}.food-translation-picker label{display:grid;gap:4px;min-width:0}.food-translation-picker select{width:100%}
 .food-translation-grid{overflow-x:auto}
 .food-translation-row{display:grid;grid-template-columns:minmax(90px,.65fr) repeat(3,minmax(120px,1fr));gap:8px;align-items:end;min-width:485px;padding:8px 0;border-bottom:1px solid var(--line)}
 .food-translation-row label{display:grid;gap:3px;font-size:.75rem;min-width:0}
 .food-translation-row input{width:100%;min-width:0}
 .food-translation-grid>button{margin-top:10px}
+
+.food-type-translation-row{grid-template-columns:minmax(85px,.65fr) minmax(0,1fr);min-width:0;max-width:35rem}

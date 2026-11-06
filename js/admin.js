@@ -1196,5 +1196,5 @@
    });
 
  }
- document.addEventListener('DOMContentLoaded',()=>{(window.RSVP_ADMIN_TOOLS?.init({R,getStore:()=>store,reload,isEditing:()=>editMode,show,foodMenuCategories,foodMenuItems}),initContent(),init()).catch(e=>show(R.safeError(e),'error'));});
+ document.addEventListener('DOMContentLoaded',()=>{(window.RSVP_ADMIN_TOOLS?.init({R,getStore:()=>store,reload,isEditing:()=>editMode,show,foodMenuCategories,foodMenuItems,iconAction}),initContent(),init()).catch(e=>show(R.safeError(e),'error'));});
 }());

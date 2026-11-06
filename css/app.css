@@ -544,3 +544,7 @@ html[data-theme="dark"] code{background:#253b32;color:var(--ink)}
 
 #languagePreferences{max-width:38rem}
 #languagePreferences select{width:100%;min-height:34px}
+
+.language-row{grid-template-columns:38px minmax(80px,1fr) auto 78px auto}
+.language-order{display:flex;gap:4px}
+@media(max-width:600px){.language-row{grid-template-columns:28px minmax(55px,1fr) auto auto}.language-row>button{grid-column:2/-1}}

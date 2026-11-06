@@ -6,6 +6,7 @@ fixtures.event_languages=[{language_code:'fo',display_name:'Føroyskt',enabled:t
 fixtures.event_content=[{content_key:'ui:Quantity for {item}',language_code:'de',content_value:'Menge für {item}'}];
 const backup={format:'rsvp-application-backup',version:1,payload:{created_at:'2026-11-01T12:00:00Z',tables:{'public.event_settings':[{event_name:'Restoration example'}]}},checksum:'synthetic'};window.__backup=backup;
 const initialRpc=client.rpc;client.rpc=async(name,a={})=>{if(name==='get_language_configuration')return {data:{languages:fixtures.event_languages.filter(l=>l.enabled),default_language:fixtures.event_settings[0].default_language,fallback_language:fixtures.event_settings[0].fallback_language,translations:fixtures.event_content.filter(c=>c.content_key.startsWith('ui:'))}};
+if(name==='admin_move_language'){const rows=[...fixtures.event_languages].sort((x,y)=>x.sort_order-y.sort_order||x.language_code.localeCompare(y.language_code));const index=rows.findIndex(row=>row.language_code===a.p_code);const target=index+a.p_direction;if(target>=0&&target<rows.length){[rows[index],rows[target]]=[rows[target],rows[index]];rows.forEach((row,i)=>{row.sort_order=i+1;});}return {data:null,error:null};}
 if(name==='admin_save_language'){const old=fixtures.event_languages.find(l=>l.language_code===a.p_code);if(!a.p_enabled&&[fixtures.event_settings[0].default_language,fixtures.event_settings[0].fallback_language].includes(a.p_code))return {error:{message:'Choose another default and fallback before disabling this language'}};const record={language_code:a.p_code,display_name:a.p_name,enabled:a.p_enabled,sort_order:a.p_order};if(old)Object.assign(old,record);else fixtures.event_languages.push(record);return {data:null};}
 if(name==='admin_set_language_preferences'){Object.assign(fixtures.event_settings[0],{default_language:a.p_default,fallback_language:a.p_fallback});return {data:null};}
 if(name==='admin_save_translation'){fixtures.event_content=fixtures.event_content.filter(c=>c.content_key!==a.p_key||c.language_code!==a.p_language);if(a.p_value)fixtures.event_content.push({content_key:a.p_key,language_code:a.p_language,content_value:a.p_value});return {data:null};}
@@ -29,10 +30,14 @@ async function run(type){const browser=await type.launch({headless:true});try{
   const tops=[...row.children].map(node=>node.getBoundingClientRect().top);
   return Math.max(...tops)-Math.min(...tops)<24;
  }));
- if(process.env.COMPACT_LANGUAGE_PREVIEW&&type.name()==='chromium')await page.locator('#languageRows').screenshot({path:process.env.COMPACT_LANGUAGE_PREVIEW+'/settings-compact-languages.png'});
+ const firstCode=await languageRow.getAttribute('data-language-code');
+ assert.ok(await languageRow.getByRole('button',{name:/Move language up/}).isDisabled());
+ await languageRow.getByRole('button',{name:/Move language down/}).click();
+ await page.waitForFunction(code=>document.querySelector('#languageRows form').dataset.languageCode!==code,firstCode);
+ if(process.env.COMPACT_LANGUAGE_PREVIEW&&type.name()==='chromium')await page.locator('#languageRows').screenshot({path:process.env.COMPACT_LANGUAGE_PREVIEW+'/settings-language-arrows.png'});
  await page.setViewportSize({width:390,height:844});
  assert.ok(await page.locator('#languageRows').evaluate(node=>node.scrollWidth<=node.clientWidth+1));
- const de=page.locator('[data-language-code="de"]');await de.locator('input[type="checkbox"]').uncheck();await de.locator('button').click();await page.waitForFunction(()=>document.querySelector('#adminMessage').textContent.includes('fallback'));assert.equal(await page.evaluate(()=>window.__fixtures.event_languages.find(l=>l.language_code==='de').enabled),true);
+ const de=page.locator('[data-language-code="de"]');await de.locator('input[type="checkbox"]').uncheck();await de.locator('button[type=submit]').click();await page.waitForFunction(()=>document.querySelector('#adminMessage').textContent.includes('fallback'));assert.equal(await page.evaluate(()=>window.__fixtures.event_languages.find(l=>l.language_code==='de').enabled),true);
  await page.locator('#translationKey').selectOption('ui:Households');await page.locator('#foodTranslationGrid [data-language-code="sv"] textarea').fill('Hushåll');await page.locator('#foodTranslationGrid button').click();await page.waitForFunction(()=>window.RSVP_I18N.t('Households',{},'sv')==='Hushåll');
  assert.equal(await page.evaluate(()=>window.RSVP_I18N.t('Households',{},'sv')),'Hushåll');assert.equal(await page.evaluate(()=>window.RSVP_I18N.t('Quantity for {item}',{item:'Food'},'sv')),'Menge für Food');
  await page.locator('[data-settings-tab="backups"]').click();const downloadPromise=page.waitForEvent('download');await page.locator('#exportBackup').click();const download=await downloadPromise;const contents=JSON.parse(fs.readFileSync(await download.path(),'utf8'));assert.equal(contents.format,'rsvp-application-backup');

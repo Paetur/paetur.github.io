@@ -11,6 +11,11 @@ const copy=x=>JSON.parse(JSON.stringify(x));
 async function checksum(db,b){b.checksum=await value(db,"SELECT encode(sha256(convert_to($1::jsonb::text,'UTF8')),'hex') value",[b.payload]);return b;}
 (async()=>{const src=await setup(sourceAdmin),dst=await setup(destAdmin,true);try{
  await src.query("SELECT public.admin_save_language('sv','Svenska',true,4)");await src.query("SELECT public.admin_set_language_preferences('fo','de')");
+ await src.query("SELECT public.admin_move_language('sv',-1)");
+ assert.equal(await value(src,"SELECT sort_order value FROM public.event_languages WHERE language_code='sv'"),3);
+ await src.query("SELECT public.admin_move_language('sv',1)");
+ assert.equal(await value(src,"SELECT sort_order value FROM public.event_languages WHERE language_code='sv'"),4);
+ checks+=2;
  await assert.rejects(()=>src.query("SELECT public.admin_save_language('de','Deutsch',false,3)"),/default and fallback/);checks++;
  await src.query("SELECT public.admin_save_translation('ui:Quantity for {item}','sv','Mängd för {item}')");
  await assert.rejects(()=>src.query("SELECT public.admin_save_translation('ui:Quantity for {item}','sv','Mängd')"),/placeholders/);checks++;

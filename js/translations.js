@@ -2844,6 +2844,14 @@ window.RSVP_TRANSLATIONS = {
     "fo": "Kortleinki",
     "de": "Kartenlink"
   },
+  "Move language up": {
+    "fo": "Flyt mál uppeftir",
+    "de": "Sprache nach oben verschieben"
+  },
+  "Move language down": {
+    "fo": "Flyt mál niðureftir",
+    "de": "Sprache nach unten verschieben"
+  },
   "Food Types": {
     "fo": "Matvørusløg",
     "de": "Speiseneinheiten"

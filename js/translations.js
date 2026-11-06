@@ -2776,6 +2776,70 @@ window.RSVP_TRANSLATIONS = {
     "fo": "Loyv sprettgluggum fyri at goyma uppskriftina sum PDF.",
     "de": "Pop-ups zulassen, um das Rezept als PDF zu speichern."
   },
+  "Batch(s)": {
+    "fo": "Portión(ir)",
+    "de": "Charge(n)"
+  },
+  "Piece(s)": {
+    "fo": "Stykki",
+    "de": "Stück"
+  },
+  "Tray(s)": {
+    "fo": "Bakki / bakkar",
+    "de": "Blech(e)"
+  },
+  "Packet(s)": {
+    "fo": "Pakki / pakkar",
+    "de": "Packung(en)"
+  },
+  "Kg": {
+    "fo": "Kg",
+    "de": "kg"
+  },
+  "Grams": {
+    "fo": "Gramm",
+    "de": "Gramm"
+  },
+  "Default type ({type})": {
+    "fo": "Vanligt slag ({type})",
+    "de": "Standardeinheit ({type})"
+  },
+  "+ Add food item type": {
+    "fo": "+ Legg matvøruslag afturat",
+    "de": "+ Speiseneinheit hinzufügen"
+  },
+  "New food item type": {
+    "fo": "Nýtt matvøruslag",
+    "de": "Neue Speiseneinheit"
+  },
+  "Food item type must be at most 60 characters.": {
+    "fo": "Matvøruslag kann í mesta lagi hava 60 tekn.",
+    "de": "Die Einheit darf höchstens 60 Zeichen haben."
+  },
+  "Expand all items": {
+    "fo": "Víðka allar matvørur",
+    "de": "Alle Speisen aufklappen"
+  },
+  "Collapse all items": {
+    "fo": "Falda allar matvørur saman",
+    "de": "Alle Speisen einklappen"
+  },
+  "+ Add household": {
+    "fo": "+ Legg húski afturat",
+    "de": "+ Haushalt hinzufügen"
+  },
+  "Amount: {claimed}/{needed} {type}, Shown: {shown}": {
+    "fo": "Nøgd: {claimed}/{needed} {type}, Víst: {shown}",
+    "de": "Menge: {claimed}/{needed} {type}, Sichtbar: {shown}"
+  },
+  "Type translations are shared by food items with the same type.": {
+    "fo": "Týðingar av slagi verða nýttar til allar matvørur av sama slagi.",
+    "de": "Die Übersetzung der Einheit gilt für alle Speisen mit dieser Einheit."
+  },
+  "Save translations": {
+    "fo": "Goym týðingar",
+    "de": "Übersetzungen speichern"
+  },
   "Allow food": {
     "fo": "Loyv matvali",
     "de": "Speisenauswahl erlauben"

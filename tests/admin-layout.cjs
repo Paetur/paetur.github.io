@@ -334,20 +334,27 @@ async function run(){
    await page.evaluate(id=>{const h=window.__fixtures.households.find(h=>h.id===id);h.rsvp_state='locked';h.food=false;const s=window.__fixtures.event_sessions.find(s=>s.session_key==='faroe-celebration');window.__fixtures.guest_session_responses.push({guest_id:'55555555-5555-4555-8555-555555555555',session_id:s.id,rsvp_status:'attending'});},childId);
    await page.locator('#refreshButton').click();await waitForApp(page,()=>!document.querySelector('#refreshButton').disabled);await page.locator('#expandHouseholds').click();
    const childNode=page.locator('[data-tree-key="household:'+childId+'"]');
-   await openSection(childNode,'RSVP management');
-   const rsvp=childNode.locator('details').filter({has:page.getByText('RSVP management',{exact:true})});
+   assert.equal(await childNode.getByText('RSVP management',{exact:true}).count(),0);
+   await page.locator('[data-tab="invites"]').click();
+   if(await page.getByRole('button',{name:'Back to households',exact:true}).count())await page.getByRole('button',{name:'Back to households',exact:true}).click();
+   await page.locator('#inviteRows details').evaluateAll(nodes=>nodes.forEach(n=>n.open=true));
+   await page.locator('[data-invite-household="'+childId+'"]').getByRole('button',{name:/^RSVP management/}).click();
+   const rsvp=page.locator('.invite-detail-panel > .feature-section');
+   if(process.env.RSVP_LAYOUT_PREVIEW)await page.locator('.invite-detail-panel').screenshot({path:process.env.RSVP_LAYOUT_PREVIEW+'/invites-rsvp-management.png'});
+
    await openSection(rsvp,'Correct response: Edited Guest · Faroe celebration');
    const correction=rsvp.locator('details').filter({has:page.getByText('Correct response: Edited Guest · Faroe celebration',{exact:true})});
    await correction.getByLabel('Corrected response').selectOption('declined');await correction.getByLabel('Reason for RSVP correction').fill('Guest confirmed they cannot attend this session.');await correction.getByRole('button',{name:'Save correction'}).click();
    await waitForApp(page,()=>window.__fixtures.guest_session_responses.some(r=>r.rsvp_status==='declined'));
-   await page.locator('#expandHouseholds').click();await openSection(childNode,'RSVP management');
+
    assert.ok((await rsvp.locator('.rsvp-current-responses').innerText()).includes('Not attending'));
    await rsvp.getByLabel('Reason for reopening').fill('Household requested to update their plans.');
    await rsvp.screenshot({path:path.join(root,'artifacts','rsvp-controls-preview.png')});
    await rsvp.getByRole('button',{name:'Reopen RSVP'}).click();await waitForApp(page,id=>window.__fixtures.households.find(h=>h.id===id).rsvp_state==='open',childId);
-   await page.locator('#expandHouseholds').click();await openSection(childNode,'RSVP management');await openSection(rsvp,'Allow a late response');
+   await openSection(rsvp,'Allow a late response');
    await rsvp.getByLabel('Allow responses until (Europe/Berlin)',{exact:true}).fill('2027-02-19T18:00');await rsvp.getByLabel('Reason for late response').fill('Allow travel arrangements to be confirmed.');await rsvp.getByRole('button',{name:'Allow late response',exact:true}).click();
    await waitForApp(page,id=>!!window.__fixtures.households.find(h=>h.id===id).late_submission_until,childId);
+   await page.locator('[data-tab="households"]').click();
    await page.locator('#expandHouseholds').click();await openSection(childNode,'Household details');
    const details=childNode.locator(':scope > .household-expanded > .household-inline-editor');
    await details.getByLabel('Allow food',{exact:true}).check();

@@ -117,7 +117,12 @@
       wrap.dataset.itemId=item.id;wrap.open=expanded.has(item.id);heading.append(R.dom('strong',{},label));
       if(mine)heading.append(R.dom('span',{class:'tag'},window.RSVP_I18N.t('Selected')));
       const detail=R.dom('div',{class:'guest-food-details'});
-      const description=translated('food:'+item.id+':description',{fo:item.description_fo,en:item.description_en,de:item.description_de});
+      const legacyComments={fo:item.description_fo,en:item.description_en,de:item.description_de};
+      const language=window.RSVP_I18N.language;
+      const localComment=legacyComments[language];
+      const descriptions=item.description_en===''?
+        (localComment&&!/^source amount:/i.test(localComment.trim())?{[language]:localComment}:{}):legacyComments;
+      const description=translated('food:'+item.id+':description',descriptions);
       if(description)detail.append(R.dom('p',{class:'small'},window.RSVP_I18N.t('User Comment')+': '+description));
       if(item.recipe_text){
         const recipe=R.dom('details',{class:'food-item-recipe'});

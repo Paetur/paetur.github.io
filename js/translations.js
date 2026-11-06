@@ -2840,6 +2840,22 @@ window.RSVP_TRANSLATIONS = {
     "fo": "Eingi samsvarandi matvørusløg.",
     "de": "Keine passenden Speiseneinheiten."
   },
+  "Event welcome": {
+    "fo": "Vælkomuheilsan til tiltakið",
+    "de": "Begrüßung zur Veranstaltung"
+  },
+  "Venue welcome": {
+    "fo": "Vælkomuheilsan til staðið",
+    "de": "Begrüßung am Veranstaltungsort"
+  },
+  "Appears at the top of the guest invitation.": {
+    "fo": "Stendur ovast á innbjóðingini til gestin.",
+    "de": "Steht oben auf der Einladung."
+  },
+  "Appears under the session at this venue on the guest invitation.": {
+    "fo": "Stendur undir løtuni á hesum staði á innbjóðingini.",
+    "de": "Steht auf der Einladung unter dem Programmpunkt an diesem Ort."
+  },
   "Map link": {
     "fo": "Kortleinki",
     "de": "Kartenlink"
@@ -2863,6 +2879,18 @@ window.RSVP_TRANSLATIONS = {
   "Edit administrator name": {
     "fo": "Broyt navn á fyrisitara",
     "de": "Administratornamen bearbeiten"
+  },
+  "Move session up": {
+    "fo": "Flyt løtu uppeftir",
+    "de": "Programmpunkt nach oben verschieben"
+  },
+  "Move session down": {
+    "fo": "Flyt løtu niðureftir",
+    "de": "Programmpunkt nach unten verschieben"
+  },
+  "Session order saved.": {
+    "fo": "Raðfylgjan á løtum er goymd.",
+    "de": "Reihenfolge der Programmpunkte gespeichert."
   },
   "Move language up": {
     "fo": "Flyt mál uppeftir",

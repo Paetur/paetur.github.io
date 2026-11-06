@@ -50,6 +50,19 @@ const {PGlite}=require('@electric-sql/pglite'),fs=require('node:fs'),assert=requ
  await db.query('SELECT public.admin_add_venue_food($1,ARRAY[$2]::uuid[])',[location,id]);
  await db.query('SELECT public.admin_add_venue_food($1,ARRAY[$2]::uuid[])',[location,id]);
  assert.deepEqual(await value('SELECT venue_ids v FROM public.food_items WHERE id=$1',[id]),[location]);
+ const otherVenue=await value("SELECT id v FROM public.event_locations WHERE name='Garden'");
+ await db.query('SELECT public.admin_edit_venue_food($1,ARRAY[]::uuid[],ARRAY[$2]::uuid[])',[otherVenue,id]);
+ assert.deepEqual(await value('SELECT venue_ids v FROM public.food_items WHERE id=$1',[id]),[]);
+
+ const newSession=await value('SELECT public.admin_save_session(NULL,$1) v',[{name:'Later session',session_key:'later-session'}]);
+ const sessionOrder=async()=>(await db.query('SELECT id FROM public.event_sessions ORDER BY sort_order,lower(name),id')).rows.map(row=>row.id);
+ const beforeMove=await sessionOrder();
+ assert.equal(beforeMove.at(-1),newSession);
+ await db.query('SELECT public.admin_move_session($1,-1)',[newSession]);
+ const afterMove=await sessionOrder();
+ assert.equal(afterMove.at(-2),newSession);
+ await db.query('SELECT public.admin_save_session($1,$2)',[newSession,{name:'Renamed session',session_key:'later-session'}]);
+ assert.deepEqual(await sessionOrder(),afterMove);
  const saveTranslations='SELECT public.admin_save_food_translations($1,$2)';
  const nameKey='food:'+brownie+':name';
  await assert.rejects(()=>db.query(saveTranslations,[brownie,[{key:nameKey,language:'en',value:'Rollback'},{key:'ui:Kg',language:'en',value:'Invalid'}]]),/Invalid food translation key/);

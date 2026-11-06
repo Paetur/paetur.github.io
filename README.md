@@ -1,6 +1,6 @@
 # RSVP Manager — Event Invitation
 
-A standalone, mobile-friendly **single-event** invitation and RSVP website for GitHub Pages and Supabase. One GitHub repository and one Supabase project per event. Changes through [PR #22](https://github.com/Paetur/paetur.github.io/pull/22) are merged and deployed as of **2 November 2026**. The event remains **unpublished** and is **not yet approved for public launch**. See [Security and release checklist](docs/SECURITY_AND_RELEASE.md).
+A standalone, mobile-friendly **single-event** invitation and RSVP website for GitHub Pages and Supabase. One GitHub repository and one Supabase project per event. Updated **6 November 2026**. The event remains **unpublished** and awaits explicit launch approval. See [Security and release checklist](docs/SECURITY_AND_RELEASE.md).
 
 The repository source files do **not** contain guest data, invitation codes, or privileged Supabase credentials.
 
@@ -12,15 +12,15 @@ The repository source files do **not** contain guest data, invitation codes, or 
 | Single-event website | Name, calendar date, timezone, customizable content and managed language switch (FO/EN/DE included; additional languages configurable) |
 | Private invitation links | Compatible with `?ABCDEFGH` and `?invite=ABCDEFGH` |
 | RSVP | One answer per invited guest and required session; atomic submission, replay-safe request ID, locked after submit |
-| Food | List, claim/quantity update, final confirmation via database RPCs (when event is published and food is enabled for that household) |
+| Food | Categories, item units, venue availability, comments, recipes with print-to-PDF, household selections and guest confirmation |
 | Administrator access | Supabase Auth login + `is_admin` authorization before any admin data is loaded |
 | Admin dashboard | Household and guest overview, private link copy, food quantities, event settings, translations, sessions |
-| Multiple administrators | Email invitations, pending/resend/cancel, verified acceptance and revoke (cannot remove last) |
-| Publish control | Event defaults to **unpublished**; this starter does not provide a publish button |
+| Multiple administrators | Email invitations, verified acceptance, editable display names, pending/resend/cancel and access revocation with last-admin protection |
+| Publish control | Settings → Event settings controls publication. The current event is unpublished. |
 
 **Household management:** create/edit households and guests, preserve invitations when moving guests, manage multiple contacts, archive/restore eligible records, and inspect append-only change history. See [Household management](docs/HOUSEHOLD_MANAGEMENT.md) for safeguards and migration order.
 
-**Venues and schedules:** edit multiple venues, timezone-aware session start/end times, and individual invitation exceptions. See [Venues and sessions](docs/VENUES_AND_SESSIONS.md).
+**Venues and schedules:** both sections open by default. Collapsed venue and session rows show details and saved map links. In Edit mode, reorder sessions with the arrows and use **Add food** beside **Save venue** to add or remove food assignments in bulk. See [Venues and sessions](docs/VENUES_AND_SESSIONS.md).
 
 **Administration workflows:** device-based email, Messages and WhatsApp compose handoffs, separate reminder drafts, manual sending confirmation/history, reasoned RSVP corrections/reopening and household food-access controls. See [workflow guide](docs/DELIVERY_RSVP_FOOD_CONTROLS.md).
 
@@ -28,17 +28,17 @@ The repository source files do **not** contain guest data, invitation codes, or 
 
 **Logs:** Settings → Logs provides searchable, filtered history across households, guests, RSVP, invitations, venues, food permissions and administrator sessions. See [Administration logs](docs/ADMINISTRATION_LOGS.md).
 
-**Interface languages and customization:** FO/EN/DE cover the guest, administration and setup interfaces. Select a language in the toolbar; Settings → Event settings contains welcome-message editors and interface wording customization. See [Interface languages](docs/INTERFACE_LANGUAGES.md).
+**Interface languages and customization:** FO/EN/DE cover the guest, administration and setup interfaces. Select a language in the toolbar; Settings → Languages shows all enabled languages for the selected interface phrase or **Event welcome**, which appears at the top of the invitation. **Venue welcome** appears under the session at that venue. See [Interface languages](docs/INTERFACE_LANGUAGES.md).
 
 **Current work and optional backlog:** see [Roadmap](docs/ROADMAP.md). Automatic guest sending is an optional later decision; the manual-delivery baseline remains available. Full launch acceptance testing is still required.
 
-**Languages:** Settings → Languages manages enabled languages, event default/fallback and translations beyond FO/EN/DE. See [Language management](docs/INTERFACE_LANGUAGES.md).
+**Languages:** Settings → Languages manages enabled languages, reorder arrows, event default and fallback. The main Language tab provides Food and Food Types editors with all enabled languages visible. See [Language management](docs/INTERFACE_LANGUAGES.md).
 
 **Application backups:** Settings → Backups downloads versioned JSON and validates/restores it into an empty, unpublished destination. Auth and deployment configuration are handled separately. See [Backup and restore](docs/BACKUP_RESTORE.md).
 
 ## Completed milestones
 
-Completed implementation and deployment milestones through PR #18:
+Completed implementation milestones:
 
 - [x] GitHub Pages deployment connected to the current Supabase project.
 - [x] Private invitation links and session-specific household RSVP with validation, atomic submission, retry protection and submission locking.
@@ -51,20 +51,19 @@ Completed implementation and deployment milestones through PR #18:
 - [x] Faroese, English and German interfaces, customizable wording and welcome messages.
 - [x] Configurable enabled languages, separate event default/fallback languages and broader translation management.
 - [x] Versioned application backup export/import, validation and atomic restoration into an empty, unpublished destination.
-- [x] Automated browser, authorization, database integrity and disposable-database restoration checks; PR #18 CI and deployment passed.
+- [x] Automated browser, authorization, database integrity and disposable-database restoration checks.
 - [x] Publication safeguard maintained: the current event remains unpublished.
 
 Live workflow acceptance and an independent recovery rehearsal remain open below.
 
-## Implemented for next release
+## Everyday admin workflows
 
-- Other combines tasks and stuff to bring under categories, with Item / Comment / Assigned to / Status boxes and per-row pencil/save. Food expansion now affects categories only; empty read-only comments are hidden.
-
-- Food Expand/Collapse all, language/category icon pop-ups, and local task editing controlled by main Edit with dirty-only Save.
-
-- Compact food disclosures, one-unit guest selection without displayed quantities, public/private comments, categorized language tools and an administrator task sheet with comments. Recipes group existing or new items under a category. See [Food, language and task workflows](docs/FOOD_LANGUAGES_TASKS.md).
-
-- Device-based invitations and administrator-initiated reminders using existing Mail, Messages and WhatsApp accounts, with explicit manual sent confirmation. Opening a composer never means delivered. See [iPad sending instructions](docs/DELIVERY_RSVP_FOOD_CONTROLS.md#sending-from-an-ipad).
+- **Households:** use **Allow food** in Household details. Manage session invitations and RSVP responses under **Invites**.
+- **Food:** set each item’s unit and venue availability. Category headers show item counts and picked/total units. Household quantities stay visible on collapsed rows. Use **+ Add household**, the pencil, or the trash icon to manage selections.
+- **Recipes:** add or edit a recipe from the food item. The **Recipe** link opens the print view for saving as PDF.
+- **Venues:** open **Add food** in a venue’s edit form to select or clear assignments. Saving an empty selection removes that venue’s assignments while preserving other venues and existing claims.
+- **Other:** manage tasks and things to bring in categories with per-row pencil and save controls.
+- **Invitations and reminders:** open drafts in Mail, Messages, or WhatsApp and record sending manually afterward. [iPad sending instructions](docs/DELIVERY_RSVP_FOOD_CONTROLS.md#sending-from-an-ipad)
 
 ## To-do, process and wish list
 
@@ -93,12 +92,11 @@ Implemented features still need operational acceptance. Passing automated tests 
 
 These candidates are not commitments or launch blockers by default.
 
-- [ ] Household-wide RSVP defaults with individual overrides.
 - [ ] Review all answers before final submission.
 - [ ] Reusable multilingual invitation templates.
 - [ ] Automatic email/SMS/WhatsApp invitations, reminders and provider delivery tracking.
 - [ ] Feature switches for food, contributions and tasks.
-- [ ] Guest and administrator “Stuff to bring” and “Things to do” workflows.
+- [ ] Guest access to contribution and task workflows.
 - [ ] Further food/category improvements after review.
 - [ ] Generalize wedding-specific grouping for other event types.
 
@@ -122,7 +120,7 @@ The current repository is [Paetur/paetur.github.io](https://github.com/Paetur/pa
 5. The setup wizard will generate first-admin SQL for your verified email. Run it in **Supabase SQL Editor**, not in the public website. No unauthenticated user can self-claim admin through the website.
 6. Sign in through the setup wizard, download `config.js`, and commit it into `js/config.js` in the new repository.
 7. Sign in at `admin/` to configure the event. Invite additional administrators through Settings → Administrators after configuring its Edge Function, SMTP and allowed redirects.
-8. In Households, enable Edit mode to create households and guests. Create venues and sessions in Settings, then assign household defaults and guest exceptions in Manage Invites before distributing links.
+8. In Households, enable Edit mode to create households and guests. Create venues and sessions in Settings, then assign household defaults and guest exceptions in Invites before distributing links.
 
 **Fresh installs and recovery:** `supabase/install.sql` is for empty databases and includes the full migration set. It is not a backup and contains no event guest data. Application import requires an empty, unpublished destination with matching schema and independently provisioned verified Auth accounts; see [Backup and restore](docs/BACKUP_RESTORE.md).
 

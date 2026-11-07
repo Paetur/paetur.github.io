@@ -37,6 +37,10 @@ Updated 7 November 2026. The former source database has been deleted. Implementa
 
 - [x] Recipe groups containing existing and/or newly created food items, with category assignment and backup/restore coverage.
 
+## Deferred to-do
+
+- [ ] Revisit database language deletion and its translations, including how to handle households, guests and contacts that use the language. Deletion is deferred.
+
 ## Optional features — decide later
 
 These are candidates, not commitments or launch blockers by default.

@@ -36,7 +36,7 @@ async function run(){
    await page.locator('#adminApp:not(.hidden)').waitFor({timeout:12000});
    await page.locator('#householdRows .hierarchy-section').first().waitFor({state:'attached'});
    assert.equal(await page.locator('[data-tab]').count(),7,'seven compact main text tabs');
-   assert.deepEqual(await page.locator('[data-tab]').evaluateAll(nodes=>nodes.map(n=>n.textContent.trim())),['Overview','Venues','Households','Food','Other','Language','Invites']);
+   assert.deepEqual(await page.locator('[data-tab]').evaluateAll(nodes=>nodes.map(n=>n.textContent.trim())),['Overview','Venues','Households','Food','Other','Invites','Languages']);
    assert.deepEqual(await page.locator('.admin-top-actions>button').evaluateAll(nodes=>nodes.map(n=>n.id)),
      ['settingsToggle','editModeButton','refreshButton','logout'],'topbar action icon order');
    assert.equal(await page.locator('#viewWebsite').getAttribute('target'),'_blank','website link opens a new tab');

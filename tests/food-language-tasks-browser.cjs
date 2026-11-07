@@ -1,3 +1,4 @@
+const {selectContentTranslation,openWordingEditor}=require('./helpers/language-ui.cjs');
 // Geometry regression for native disclosures; uses only synthetic administration data.
 const {chromium,webkit}=require('playwright');
 const {mock}=require('./helpers/admin-fixture.cjs');
@@ -55,8 +56,10 @@ async function run(type){const browser=await type.launch({headless:true});try{
  await languageButton.click();
  const languageDialog=page.getByRole('dialog',{name:'Language · Sample dish',exact:true});
  await languageDialog.waitFor();
+ assert.equal(await languageDialog.getByLabel(/^Type ·/).count(),0);
+ assert.equal(await languageDialog.getByLabel(/^Guest note ·/).count(),3);
  assert.equal(await languageDialog.locator('.food-translation-row').count(),3);
- for(const row of await languageDialog.locator('.food-translation-row').all())assert.equal(await row.getByRole('textbox').count(),3);
+ for(const row of await languageDialog.locator('.food-translation-row').all())assert.equal(await row.getByRole('textbox').count(),2);
  await languageDialog.locator('[data-language-code="fo"]').getByRole('textbox').first().fill('Discard this translation');
  await languageDialog.getByRole('button',{name:'Cancel',exact:true}).click();
  await languageDialog.waitFor({state:'detached'});
@@ -65,8 +68,8 @@ async function run(type){const browser=await type.launch({headless:true});try{
  await languageButton.click();
  assert.notEqual(await languageDialog.locator('[data-language-code="fo"]').getByRole('textbox').first().inputValue(),'Discard this translation');
  await languageDialog.locator('[data-language-code="fo"]').getByRole('textbox').first().fill('Føroyskur rættur');
- await languageDialog.locator('[data-language-code="de"]').getByRole('textbox').nth(2).fill('Bitte gekühlt bringen');
- await languageDialog.locator('[data-language-code="fo"]').getByRole('textbox').nth(2).fill('Tak við køldum');
+ await languageDialog.locator('[data-language-code="de"]').getByRole('textbox').nth(1).fill('Bitte gekühlt bringen');
+ await languageDialog.locator('[data-language-code="fo"]').getByRole('textbox').nth(1).fill('Tak við køldum');
  assert.equal(await page.evaluate(()=>window.__foodTranslationSaves||0),0,'typing does not save');
  await page.setViewportSize({width:390,height:844});
  assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),true,'mobile translation dialog width');
@@ -116,7 +119,7 @@ async function run(type){const browser=await type.launch({headless:true});try{
  await summary.click();
  assert.equal(await food.evaluate(n=>n.open),false);
  assert.ok(await summary.getByText('Example child · 2',{exact:true}).isVisible());
- assert.equal(await page.locator('.food-category-heading .tree-count').first().textContent(),'1 item, 2/4 amounts');
+ assert.equal(await page.locator('.food-category-heading .tree-count').first().textContent(),'1 item · Quantity: 2/4');
  await summary.click();
  await page.evaluate(()=>{window.__fixtures.households[1].food_confirmed=true;});
  await page.locator('#refreshButton').click();
@@ -132,7 +135,7 @@ async function run(type){const browser=await type.launch({headless:true});try{
  page.once('dialog',dialog=>dialog.accept());
  await food.getByRole('button',{name:'Remove selection for Example child'}).click();
  await summary.locator('.food-claim-summary').waitFor({state:'detached'});
- assert.equal(await page.locator('.food-category-heading .tree-count').first().textContent(),'1 item, 0/4 amounts');
+ assert.equal(await page.locator('.food-category-heading .tree-count').first().textContent(),'1 item · Quantity: 0/4');
  await page.evaluate(()=>window.__fixtures.food_items.forEach(f=>{f.description_en=null;f.admin_comment=null;}));await page.locator('#refreshButton').click();await page.waitForFunction(()=>!document.querySelector('#refreshButton').disabled);assert.equal(await page.locator('.food-comment-grid').count(),0,'empty read-only comments are omitted');
  await page.locator('#addFoodForm').evaluate(form=>form.closest('details').open=true);
  page.once('dialog',dialog=>dialog.accept('Basket(s)'));
@@ -148,7 +151,7 @@ async function run(type){const browser=await type.launch({headless:true});try{
  await page.waitForFunction(()=>document.querySelectorAll('.food-compact-item').length===3);
  const foodOrder=await page.locator('.food-compact-item').evaluateAll(items=>items.map(item=>item.dataset.treeKey.slice('food:item:'.length)));
  await page.locator('[data-tab="language"]').click();
- await page.locator('#translationCategory').selectOption('food');
+ await selectContentTranslation(page,'food');
  const grid=page.locator('#foodTranslationGrid');
  assert.deepEqual(await grid.getByLabel('Food item',{exact:true}).locator('option').evaluateAll(options=>options.map(option=>option.value)),foodOrder);
  await grid.getByLabel('Food categories',{exact:true}).selectOption('category:Desserts');
@@ -157,12 +160,12 @@ async function run(type){const browser=await type.launch({headless:true});try{
  await grid.getByLabel('Food item',{exact:true}).selectOption({label:'Sample dish'});
 
  assert.equal(await grid.locator('.food-translation-row').count(),3);
- for(const row of await grid.locator('.food-translation-row').all())assert.equal(await row.locator('input').count(),3);
+ for(const row of await grid.locator('.food-translation-row').all())assert.equal(await row.getByRole('textbox').count(),2);
  if(process.env.RSVP_LAYOUT_PREVIEW&&type.name()==='chromium')await page.locator('[data-panel="language"]').screenshot({path:process.env.RSVP_LAYOUT_PREVIEW+'/food-language-grid.png'});
  await grid.locator('.food-translation-row input').first().fill('Updated sample dish');
  await grid.getByRole('button',{name:'Save translations'}).click();
- await page.waitForFunction(()=>window.__savedTranslations?.p_changes.length===1&&!document.querySelector('#foodTranslationGrid button').disabled);
- await page.locator('#translationCategory').selectOption('food-types');
+ await page.waitForFunction(()=>window.__savedTranslations?.p_changes.length===1&&!document.querySelector('#foodTranslationGrid form[aria-busy]'));
+ await selectContentTranslation(page,'food-types');
  const typePicker=grid.getByLabel('Type',{exact:true});
  const typeKeys=await typePicker.locator('option').evaluateAll(options=>options.map(option=>option.value));
  for(const name of ['Batch(s)','Piece(s)','Tray(s)','Packet(s)','Kg','Grams'])assert.ok(typeKeys.includes('ui:'+name));
@@ -174,7 +177,7 @@ async function run(type){const browser=await type.launch({headless:true});try{
  await grid.getByLabel('Type · English',{exact:true}).fill('Trays');
  await grid.getByLabel('Type · Deutsch',{exact:true}).fill('Backbleche');
  await grid.getByRole('button',{name:'Save translations'}).click();
- await page.waitForFunction(()=>window.__savedTypeTranslations?.length===2&&!document.querySelector('#foodTranslationGrid button').disabled);
+ await page.waitForFunction(()=>window.__savedTypeTranslations?.length===2&&!document.querySelector('#foodTranslationGrid form[aria-busy]'));
  assert.deepEqual(await page.evaluate(()=>window.__savedTypeTranslations.map(row=>row.p_language)),['en','de']);
  const sections=[
   {category:'food-category',picker:'Food categories',label:'Main dishes',fields:1,source:'Main dishes',edits:[['fo',0,'Maturflokkur'],['de',0,'Hauptgerichte']]},
@@ -182,9 +185,9 @@ async function run(type){const browser=await type.launch({headless:true});try{
   {category:'session',picker:'Session',label:'Dinner',fields:2,source:'Dinner',edits:[['de',0,'Abendessen'],['de',1,'Bitte früh ankommen']]}
  ];
  for(const section of sections){
-  await page.locator('#translationCategory').selectOption(section.category);
+  await selectContentTranslation(page,section.category);
   await grid.getByLabel(section.picker,{exact:true}).selectOption({label:section.label});
-  assert.equal(await page.locator('#translationLanguage').isVisible(),false,'no separate language selector');
+  assert.equal(await page.locator('#translationLanguage').count(),0,'no separate language selector');
   assert.equal(await grid.locator('.food-translation-row').count(),3);
   for(const row of await grid.locator('.food-translation-row').all()){
    assert.equal(await row.getByRole('textbox').count(),section.fields);
@@ -200,7 +203,7 @@ async function run(type){const browser=await type.launch({headless:true});try{
   for(const [language,index,value] of section.edits)await grid.locator('[data-language-code="'+language+'"]').getByRole('textbox').nth(index).fill(value);
   assert.equal(await page.evaluate(()=>(window.__batchTranslationSaves||[]).length),before,'typing does not save');
   await grid.getByRole('button',{name:'Save translations'}).click();
-  await page.waitForFunction(()=>!document.querySelector('#foodTranslationGrid button[type="submit"]').disabled);
+  await page.waitForFunction(()=>!document.querySelector('#foodTranslationGrid form[aria-busy]'));
   const batchSaves=await page.evaluate(()=>window.__batchTranslationSaves);
   assert.equal(batchSaves.length,before+1,'one atomic request');
   assert.equal(batchSaves.at(-1).p_changes.length,section.edits.length);
@@ -217,15 +220,17 @@ async function run(type){const browser=await type.launch({headless:true});try{
  await grid.getByText('No matching entries.',{exact:true}).waitFor();
  assert.equal(await grid.locator('form').count(),0);
  await page.locator('#translationSearch').fill('');
+ await page.waitForFunction(()=>document.querySelector('#foodTranslationGrid select')?.value===window.__fixtures.event_sessions[0].id);
  assert.equal(await grid.getByLabel('Session',{exact:true}).inputValue(),await page.evaluate(()=>window.__fixtures.event_sessions[0].id));
  await page.locator('#editModeButton').click();
  assert.ok(await grid.locator('[data-language-code="en"]').getByRole('textbox').first().isDisabled());
  await page.locator('#editModeButton').click();
- await page.locator('#translationCategory').selectOption('food');
+ await selectContentTranslation(page,'food');
  if(process.env.FOOD_LANGUAGE_PREVIEW&&type.name()==='chromium')await page.locator('[data-panel="language"]').screenshot({path:process.env.FOOD_LANGUAGE_PREVIEW+'/language-food-category-picker.png'});
- await page.locator('#settingsToggle').click();assert.equal(await page.locator('#eventContentForm').isVisible(),false);await page.locator('[data-settings-tab="languages"]').click();assert.equal(await page.locator('#translationCategory option[value="food"]').count(),0);await page.locator('#translationCategory').selectOption('welcome');assert.equal(await page.locator('#translationKey').inputValue(),'welcome');
- const settingsGrid=page.locator('#foodTranslationGrid');
- assert.equal(await settingsGrid.locator('textarea').count(),3);
+ await selectContentTranslation(page,'welcome');
+ assert.equal(await page.locator('#foodTranslationGrid textarea').count(),3);
+ await openWordingEditor(page,'en','interface.messages.save');
+ assert.equal(await page.locator('#contentTranslationTabs').isVisible(),false);
  if(process.env.SETTINGS_PREVIEW&&type.name()==='chromium')await page.locator('#translationEditor').screenshot({path:process.env.SETTINGS_PREVIEW+'/settings-language-preview.png'});
  await page.locator('#closeSettings').click();
  await page.locator('[data-tab="venues"]').click();
@@ -312,8 +317,8 @@ async function run(type){const browser=await type.launch({headless:true});try{
  await admin.getByRole('button',{name:'Save',exact:true}).click();
  await admin.getByText('Updated example admin',{exact:true}).waitFor();
  assert.ok(await admin.getByText('test-admin@example.invalid',{exact:true}).isVisible());
- await page.locator('#closeSettings').click();await page.locator('[data-tab="other"]').click();assert.equal(await page.locator('.other-line').count(),1);assert.equal(await page.locator('.other-line input').first().isDisabled(),true);const boxes=await page.locator('.other-line').first().locator('input,select').evaluateAll(ns=>ns.slice(0,4).map(n=>n.getBoundingClientRect().height));assert.ok(boxes.every(h=>Math.abs(h-boxes[0])<2),'four boxes have matching heights');
- await page.locator('#addOtherItem').click();const added=page.locator('.other-line').last();await added.locator('input').first().fill('Bring tablecloths');await added.locator('input').nth(1).fill('Remember linen');await added.locator('input').nth(2).fill('Another helper');await added.getByRole('button',{name:/^Save item/}).click();await page.waitForFunction(()=>window.__savedOther&&document.querySelectorAll('.other-line')[1].querySelector('input').disabled);assert.equal(await page.evaluate(()=>window.__savedOther.p_values.notes),'Remember linen');
+ await page.locator('#closeSettings').click();await page.locator('[data-tab="other"]').click();assert.equal(await page.locator('.other-line').count(),1);assert.equal(await page.locator('.other-line input').first().isDisabled(),true);assert.equal(await page.locator('.other-line-summary input').count(),0,'plain text summaries');
+ await page.locator('[data-panel="other"] .admin-management').filter({has:page.locator('#addOtherItem')}).locator('summary').click();await page.locator('#addOtherItem').click();const added=page.locator('.other-line').last();await added.locator('input').first().fill('Bring tablecloths');await added.locator('textarea').fill('Remember linen');await added.locator('input').nth(1).fill('Another helper');await added.getByRole('button',{name:/^Save item/}).click();await page.waitForFunction(()=>window.__savedOther&&document.querySelectorAll('.other-line')[1].querySelector('input').disabled);assert.equal(await page.evaluate(()=>window.__savedOther.p_values.notes),'Remember linen');
  if(process.env.PREVIEW_OUTPUT)await page.locator('[data-panel="other"]').screenshot({path:process.env.PREVIEW_OUTPUT+'/other-draft.png'});
  await page.setViewportSize({width:390,height:844});if(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth+2)){console.error(await page.evaluate(()=>({width:innerWidth,scroll:document.documentElement.scrollWidth,nodes:[...document.querySelectorAll('[data-panel="other"], [data-panel="other"] .panel, #otherRows,.other-category,.other-category-body,.other-line,.other-add-controls,#otherNewCategory')].map(n=>({class:n.className,id:n.id,width:n.getBoundingClientRect().width,right:n.getBoundingClientRect().right,scroll:n.scrollWidth,min:getComputedStyle(n).minWidth,overflow:getComputedStyle(n).overflowX}))})));}assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+2),true,'Other lines fit within mobile category scroll');
  assert.deepEqual(errors,[]);await page.close();

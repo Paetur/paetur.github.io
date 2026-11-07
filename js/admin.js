@@ -21,14 +21,14 @@
  function makeTable(headers,values){const table=R.dom('table',{class:'data-table'});const thead=row(table,'thead'),tr=row(thead,'tr');headers.forEach(h=>row(tr,'th',{},h));const tbody=row(table,'tbody');values.forEach(cols=>{const tr=row(tbody,'tr');cols.forEach(v=>{const td=row(tr,'td');if(v instanceof Node)td.append(v);else td.textContent=String(v??'');});});return table;}
  function stat(label,value){const div=R.dom('div',{class:'stat-card'});div.append(R.dom('b',{},value),R.dom('span',{},label));return div;}
  function sessionName(id){return store.sessions.find(s=>s.id===id)?.name||T("interface.messages.session");}
- function settingsTab(name){activeSettingsTab=name;document.querySelectorAll('[data-settings-tab]').forEach(b=>{const active=b.dataset.settingsTab===name;b.classList.toggle('active',active);b.setAttribute('aria-pressed',String(active));});document.querySelectorAll('[data-settings-panel]').forEach(n=>n.classList.toggle('hidden',n.dataset.settingsPanel!==name));if(name==='logs')loadLogs(true);}
+ function settingsTab(name){activeSettingsTab=name;document.querySelectorAll('[data-settings-tab]').forEach(b=>{const active=b.dataset.settingsTab===name;b.classList.toggle('active',active);b.setAttribute('aria-selected',String(active));b.tabIndex=active?0:-1;});document.querySelectorAll('[data-settings-panel]').forEach(n=>n.classList.toggle('hidden',n.dataset.settingsPanel!==name));if(name==='logs')loadLogs(true);}
  function tab(name,updateUrl=true){
    if(name==='tasks')name='other';
    if(!['dashboard','venues','households','invites','food','other','language','settings'].includes(name))name='dashboard';
    activeTab=name;if(name!=='settings')lastMainTab=name;window.RSVP_ADMIN_TOOLS?.showTasks(name==='other');window.RSVP_ADMIN_TOOLS?.translationScope(name==='language'?'content':'settings');
    document.querySelectorAll('[data-tab]').forEach(b=>{
      const active=b.dataset.tab===name;b.classList.toggle('active',active);
-     b.setAttribute('aria-selected',String(active));
+     b.setAttribute('aria-selected',String(active));b.tabIndex=active?0:-1;
    });
    document.querySelectorAll('[data-panel]').forEach(n=>n.classList.toggle('hidden',n.dataset.panel!==name));
    $('adminApp').classList.toggle('showing-settings',name==='settings');
@@ -42,7 +42,15 @@
    }
  }
  function toggleSettings(){tab(activeTab==='settings'?lastMainTab:'settings');}
- function mode(isEditing){R.closePopups();editMode=isEditing;$('adminApp').dataset.mode=isEditing?'edit':'view';const b=$('editModeButton');b.classList.toggle('active',isEditing);b.setAttribute('aria-pressed',String(isEditing));b.title=isEditing?T("interface.messages.switch_to_view_mode"):T("interface.messages.switch_to_edit_mode");b.setAttribute('aria-label',b.title);$('adminModeLabel').textContent=isEditing?T("interface.messages.edit_mode_changes_are_saved_to_the_event_database"):T("food.messages.view_mode_manage_invitations_food_and_event_details");for(const id of ['eventSettingsForm','eventContentForm','interfaceWordingForm','languagePreferences','addLanguageForm','translationForm']){const form=$(id);for(const field of form.querySelectorAll('input,select,textarea'))field.disabled=!isEditing;}window.RSVP_ADMIN_TOOLS?.mode();}
+ function cleanSave(form,reset=true){
+   const controls=()=>Array.from(form.querySelectorAll('input,textarea,select')).filter(control=>!['button','submit'].includes(control.type));
+   const value=control=>control.type==='checkbox'?String(control.checked):control.value;
+   if(reset||!form.cleanSaveUpdate){for(const control of controls())control.dataset.cleanOriginal=value(control);}
+   const update=()=>{const save=form.querySelector('button[type="submit"]');if(save)save.disabled=!editMode||form.getAttribute('aria-busy')==='true'||!controls().some(control=>value(control)!==control.dataset.cleanOriginal);};
+   if(!form.cleanSaveUpdate){form.addEventListener('input',()=>form.cleanSaveUpdate());form.addEventListener('change',()=>form.cleanSaveUpdate());}
+   form.cleanSaveUpdate=update;update();
+ }
+ function mode(isEditing){R.closePopups();editMode=isEditing;$('adminApp').dataset.mode=isEditing?'edit':'view';const b=$('editModeButton');b.classList.toggle('active',isEditing);b.setAttribute('aria-pressed',String(isEditing));b.title=isEditing?T("interface.messages.switch_to_view_mode"):T("interface.messages.switch_to_edit_mode");b.setAttribute('aria-label',b.title);$('adminModeLabel').textContent=isEditing?T("interface.messages.edit_mode_changes_are_saved_to_the_event_database"):T("food.messages.view_mode_manage_invitations_food_and_event_details");for(const id of ['eventSettingsForm','eventContentForm','interfaceWordingForm','languagePreferences','addLanguageForm']){const form=$(id);for(const field of form.querySelectorAll('input,select,textarea'))field.disabled=!isEditing;}window.RSVP_ADMIN_TOOLS?.mode();for(const form of $('adminApp').querySelectorAll('form'))form.cleanSaveUpdate?.();}
  async function fetchTable(name,columns='*',order){let q=db.from(name).select(columns);if(order)q=q.order(order);const {data,error}=await q;if(error)throw new Error(`${name}: ${R.safeError(error)}`);return data||[];}
  async function reload(){
    show(T("interface.messages.loading_event_data"));
@@ -68,7 +76,7 @@
    try{websiteConfigured=Boolean(deployed.supabaseUrl&&deployed.supabaseKey&&R.normalizeUrl(deployed.supabaseUrl)===R.normalizeUrl(R.config().supabaseUrl)&&R.validateKey(deployed.supabaseKey));}catch(_){websiteConfigured=false;}
    const checks=[[T("interface.messages.admin_account_connected"),true],[T("interface.messages.event_name_and_date_entered"),!!(store.settings?.event_name&&store.settings?.event_date)],[T("interface.messages.at_least_one_session_created"),store.sessions.some(s=>s.is_active)],[T("interface.messages.invitations_assigned"),store.defaults.some(d=>d.is_invited)],[T("interface.messages.website_connection_in_deployed_config_js"),websiteConfigured],[T("interface.messages.website_address_saved_in_event_settings"),!!store.settings?.website_url],[T("interface.messages.event_published"),!!store.settings?.is_published]];
    $('launchChecklist').replaceChildren(...checks.map(([label,yes])=>{const li=R.dom('li');li.append(R.dom('span',{class:yes?'yes':'no'},yes?'✓':'○'),document.createTextNode(label));return li;}));
-   $('newHousehold').replaceChildren(householdForm({language:store.settings?.default_language||'en',side:'paetur_hentze'}));renderHouseholds();renderInvites();renderDeliveryLog();renderFood();renderAdmins();renderSettings();renderSessions();renderContent();window.RSVP_ADMIN_TOOLS?.render();
+   $('newHousehold').replaceChildren(householdForm({language:store.settings?.default_language||'en',side:'paetur_hentze'}));renderHouseholds();renderInvites();renderDeliveryLog();renderFood();renderAdmins();renderSettings();renderSessions();renderContent();window.RSVP_ADMIN_TOOLS?.render();for(const form of $('adminApp').querySelectorAll('#eventSettingsForm,.management-form'))cleanSave(form);
  }
  function ordered(list, label){
    return [...list].sort((a,b)=>(a.sort_order||0)-(b.sort_order||0)||
@@ -78,6 +86,8 @@
    const glyph={up:'↑',down:'↓'}[kind]||'';
    const button=R.dom('button',{class:'admin-row-icon '+extraClass,type:'button',title},glyph);
    const drawings={
+     save:['M5 12l4 4L19 6'],
+     download:['M12 3v12','m7 10 5 5 5-5','M4 17v4h16v-4'],
      language:['M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0','M3 12h18','M12 3c5 5 5 13 0 18','M12 3c-5 5-5 13 0 18'],
      move:['M4 7h15','m15 3 4 4-4 4','M20 17H5','m9 13-4 4 4 4'],
      edit:['m16 5 3 3','M4 20l4-1 12-12a2.1 2.1 0 0 0-3-3L5 16l-1 4Z'],
@@ -764,6 +774,8 @@
    for(const control of form.querySelectorAll('input,select,textarea')){
      control.dataset.foodOriginal=control.type==='checkbox'?String(control.checked):control.value;
    }
+   const updateSave=()=>{save.disabled=form.getAttribute('aria-busy')==='true'||!Array.from(form.querySelectorAll('input,select,textarea')).some(control=>(control.type==='checkbox'?String(control.checked):control.value)!==control.dataset.foodOriginal);};
+   form.addEventListener('input',updateSave);form.addEventListener('change',updateSave);updateSave();
    return form;
  }
  function openFoodRecipe(item){
@@ -838,7 +850,7 @@
        const main=R.dom('summary',{class:'food-manage-main'});
        const info=R.dom('div',{class:'food-item-info'});
        info.append(R.dom('strong',{},foodItemName(f)),
-         R.dom('small',{class:'muted'},T("interface.messages.amount_claimed_needed_type_shown_shown",{needed:f.quantity_needed,claimed:claim,type:foodTypeLabel(f.quantity_type||'Piece(s)'),shown:f.active&&f.quantity_needed>claim?'✓':'–'})));
+         R.dom('small',{class:'muted'},T("interface.messages.amount_claimed_needed_type_shown_shown",{needed:f.quantity_needed,claimed:claim,type:foodTypeLabel(f.quantity_type||'Piece(s)'),shown:T(f.active&&f.quantity_needed>claim?'Available':'Unavailable')})));
        const buttons=R.dom('div',{class:'food-item-actions'});
        buttons.append(btn('↑',T("food.messages.move_food_item_up"),()=>rpcAction('admin_move_food_item',
          {p_food_item_id:f.id,p_direction:-1},T("food.messages.food_order_saved")),pos<=0));
@@ -846,7 +858,7 @@
          {p_food_item_id:f.id,p_direction:1},T("food.messages.food_order_saved")),pos===items.length-1));
        const edit=buildFoodEditor(f);edit.classList.add('edit-only');
        wrapper.addEventListener('toggle',()=>{if(!wrapper.open)edit.classList.add('hidden');});
-       buttons.append(btn(T("interface.messages.edit"),T("food.messages.edit_food_item"),()=>{edit.classList.toggle('hidden');if(!edit.classList.contains('hidden'))edit.querySelector('input')?.focus();}));
+       buttons.append(btn(T("interface.messages.edit"),T("food.messages.edit_food_item"),()=>{if(!wrapper.open){wrapper.open=true;edit.classList.remove('hidden');}else edit.classList.toggle('hidden');if(!edit.classList.contains('hidden'))edit.querySelector('input')?.focus();}));
        buttons.append(iconAction('delete',T("food.messages.archive_food_item_preserve_existing_claims"),async()=>{
          if(!confirm(T("interface.messages.archive_item_existing_claims_are_preserved_you_can_reactivate_it_",{item:foodItemName(f)})))return;
          const {error}=await db.from('food_items').update({active:false}).eq('id',f.id);
@@ -893,9 +905,11 @@
        languageButton.setAttribute('aria-haspopup','dialog');
        buttons.append(languageButton);
        const recipeButton=R.dom('button',{type:'button',class:'small-tool edit-only'},T(f.recipe_text?'Edit recipe':'+ Add recipe'));
-       recipeButton.addEventListener('click',()=>openFoodRecipe(f));
+       recipeButton.addEventListener('click',event=>{event.preventDefault();event.stopPropagation();openFoodRecipe(f);});
        buttons.append(recipeButton);
-       detail.append(foodSelections(f,claims,claim),buttons,edit);
+       const headerActions=R.dom('span',{class:'food-header-actions'});
+       const amount=info.querySelector('small');headerActions.append(amount,buttons);info.append(headerActions);
+       detail.append(foodSelections(f,claims,claim),edit);
        wrapper.append(main,detail);
        itemList.append(wrapper);
      }
@@ -995,9 +1009,9 @@
 
  function renderSettings(){
    const e=store.settings||{};
-   for(const id of ['settingLanguage','wordingLanguage']){const select=$(id),previous=select.value;select.replaceChildren(...languages().filter(([code])=>!store.languages.length||store.languages.find(l=>l.language_code===code)?.enabled).map(([value,label])=>R.dom('option',{value},label)));select.value=Array.from(select.options).some(o=>o.value===previous)?previous:e.default_language;}
+   for(const id of ['wordingLanguage']){const select=$(id),previous=select.value;select.replaceChildren(...languages().filter(([code])=>!store.languages.length||store.languages.find(l=>l.language_code===code)?.enabled).map(([value,label])=>R.dom('option',{value},label)));select.value=Array.from(select.options).some(o=>o.value===previous)?previous:e.default_language;}
    $('settingName').value=e.event_name||'';$('settingType').value=e.event_type||'other';$('settingDate').value=e.event_date||'';
-   $('settingLanguage').value=e.default_language||'en';$('settingTimezone').value=e.timezone||'UTC';
+   $('settingTimezone').value=e.timezone||'UTC';
    $('settingUrl').value=e.website_url||'';$('settingDeadline').value=stamp(e.rsvp_deadline);
    $('publicationState').textContent=e.is_published?T("interface.messages.event_is_published_invited_guests_can_access_rsvp_you_can_unpubli"):T("food.messages.event_is_unpublished_guest_facing_event_details_and_food_remain_h");
    $('publicationState').classList.toggle('success',!!e.is_published);$('publicationState').classList.toggle('warning',!e.is_published);
@@ -1261,6 +1275,14 @@
    tab(activeTab,false);mode(false);await reload();const logged=await R.adminRpc('admin_record_session',{p_action:'login'});if(logged.error)show(T("interface.messages.signed_in_but_session_logging_is_unavailable"),'warning');
  }
  async function init(){
+   document.addEventListener('keydown',event=>{
+     const nav=event.target.closest('[role="tablist"]');
+     if(!nav||!['ArrowLeft','ArrowRight','Home','End'].includes(event.key))return;
+     const buttons=Array.from(nav.querySelectorAll('[role="tab"]')).filter(button=>!button.disabled);
+     const index=buttons.indexOf(event.target);if(index<0)return;
+     const next=event.key==='Home'?0:event.key==='End'?buttons.length-1:(index+(event.key==='ArrowRight'?1:-1)+buttons.length)%buttons.length;
+     event.preventDefault();buttons[next].click();nav.querySelectorAll('[role="tab"]')[next]?.focus();
+   });
    window.addEventListener('popstate',()=>{
      const fragment=location.hash.slice(1)==='tasks'?'other':location.hash.slice(1);
      tab(['dashboard','venues','households','invites','food','other','language','settings'].includes(fragment)?fragment:'dashboard',false);
@@ -1357,7 +1379,7 @@
    $('eventSettingsForm').addEventListener('submit',async e=>{
      e.preventDefault();const deadline=$('settingDeadline').value;
      if(deadline&&!Number.isFinite(new Date(deadline).valueOf())){show(T("interface.messages.invalid_rsvp_deadline"),'error');return;}
-     const settings={event_name:$('settingName').value.trim(),event_type:$('settingType').value.trim(),event_date:$('settingDate').value||null,default_language:$('settingLanguage').value,fallback_language:store.settings?.fallback_language||'en',timezone:$('settingTimezone').value.trim(),website_url:$('settingUrl').value.trim()||null,rsvp_deadline:deadline?new Date(deadline).toISOString():null,updated_at:new Date().toISOString()};
+     const settings={event_name:$('settingName').value.trim(),event_type:$('settingType').value.trim(),event_date:$('settingDate').value||null,default_language:store.settings.default_language,fallback_language:store.settings?.fallback_language||'en',timezone:$('settingTimezone').value.trim(),website_url:$('settingUrl').value.trim()||null,rsvp_deadline:deadline?new Date(deadline).toISOString():null,updated_at:new Date().toISOString()};
      const {error}=await db.from('event_settings').upsert({id:1,...settings},{onConflict:'id'});
      if(error)show(R.safeError(error),'error');else{show(T("interface.messages.event_settings_saved"),'success');await reload();}
    });
@@ -1382,5 +1404,5 @@
    });
 
  }
- document.addEventListener('DOMContentLoaded',()=>{(window.RSVP_ADMIN_TOOLS?.init({R,getStore:()=>store,reload,isEditing:()=>editMode,show,foodMenuCategories,foodMenuItems,ordered,iconAction}),initContent(),init()).catch(e=>show(R.safeError(e),'error'));});
+ document.addEventListener('DOMContentLoaded',()=>{(window.RSVP_ADMIN_TOOLS?.init({R,getStore:()=>store,reload,isEditing:()=>editMode,show,foodMenuCategories,foodMenuItems,ordered,iconAction,cleanSave}),initContent(),init()).catch(e=>show(R.safeError(e),'error'));});
 }());

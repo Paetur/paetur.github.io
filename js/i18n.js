@@ -7,7 +7,7 @@
   const key='rsvp-interface-language',catalog=window.RSVP_TRANSLATIONS||{};
   const overrides=Object.create(null),textNodes=[],attributes=[];
   const localeBase=new URL('../locales/',document.currentScript.src);
-  const localeVersion='20261107-content-language-editors';
+  const localeVersion='20261107-cleanup';
   const localeCache=new Map(),localeValues=new Map();
   const sourceByKey=new Map(Object.entries(catalog).map(([source,entry])=>[entry.key,source]));
   function flattenLocale(value,prefix='',result=Object.create(null)){
@@ -123,6 +123,7 @@
     locale:()=>{try{const code={fo:'fo-FO',en:'en-GB',de:'de-DE'}[language]||language;return Intl.DateTimeFormat.supportedLocalesOf(code).length?code:'en-GB';}catch(_){return 'en-GB';}},catalog,applyWording,
     get languages(){return languages;},get defaultLanguage(){return defaultLanguage;},get fallbackLanguage(){return fallbackLanguage;},enabled,configure,load,loadCategory,loadCatalogs,
     resolve:(values,lang=language)=>[...new Set([lang,fallbackLanguage,'en'])].map(code=>values?.[code]).find(value=>typeof value==='string'&&value.trim())||'',
+    nativeWording:(source,lang)=>overrides[source]?.[lang]||remote[source]?.[lang]||bundled(source,lang)||'',
     wording:(source,lang)=>overrides[source]?.[lang]||remote[source]?.[lang]||'',
     source:()=> '// Public interface wording. Plain text only.\nwindow.RSVP_INTERFACE_OVERRIDES = '+JSON.stringify(overrides,null,2)+';\n'};
   document.addEventListener('DOMContentLoaded',()=>{
@@ -143,7 +144,7 @@
       const label=document.createElement('label');label.id='languageMenuLabel';label.textContent=t('Interface language');label.append(select);
       for(const l of languages){const option=document.createElement('option');option.value=l.language_code;option.textContent=l.display_name;select.append(option);}
       let dirty=false;
-      document.addEventListener('input',e=>{if(e.target.closest('form')&&!['search'].includes(e.target.type))dirty=true;});
+      document.addEventListener('input',e=>{const form=e.target.closest('form');if(form&&!form.matches('.other-edit-form,.wording-edit-form')&&!['search'].includes(e.target.type))dirty=true;});
       select.addEventListener('change',()=>{
         if((dirty||window.RSVP_ADMIN_TOOLS?.hasUnsavedTasks())&&!window.confirm(t('Changing language reloads this page. Unsaved changes will be lost. Continue?'))){select.value=language;return;}
         setLanguage(select.value);languageReloadApproved=true;location.reload();

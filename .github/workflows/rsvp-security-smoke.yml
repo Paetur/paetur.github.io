@@ -4,7 +4,7 @@ on:
     paths:
       - 'js/**'
       - 'locales/**'
-      - 'tools/validate-locales.cjs'
+      - 'tools/**'
       - 'admin/**'
       - 'css/**'
       - 'index.html'
@@ -79,7 +79,7 @@ jobs:
           npm ci
           npx playwright install --with-deps chromium webkit
       - name: Validate admin JavaScript
-        run: node tools/validate-locales.cjs && node --check js/i18n.js && node --check js/admin.js && node --check tests/admin-layout.cjs
+        run: node tools/validate-locales.cjs && node tests/locale-csv.cjs && node --check js/i18n.js && node --check js/admin.js && node --check tests/admin-layout.cjs
       - name: Test administrator credentials with real SDK in Chromium and WebKit
         run: node tests/admin-auth-browser.cjs
       - name: Test FO/EN/DE interfaces and customization in Chromium and WebKit
@@ -92,6 +92,8 @@ jobs:
         run: node tests/admin-controls-browser.cjs
       - name: Test compact food, language categories and task sheet
         run: node tests/food-language-tasks-browser.cjs
+      - name: Test administrator consistency and language CSV export
+        run: node tests/admin-consistency-browser.cjs
       - name: Test device delivery handoffs and reminder drafts
         run: node tests/device-delivery.cjs && node tests/device-delivery-browser.cjs
       - name: Test compact admin layout with mocked data

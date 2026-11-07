@@ -7,7 +7,7 @@
   const key='rsvp-interface-language',catalog=window.RSVP_TRANSLATIONS||{};
   const overrides=Object.create(null),textNodes=[],attributes=[];
   const localeBase=new URL('../locales/',document.currentScript.src);
-  const localeVersion='20261107-json-v1';
+  const localeVersion='20261107-content-language-editors';
   const localeCache=new Map(),localeValues=new Map();
   const sourceByKey=new Map(Object.entries(catalog).map(([source,entry])=>[entry.key,source]));
   function flattenLocale(value,prefix='',result=Object.create(null)){

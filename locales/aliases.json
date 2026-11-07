@@ -765,5 +765,6 @@
   "No items in this category.": "interface.messages.no_items_in_this_category",
   "Use main Edit, then the pencil to edit and save a line.": "interface.messages.use_main_edit_then_the_pencil_to_edit_and_save_a_line",
   "Add a category first.": "interface.messages.add_a_category_first",
-  "Tasks and things to bring, grouped by category. Use main Edit, then the pencil to edit a line.": "interface.messages.tasks_and_things_to_bring_grouped_by_category_use_main_edit_then_"
+  "Tasks and things to bring, grouped by category. Use main Edit, then the pencil to edit a line.": "interface.messages.tasks_and_things_to_bring_grouped_by_category_use_main_edit_then_",
+  "No matching entries.": "interface.messages.no_matching_entries"
 }

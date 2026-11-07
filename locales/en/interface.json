@@ -698,6 +698,7 @@
     "no_items_in_this_category": "No items in this category.",
     "use_main_edit_then_the_pencil_to_edit_and_save_a_line": "Use main Edit, then the pencil to edit and save a line.",
     "add_a_category_first": "Add a category first.",
-    "tasks_and_things_to_bring_grouped_by_category_use_main_edit_then_": "Tasks and things to bring, grouped by category. Use main Edit, then the pencil to edit a line."
+    "tasks_and_things_to_bring_grouped_by_category_use_main_edit_then_": "Tasks and things to bring, grouped by category. Use main Edit, then the pencil to edit a line.",
+    "no_matching_entries": "No matching entries."
   }
 }

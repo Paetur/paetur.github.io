@@ -46,7 +46,7 @@
         const zone=venue?.timezone||eventData?.event?.timezone||'UTC';
         const details=[venue?.name,venue?.address,session.starts_at?R.formatDate(session.starts_at,language,zone):null,session.ends_at?'– '+R.formatDate(session.ends_at,language,zone):null,session.starts_at?zone:null].filter(Boolean);
         entry.append(R.dom('p',{class:'micro session-venue'},details.join(' · ')));
-        const welcome=translated('venue:'+venue?.id+':welcome',{fo:venue?.welcome_fo,en:venue?.welcome_en,de:venue?.welcome_de});if(welcome)entry.append(R.dom('p',{class:'venue-welcome'},welcome));
+        const welcome=translated('venue:'+venue?.id+':welcome',{en:venue?.welcome_en});if(welcome)entry.append(R.dom('p',{class:'venue-welcome'},welcome));
         if(venue?.notes)entry.append(R.dom('p',{class:'micro'},venue.notes));
         if(venue?.map_url){try{const url=new URL(venue.map_url);if(url.protocol==='https:'){const a=R.dom('a',{class:'quiet-link'},'↗ '+venue.name);a.href=url.href;a.target='_blank';a.rel='noopener noreferrer';entry.append(a);}}catch(_){} }
         if(!link.requires_rsvp)return;
@@ -115,16 +115,11 @@
       const available=Math.max(0,(item.quantity_needed||0)-(item.claimed_total||0));
       if(!mine&&available===0)continue;
       const wrap=R.dom('details',{class:'food-item guest-food-disclosure'}),heading=R.dom('summary');
-      const label=translated('food:'+item.id+':name',{fo:item.name_fo,en:item.name_en,de:item.name_de},window.RSVP_I18N.t("food.messages.food_item"));
+      const label=translated('food:'+item.id+':name',{en:item.name_en},window.RSVP_I18N.t("food.messages.food_item"));
       wrap.dataset.itemId=item.id;wrap.open=expanded.has(item.id);heading.append(R.dom('strong',{},label));
       if(mine)heading.append(R.dom('span',{class:'tag'},window.RSVP_I18N.t("interface.messages.selected")));
       const detail=R.dom('div',{class:'guest-food-details'});
-      const legacyComments={fo:item.description_fo,en:item.description_en,de:item.description_de};
-      const language=window.RSVP_I18N.language;
-      const localComment=legacyComments[language];
-      const descriptions=item.description_en===''?
-        (localComment&&!/^source amount:/i.test(localComment.trim())?{[language]:localComment}:{}):legacyComments;
-      const description=translated('food:'+item.id+':description',descriptions);
+      const description=translated('food:'+item.id+':description',{en:item.description_en});
       if(description)detail.append(R.dom('p',{class:'small'},window.RSVP_I18N.t("interface.messages.user_comment")+': '+description));
       if(item.recipe_text){
         const recipe=R.dom('details',{class:'food-item-recipe'});

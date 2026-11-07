@@ -39,3 +39,5 @@ Malformed files, schema differences, missing verified historical actors, existin
 ## Normalized language storage
 
 The JSON language release adds normalized translation tables to the application backup allowlist and replaces stored `event_content` rows with a derived compatibility view. English event introductions are stored on `event_settings`. Catalog JSON and generated compatibility manifests are part of the repository backup. Keep pre-migration backups with their matching repository revision, restore them into an empty destination at that migration level, then upgrade. Current backup restore checks require matching table and column manifests.
+
+The legacy-language retirement release drops six redundant FO/DE columns after confirming parity with normalized translations. Current exports contain the normalized rows and canonical English fields. Restore older exports at their matching migration level, then apply the staged venue API and column-retirement migrations. The migration aborts if legacy values diverge from normalized text.

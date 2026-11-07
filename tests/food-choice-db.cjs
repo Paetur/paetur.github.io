@@ -5,7 +5,7 @@ const {PGlite}=require('@electric-sql/pglite'),fs=require('node:fs'),assert=requ
  await db.exec(fs.readFileSync('supabase/install.sql','utf8'));
  const value=async(q,args=[])=>(await db.query(q,args)).rows[0].v;
  const h=[];for(const name of ['One','Two','Three']){const hid=await value("INSERT INTO public.households(household_name,language,side,food) VALUES($1,'en','paetur_hentze',true) RETURNING id v",[name]);await db.query("INSERT INTO public.guests(household_id,first_name,language) VALUES($1,'Example','en')",[hid]);h.push(await value('SELECT invite_code v FROM public.households WHERE id=$1',[hid]));}
- const id=await value("INSERT INTO public.food_items(name_fo,name_en,description_en,admin_comment,quantity_needed) VALUES('Kaka','Cake','Bring it chilled','Private supplier note',2) RETURNING id v");
+ const id=await value("INSERT INTO public.food_items(name_en,description_en,admin_comment,quantity_needed) VALUES('Cake','Bring it chilled','Private supplier note',2) RETURNING id v");
  await db.exec('UPDATE public.event_settings SET is_published=true WHERE id=1');
  const food=code=>value('SELECT public.get_household_food($1) v',[code]);
  assert.equal((await food(h[0])).items.length,1);
@@ -26,7 +26,7 @@ const {PGlite}=require('@electric-sql/pglite'),fs=require('node:fs'),assert=requ
  await db.query('SELECT public.confirm_household_food($1)',[h[1]]);
  await assert.rejects(()=>db.query('SELECT public.set_household_food_claim($1,$2,0,null)',[h[1],id]),/unavailable/);
  const selectedHousehold=await value('SELECT id v FROM public.households WHERE invite_code=$1',[h[0]]);
- const brownie=await value("INSERT INTO public.food_items(name_fo,recipe_text,quantity_needed) VALUES('Brownies','Melt chocolate',2) RETURNING id v");
+ const brownie=await value("INSERT INTO public.food_items(name_en,recipe_text,quantity_needed) VALUES('Brownies','Melt chocolate',2) RETURNING id v");
  assert.equal((await food(h[0])).items.find(item=>item.id===brownie).recipe_text,'Melt chocolate');
  const location=await value("INSERT INTO public.event_locations(name) VALUES('Garden') RETURNING id v");
  const venueSession=await value("INSERT INTO public.event_sessions(session_key,name,location_id) VALUES('garden','Garden session',$1) RETURNING id v",[location]);
@@ -82,7 +82,7 @@ const {PGlite}=require('@electric-sql/pglite'),fs=require('node:fs'),assert=requ
  const saveTranslations='SELECT public.admin_save_food_translations($1,$2)';
  const nameKey='food:'+brownie+':name';
  await assert.rejects(()=>db.query(saveTranslations,[brownie,[{key:nameKey,language:'en',value:'Rollback'},{key:'ui:Kg',language:'en',value:'Invalid'}]]),/Invalid food translation key/);
- assert.equal(await value('SELECT name_en v FROM public.food_items WHERE id=$1',[brownie]),null);
+ assert.equal(await value('SELECT name_en v FROM public.food_items WHERE id=$1',[brownie]),'Brownies');
  await db.query(saveTranslations,[brownie,[{key:nameKey,language:'en',value:'Brownies'},{key:'ui:Food type: Basket(s)',language:'en',value:'Baskets'},{key:'food:'+brownie+':description',language:'en',value:''}]]);
  assert.equal(await value('SELECT description_en v FROM public.food_items WHERE id=$1',[brownie]),'');
  assert.equal(await value("SELECT content_value v FROM public.event_content WHERE content_key='ui:Food type: Basket(s)'"),'Baskets');

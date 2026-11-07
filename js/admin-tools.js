@@ -13,7 +13,7 @@
   taskMode();
   $('restoreBackupButton').disabled=!ctx.isEditing()||!preview?.can_restore||!$('restoreBackupAck').checked||$('restoreBackupConfirmation').value!=='RESTORE '+preview.event_name;
  }
- function translationKeys(){const s=ctx.getStore();return [['welcome',T("interface.messages.event_welcome")],...s.locations.map(v=>['venue:'+v.id+':welcome',T("interface.messages.venue_welcome")+' · '+v.name]),...s.foodCategories.map(v=>['food-category:'+v.id+':name',T("food.messages.food_categories")+' · '+v.name]),...s.sessions.map(v=>['session:'+v.id+':name',T("interface.messages.session")+' · '+v.name]),...s.food.flatMap(v=>[['food:'+v.id+':name',T("food.messages.food")+' · '+(v.name_en||v.name_fo)],['food:'+v.id+':description',T("interface.messages.user_comment")+' · '+(v.name_en||v.name_fo)]]),...s.foodTypes.map(type=>['ui:Food type: '+type.name,T("interface.messages.type")+' · '+type.name]),...Object.keys(I.catalog).sort().map(key=>['ui:'+key,ctx.R.foodTypes.includes(key)?T("interface.messages.type")+' · '+key:key])];}
+ function translationKeys(){const s=ctx.getStore();return [['welcome',T("interface.messages.event_welcome")],...s.locations.map(v=>['venue:'+v.id+':welcome',T("interface.messages.venue_welcome")+' · '+v.name]),...s.foodCategories.map(v=>['food-category:'+v.id+':name',T("food.messages.food_categories")+' · '+v.name]),...s.sessions.map(v=>['session:'+v.id+':name',T("interface.messages.session")+' · '+v.name]),...s.food.flatMap(v=>[['food:'+v.id+':name',T("food.messages.food")+' · '+v.name_en],['food:'+v.id+':description',T("interface.messages.user_comment")+' · '+v.name_en]]),...s.foodTypes.map(type=>['ui:Food type: '+type.name,T("interface.messages.type")+' · '+type.name]),...Object.keys(I.catalog).sort().map(key=>['ui:'+key,ctx.R.foodTypes.includes(key)?T("interface.messages.type")+' · '+key:key])];}
  function keyCategory(key){if(key==='welcome')return 'welcome';if(key.startsWith('ui:Food type: ')||ctx.R.foodTypes.includes(key.slice(3)))return 'food-types';return key.split(':')[0];}
  function renderFoodTranslations(search){
   const R=ctx.R,s=ctx.getStore(),host=$('foodTranslationGrid');
@@ -33,21 +33,63 @@
   pickers.append(categoryLabel);host.append(pickers);
   const items=categories.filter(category=>!foodTranslationCategory||foodTranslationCategory==='category:'+category.name)
     .flatMap(category=>ctx.foodMenuItems(category.name))
-    .filter(item=>[item.name_en,item.name_fo,item.name_de,item.category].join(' ').toLowerCase().includes(search));
+    .filter(item=>[item.name_en,item.category].join(' ').toLowerCase().includes(search));
   if(!items.length){host.append(R.dom('p',{class:'muted'},T("food.messages.no_matching_food_items")));return;}
   const pickerLabel=R.dom('label',{},T("food.messages.food_item"));
   const picker=R.dom('select');picker.setAttribute('aria-label',T("food.messages.food_item"));
-  options(picker,items.map(item=>[item.id,item.name_en||item.name_fo]),foodTranslationId);
+  options(picker,items.map(item=>[item.id,item.name_en]),foodTranslationId);
   foodTranslationId=picker.value;
   picker.addEventListener('change',()=>{foodTranslationId=picker.value;renderFoodTranslations(search);});
   pickerLabel.append(picker);pickers.append(pickerLabel);
   const item=items.find(item=>item.id===foodTranslationId);
+  renderFoodItemTranslations(host,item);
+ }
+ function renderFoodItemTranslations(host,item,onSaved){
+  const R=ctx.R;
   const type=item.quantity_type||'Piece(s)';
   const typeKey=R.foodTypes.includes(type)?'ui:'+type:'ui:Food type: '+type;
   const columns=[['Name','food:'+item.id+':name'],['Type',typeKey],['User Comment','food:'+item.id+':description']];
   host.append(R.dom('p',{class:'micro'},T("food.messages.type_translations_are_shared_by_food_items_with_the_same_type")));
-  renderTranslationRows(host,columns,(key,language)=>key===typeKey?(R.foodTypes.includes(type)?I.t(type,{},language):type):legacyTranslation(key)[language]||'',
-   changes=>rpc('admin_save_food_translations',{p_food_item_id:item.id,p_changes:changes}));
+  renderTranslationRows(host,columns,(key,language)=>key===typeKey?(R.foodTypes.includes(type)?I.t(type,{},language):type):sourceTranslation(key)[language]||'',
+   changes=>rpc('admin_save_food_translations',{p_food_item_id:item.id,p_changes:changes}),false,onSaved);
+ }
+ async function openFoodTranslations(item,trigger){
+  if(!ctx.isEditing())return;
+  trigger.disabled=true;
+  try{await I.loadCatalogs(enabled().map(language=>language.language_code));}
+  finally{trigger.disabled=!ctx.isEditing();}
+  if(!ctx.isEditing()||!trigger.isConnected)return;
+  const editor=trigger.closest('.food-compact-item').querySelector('.food-edit-form');
+  const editorOpen=editor&&!editor.classList.contains('hidden');
+  const drafts=Array.from(editor?.querySelectorAll('input,select,textarea')||[]).map((control,index)=>({
+   index,value:control.type==='checkbox'?String(control.checked):control.value,original:control.dataset.foodOriginal
+  })).filter(draft=>draft.value!==draft.original);
+  const R=ctx.R,dialog=R.dom('dialog',{class:'food-recipe-dialog food-language-dialog'});
+  const title=T('interface.messages.language')+' · '+(item.name_en||'');
+  dialog.setAttribute('aria-label',title);
+  dialog.append(R.dom('h2',{},title));
+  const host=R.dom('div');dialog.append(host);
+  renderFoodItemTranslations(host,item,()=>dialog.close());
+  const form=host.querySelector('form');
+  const cancel=R.dom('button',{type:'button',class:'btn secondary'},T('interface.messages.cancel'));
+  cancel.addEventListener('click',()=>dialog.close());form.append(cancel);
+  dialog.addEventListener('cancel',event=>{if(form.getAttribute('aria-busy')==='true')event.preventDefault();});
+  dialog.addEventListener('close',()=>{
+   dialog.remove();
+   const button=Array.from(document.querySelectorAll('[data-food-language]')).find(button=>button.dataset.foodLanguage===item.id);
+   if(button&&editor&&!editor.isConnected){
+    const updatedEditor=button.closest('.food-compact-item').querySelector('.food-edit-form');
+    const controls=updatedEditor.querySelectorAll('input,select,textarea');
+    for(const draft of drafts){
+     const control=controls[draft.index];
+     if(control.type==='checkbox')control.checked=draft.value==='true';else control.value=draft.value;
+    }
+    if(editorOpen)updatedEditor.classList.remove('hidden');
+   }
+   requestAnimationFrame(()=>{if((button||trigger)?.isConnected)(button||trigger).focus();});
+  },{once:true});
+  $('adminApp').append(dialog);dialog.showModal();
+  host.querySelector('input')?.focus();
  }
  function renderFoodTypeTranslations(search){
   const R=ctx.R,host=$('foodTranslationGrid');
@@ -104,7 +146,6 @@
   renderTranslationRows(host,columns,(key,language)=>{
    const field=group.fields.find(field=>key.endsWith(':'+field[1]));
    if(language==='en')return record[field[2]]||'';
-   if(category==='venue'&&field[1]==='welcome')return record['welcome_'+language]||'';
    return '';
   },saveTranslationRows);
  }
@@ -120,7 +161,7 @@
   renderTranslationRows(host,[['Translation',key]],(key,language)=>
    key.startsWith('ui:')?I.t(key.slice(3),{},language):'',saveTranslationRows,true);
  }
- function renderTranslationRows(host,columns,fallback,saveChanges,multiline=false){
+ function renderTranslationRows(host,columns,fallback,saveChanges,multiline=false,onSaved){
   const R=ctx.R,s=ctx.getStore();
   const form=R.dom('form',{class:'food-translation-grid'});
   const cells=[];
@@ -147,20 +188,28 @@
   }
   const save=R.dom('button',{class:'btn edit-only',type:'submit'},T("interface.messages.save_translations"));
   save.disabled=!ctx.isEditing();form.append(save);
+  const errorMessage=R.dom('p',{class:'small error hidden'});
+  errorMessage.setAttribute('role','alert');form.append(errorMessage);
   form.addEventListener('submit',async event=>{
    event.preventDefault();if(!ctx.isEditing()||save.disabled)return;
    const changes=cells.filter(c=>c.input.value!==c.original).map(c=>({key:c.key,language:c.language,value:c.input.value}));
-   if(!changes.length)return;
-   save.disabled=true;
+   if(!changes.length){onSaved?.();return;}
+   form.setAttribute('aria-busy','true');
+   errorMessage.classList.add('hidden');
+   for(const control of form.querySelectorAll('input,textarea,button'))control.disabled=true;
    try{
     await saveChanges(changes,change=>{
      const cell=cells.find(c=>c.key===change.key&&c.language===change.language);
      cell.original=change.value;
     });
     await ctx.reload();ctx.show(T("interface.messages.translation_saved"),'success');
+    onSaved?.();
    }
-   catch(error){ctx.show(R.safeError(error),'error');}
-   finally{save.disabled=!ctx.isEditing();}
+   catch(error){errorMessage.textContent=R.safeError(error);errorMessage.classList.remove('hidden');ctx.show(R.safeError(error),'error');}
+   finally{
+    form.removeAttribute('aria-busy');
+    for(const control of form.querySelectorAll('input,textarea,button'))control.disabled=!ctx.isEditing();
+   }
   });
   host.append(form);
  }
@@ -191,11 +240,19 @@
   $('translationForm').querySelector('button[type="submit"]').disabled=!$('translationKey').value;loadTranslation();
  }
  function translationScope(scope){translationScopeValue=scope;if(!ctx)return;$(scope==='content'?'contentTranslationHost':'settingsTranslationHost').append($('translationEditor'));renderTranslationKeys();}
- function legacyTranslation(key){const s=ctx.getStore(),parts=key.split(':'),record=parts[0]==='venue'?s.locations.find(v=>v.id===parts[1]):parts[0]==='food'?s.food.find(v=>v.id===parts[1]):null;return record?Object.fromEntries(['fo','en','de'].map(lang=>[lang,record[(parts[0]==='venue'?'welcome':parts[2])+'_'+lang]])):{};}
+ function sourceTranslation(key){
+  const s=ctx.getStore(),parts=key.split(':');
+  if(parts[0]==='food'){
+   const item=s.food.find(item=>item.id===parts[1]);
+   return {en:item?.[parts[2]+'_en']||''};
+  }
+  if(parts[0]==='venue')return {en:s.locations.find(venue=>venue.id===parts[1])?.welcome_en||''};
+  return {};
+ }
  function loadTranslation(){
   const s=ctx.getStore(),key=$('translationKey').value,lang=$('translationLanguage').value;
-  $('translationValue').value=s.content.find(c=>c.content_key===key&&c.language_code===lang)?.content_value||legacyTranslation(key)[lang]||'';
-  const values=Object.assign(legacyTranslation(key),Object.fromEntries(s.content.filter(c=>c.content_key===key).map(c=>[c.language_code,c.content_value])));
+  $('translationValue').value=s.content.find(c=>c.content_key===key&&c.language_code===lang)?.content_value||sourceTranslation(key)[lang]||'';
+  const values=Object.assign(sourceTranslation(key),Object.fromEntries(s.content.filter(c=>c.content_key===key).map(c=>[c.language_code,c.content_value])));
   const fallback=key.startsWith('ui:Food type: ')?I.resolve(values,lang)||key.slice('ui:Food type: '.length):key.startsWith('ui:')?I.t(key.slice(3),{},lang):I.resolve(values,lang);
   $('translationFallbackPreview').textContent=T("interface.messages.fallback_preview")+': '+(fallback||'—');
  }
@@ -287,5 +344,5 @@
   $('restoreBackupConfirmation').addEventListener('input',mode);$('restoreBackupAck').addEventListener('change',mode);
   $('restoreBackupForm').addEventListener('submit',async e=>{e.preventDefault();if($('restoreBackupButton').disabled)return;const button=$('restoreBackupButton');button.disabled=true;try{await rpc('admin_restore_backup',{p_backup:backup,p_confirmation:$('restoreBackupConfirmation').value});backup=null;preview=null;$('backupFile').value='';$('backupPreview').textContent=T("interface.messages.application_restored_the_event_is_unpublished_review_administrato");await ctx.reload();}catch(error){$('backupPreview').textContent=ctx.R.safeError(error);}finally{mode();}});
  }
- window.RSVP_ADMIN_TOOLS={init,render,mode,translationScope,hasUnsavedTasks,showTasks};
+ window.RSVP_ADMIN_TOOLS={init,render,mode,translationScope,hasUnsavedTasks,showTasks,openFoodTranslations};
 }());

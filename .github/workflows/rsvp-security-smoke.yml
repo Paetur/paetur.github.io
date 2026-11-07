@@ -49,7 +49,7 @@ jobs:
           node tests/admin-invitations.cjs
           node tests/admin-auth.cjs
           node tests/timezones.cjs
-          node tests/normalized-translations.cjs && node tests/languages-backup-db.cjs && node tests/food-choice-db.cjs && node tests/other-db.cjs
+          node tests/legacy-language-columns.cjs && node tests/normalized-translations.cjs && node tests/languages-backup-db.cjs && node tests/food-choice-db.cjs && node tests/other-db.cjs
           node tests/household-management-db.cjs
   browser-smoke:
     runs-on: ubuntu-24.04

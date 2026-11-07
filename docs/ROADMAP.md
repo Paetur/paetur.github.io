@@ -1,8 +1,10 @@
 # Current work and optional backlog
 
-Updated 2 November 2026. The former source database has been deleted. Implementation is authorized; the historical read-only planning restriction no longer applies. Use only the designated current project. Keep the event unpublished until explicit launch approval.
+Updated 7 November 2026. The former source database has been deleted. Implementation is authorized; the historical read-only planning restriction no longer applies. Use only the designated current project. Keep the event unpublished until explicit launch approval.
 
 ## Selected for implementation
+
+- [x] Repository JSON catalogs and normalized translation tables implemented with cached loading and atomic translation saves. The live migration is applied. Physical iPad acceptance remains pending.
 
 - [x] Configurable fallback language and broader language management (implementation and automated tests; deployment/acceptance tracked below).
 - [x] Structured application backup, export/import and tested restoration in disposable databases (live recovery acceptance remains below).
@@ -42,6 +44,7 @@ These are candidates, not commitments or launch blockers by default.
 - [ ] Household-wide RSVP answer defaults with per-guest overrides.
 - [ ] Pre-submission review/confirmation of all RSVP answers.
 - [ ] Reusable multilingual invitation-template editor.
+- [ ] Reusable multilingual interface, food and food-type templates, with all enabled languages visible, preview before applying, fill-missing/selected replacement, duplicate/archive and JSON export/import. Deferred for later discussion.
 - [ ] Automatic guest invitation sending, reminders and provider delivery tracking. The original baseline specifies manual sending; automation is a later option. Administrator invitation emails are separate.
 - [ ] Broader food/contribution/task feature switches.
 - [ ] Guest and administrator workflows for stuff-to-bring and things-to-do.

@@ -1,0 +1,76 @@
+// Verify migration preservation, atomic writes, publication boundaries and restoration storage.
+const {PGlite}=require('@electric-sql/pglite');
+const fs=require('node:fs'),assert=require('node:assert/strict');
+const files=fs.readdirSync('supabase/migrations').filter(name=>name.endsWith('.sql')).sort();
+const migration=files.find(name=>name.endsWith('_normalized_translations.sql'));
+const admin='11111111-1111-4111-8111-111111111111',session='aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
+(async()=>{
+ const db=new PGlite();
+ try{
+  await db.exec(`CREATE ROLE anon;CREATE ROLE authenticated;CREATE ROLE service_role BYPASSRLS;CREATE SCHEMA auth;CREATE TABLE auth.users(id uuid PRIMARY KEY,email text,email_confirmed_at timestamptz);CREATE TABLE auth.sessions(id uuid PRIMARY KEY,user_id uuid,created_at timestamptz DEFAULT now());CREATE TABLE auth.audit_log_entries(id uuid PRIMARY KEY,payload json,created_at timestamptz DEFAULT now());CREATE FUNCTION auth.uid() RETURNS uuid LANGUAGE sql AS $$SELECT nullif(current_setting('request.jwt.claim.sub',true),'')::uuid$$;GRANT USAGE ON SCHEMA auth TO authenticated,anon;`);
+  for(const file of files.filter(file=>file<migration))await db.exec(fs.readFileSync('supabase/migrations/'+file,'utf8'));
+  const value=async(sql,args=[])=>(await db.query(sql,args)).rows[0].value;
+  await db.query("INSERT INTO auth.users VALUES($1,'test@example.invalid',now());",[admin]);
+  await db.query("INSERT INTO public.admins(user_id,name) VALUES($1,'Example')",[admin]);
+  await db.query('INSERT INTO auth.sessions(id,user_id) VALUES($1,$2)',[session,admin]);
+  await db.query("SELECT set_config('request.jwt.claim.sub',$1,false),set_config('request.jwt.claims',$2,false)",[admin,JSON.stringify({sub:admin,session_id:session})]);
+  const food=await value("INSERT INTO public.food_items(name_fo,name_en,name_de,description_de,admin_comment) VALUES('Fiskur','Fish','Fisch','Gekühlt bringen','PRIVATE TEST NOTE') RETURNING id value");
+  const venue=await value("INSERT INTO public.event_locations(name,welcome_fo,welcome_en,welcome_de) VALUES('Hall','Vælkomin','Welcome','Willkommen') RETURNING id value");
+  await db.exec("INSERT INTO public.event_content VALUES('welcome','en','English introduction'),('welcome','fo','Innbjóðing'),('ui:Save','de','Sichern'),('invite','en','Invitation text'),('invite','fo','Innbjóðingarorð');");
+  await db.exec(fs.readFileSync('supabase/migrations/'+migration,'utf8'));
+  assert.equal(await value('SELECT name value FROM public.food_item_translations WHERE food_item_id=$1 AND language_code=\'de\'',[food]),'Fisch');
+  assert.equal(await value('SELECT user_comment value FROM public.food_item_translations WHERE food_item_id=$1 AND language_code=\'de\'',[food]),'Gekühlt bringen');
+  assert.equal(await value('SELECT welcome_message value FROM public.venue_translations WHERE venue_id=$1 AND language_code=\'fo\'',[venue]),'Vælkomin');
+  assert.equal(await value('SELECT introduction value FROM public.event_settings'),'English introduction');
+  assert.equal(await value("SELECT introduction value FROM public.event_translations WHERE language_code='fo'"),'Innbjóðing');
+  assert.equal(await value("SELECT relkind::text value FROM pg_class WHERE oid='public.event_content'::regclass"),'v');
+  assert.equal(await value("SELECT content_value value FROM public.event_content WHERE content_key='invite' AND language_code='fo'"),'Innbjóðingarorð');
+  assert.equal(await value('SELECT invitation_message value FROM public.event_settings'),'Invitation text');
+  await db.exec('SET ROLE authenticated');
+  const save=(key,language,text)=>db.query('SELECT public.admin_save_translation($1,$2,$3)',[key,language,text]);
+  await save('food:'+food+':name','de','Neuer Fisch');
+  assert.equal(await value('SELECT name_de value FROM public.food_items WHERE id=$1',[food]),'Neuer Fisch','legacy payload consistent');
+  await save('food:'+food+':description','de','');
+  assert.equal(await value('SELECT description_de value FROM public.food_items WHERE id=$1',[food]),'','clear stays clear');
+  await save('food:'+food+':name','en','English fish');
+  assert.equal(await value('SELECT name_en value FROM public.food_items WHERE id=$1',[food]),'English fish');
+  await db.query('SELECT public.admin_save_translations($1)',[[{key:'ui:Save',language:'de',value:'Speichern'},{key:'welcome',language:'fo',value:'Nýtt'}]]);
+  await assert.rejects(()=>db.query('SELECT public.admin_save_translations($1)',[[{key:'ui:Save',language:'de',value:'Must roll back'},{key:'ui:Quantity for {item}',language:'de',value:'Missing placeholder'}]]),/placeholders/);
+  assert.equal(await value("SELECT value FROM public.translation_overrides WHERE source_text='Save' AND language_code='de'"),'Speichern');
+  const aliases=JSON.parse(fs.readFileSync('locales/aliases.json','utf8'));
+  assert.equal(await value("SELECT translation_key value FROM public.translation_overrides WHERE source_text='Save' AND language_code='de'"),aliases.Save);
+  await save('ui:Save','de','');
+  assert.equal(await value("SELECT count(*)::int value FROM public.translation_overrides WHERE source_text='Save'"),0);
+  const backup=await value('SELECT public.admin_export_backup() value');
+  assert.ok(backup.payload.tables['public.food_item_translations'].some(row=>row.food_item_id===food&&row.name==='Neuer Fisch'));
+  assert.ok(!Object.hasOwn(backup.payload.tables,'public.event_content'),'back up physical tables');
+  const category=await value("INSERT INTO public.food_categories(name) VALUES('Dinner') RETURNING id value");
+  await save('food-category:'+category+':name','de','Abendessen');
+  await save('food-category:'+category+':name','en','Supper');
+  assert.equal(await value('SELECT name value FROM public.food_categories WHERE id=$1',[category]),'Supper');
+  assert.equal(await value('SELECT name value FROM public.food_category_translations WHERE food_category_id=$1',[category]),'Abendessen');
+  await db.query("INSERT INTO public.food_item_types VALUES('Basket(s)')");
+  await save('ui:Food type: Basket(s)','de','Körbe');
+  assert.equal(await value("SELECT name value FROM public.food_type_translations WHERE food_type_name='Basket(s)'"),'Körbe');
+  const protectedTables=['food_item_translations','food_category_translations','food_type_translations','venue_translations','session_translations','event_translations','translation_overrides'];
+  for(const table of protectedTables){
+   assert.equal(await value('SELECT relrowsecurity value FROM pg_class WHERE oid=$1::regclass',['public.'+table]),true);
+   assert.equal(await value("SELECT has_table_privilege('anon',$1,'SELECT') value",['public.'+table]),false);
+   assert.equal(await value("SELECT has_table_privilege('authenticated',$1,'INSERT') value",['public.'+table]),false);
+  }
+  assert.equal(await value("SELECT has_function_privilege('authenticated',p.oid,'EXECUTE') value FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace WHERE n.nspname='app_private' AND p.proname='store_translation'"),false);
+  await db.exec('SET ROLE anon');
+  await assert.rejects(()=>db.query('SELECT * FROM public.food_item_translations'),/permission denied/);
+  await assert.rejects(()=>db.query('SELECT * FROM public.event_content'),/permission denied/);
+  await assert.rejects(()=>save('welcome','de','Blocked'),/permission denied/);
+  assert.equal(await value('SELECT public.get_public_event_v2() value'),null);
+  const config=await value('SELECT public.get_language_configuration() value');
+  assert.ok(!JSON.stringify(config).includes('PRIVATE TEST NOTE'));
+  assert.ok(!config.translations.some(row=>row.content_key==='welcome'));
+  await db.exec('RESET ROLE;UPDATE public.event_settings SET is_published=true;SET ROLE anon');
+  const event=await value('SELECT public.get_public_event_v2() value');
+  assert.ok(event.translations.some(row=>row.content_key==='food:'+food+':name'&&row.language_code==='de'&&row.content_value==='Neuer Fisch'));
+  assert.ok(!JSON.stringify(event).includes('PRIVATE TEST NOTE'));
+  console.log('PASS normalized migration preservation, stable keys, clearing, atomic saves, English source, backups and guest security');
+ }finally{await db.close();}
+})().catch(error=>{console.error(error);process.exitCode=1;});

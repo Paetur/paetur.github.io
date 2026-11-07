@@ -1,0 +1,10 @@
+{
+  "units": {
+    "batch_s": "Portión(ir)",
+    "piece_s": "Stykki",
+    "tray_s": "Bakki / bakkar",
+    "packet_s": "Pakki / pakkar",
+    "kg": "Kg",
+    "grams": "Gramm"
+  }
+}

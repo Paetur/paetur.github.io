@@ -1,12 +1,14 @@
 (function(){
   'use strict';
   const R=window.RSVP;
-  const dict={"invitation":"EVENT INVITATION","welcome":"We look forward to celebrating with you.","enter":"Open your invitation","codeHelp":"Enter the eight-character code from your invitation.","open":"Open","dear":"Dear guests","who":"Please let us know who will attend.","attending":"Attending","declined":"Not attending","submit":"Submit RSVP","locked":"Your response has been received and locked.","thanks":"Thank you! Your response is recorded.","missing":"No invitation was found for that code.","choose":"Choose a response for every invited guest and session.","offline":"Could not reach the database.","notPublished":"This event has not been published yet.","food":"What can you bring?","foodHelp":"Pick an item you would like to bring. Selected items are reserved for your household.","confirmFood":"Confirm my selections","foodDone":"Thank you! Your food selection is confirmed.","saveFood":"Save","foodSaved":"Food selection saved.","available":"Available","all":"All invited guests are listed."};
+  const dict={"invitation":"interface.messages.event_invitation_2","welcome":"interface.messages.we_look_forward_to_celebrating_with_you","enter":"interface.messages.open_your_invitation","codeHelp":"interface.messages.enter_the_eight_character_code_from_your_invitation","open":"interface.messages.open","dear":"interface.messages.dear_guests","who":"interface.messages.please_let_us_know_who_will_attend","attending":"interface.messages.attending","declined":"interface.messages.not_attending","submit":"interface.messages.submit_rsvp","locked":"interface.messages.your_response_has_been_received_and_locked","thanks":"interface.messages.thank_you_your_response_is_recorded","missing":"interface.messages.no_invitation_was_found_for_that_code","choose":"interface.messages.choose_a_response_for_every_invited_guest_and_session","offline":"interface.messages.could_not_reach_the_database","notPublished":"interface.messages.this_event_has_not_been_published_yet","food":"interface.messages.what_can_you_bring","foodHelp":"Pick an item you would like to bring. Selected items are reserved for your household.","confirmFood":"interface.messages.confirm_my_selections","foodDone":"food.messages.thank_you_your_food_selection_is_confirmed","saveFood":"interface.messages.save","foodSaved":"food.messages.food_selection_saved","available":"interface.messages.available","all":"interface.messages.all_invited_guests_are_listed"};
+  let languageChange=0;
+  const contentTranslations=new Map();
   let language=window.RSVP_I18N.language,eventData=null,invitation=null,code=null,foodState=null,pendingRequestId=null;
   const $=R.byId;
   function t(k){return window.RSVP_I18N.t(dict[k]||k,{},language);}
   function status(s,type='info'){R.showStatus('guestStatus',s,type);}
-  function setLanguage(lang,save=false){ language=window.RSVP_I18N.enabled(lang)?lang:window.RSVP_I18N.defaultLanguage;window.RSVP_I18N.setLanguage(language,save);
+  async function setLanguage(lang,save=false){ const change=++languageChange;language=window.RSVP_I18N.enabled(lang)?lang:window.RSVP_I18N.defaultLanguage;await window.RSVP_I18N.setLanguage(language,save);if(change!==languageChange)return;
     document.querySelectorAll('[data-language]').forEach(b=>{b.classList.toggle('selected',b.dataset.language===language);b.setAttribute('aria-pressed',String(b.dataset.language===language));});
     $('invitationDescription').textContent=t('who');
     $('codeCard').querySelector('h2').textContent=t('enter');$('codeCard').querySelector('p').textContent=t('codeHelp');
@@ -15,14 +17,14 @@
     const answers=Array.from($('rsvpRows').querySelectorAll('input:checked')).map(n=>[n.name,n.value]);
     renderEvent();if(invitation){renderInvitation();for(const [name,value] of answers){const n=Array.from($('rsvpRows').querySelectorAll('input')).find(n=>n.name===name&&n.value===value);if(n)n.checked=true;}}if(foodState)renderFood();
   }
-  function translated(key,legacy={},last=''){const values={...legacy};for(const c of eventData?.translations||[])if(c.content_key===key)values[c.language_code]=c.content_value;return window.RSVP_I18N.resolve(values,language)||last;}
+  function translated(key,legacy={},last=''){return window.RSVP_I18N.resolve({...legacy,...contentTranslations.get(key)},language)||last;}
   function renderEvent(){
     const event=eventData?.event;
     if(!event)return;
-    const name=event.event_name||window.RSVP_I18N.t("Your event");
+    const name=event.event_name||window.RSVP_I18N.t("interface.messages.your_event_2");
     $('eventTitle').textContent=name;
     $('eventDate').textContent=R.formatDate(event.event_date,language,event.timezone);
-    document.title=name+' | '+window.RSVP_I18N.t("Invitation");
+    document.title=name+' | '+window.RSVP_I18N.t("interface.messages.invitation");
     const content=eventData.content||{};
     $('welcomeMessage').textContent=window.RSVP_I18N.resolve(content,language)||t('welcome');
   }
@@ -36,7 +38,7 @@
       const items=invited.filter(x=>x.guest_id===guest.id);
       if(!items.length)return;
       const entry=R.dom('div',{class:'guest-response'});
-      entry.append(R.dom('h3',{},[guest.courtesy_title,guest.first_name,guest.last_name].filter(Boolean).join(' ')||window.RSVP_I18N.t("Guest")));
+      entry.append(R.dom('h3',{},[guest.courtesy_title,guest.first_name,guest.last_name].filter(Boolean).join(' ')||window.RSVP_I18N.t("interface.messages.guest")));
       items.forEach(link=>{
         const session=sessions.find(s=>s.id===link.session_id);if(!session)return;
         entry.append(R.dom('div',{class:'session-name'},translated('session:'+session.id+':name',{},session.name)));
@@ -74,7 +76,7 @@
     $('codeCard').classList.add('hidden');$('invitationCard').classList.remove('hidden');
     const guestLang=invitation.household?.language;
     if(!window.RSVP_I18N.hasPreference()&&window.RSVP_I18N.enabled(guestLang))language=guestLang;
-    setLanguage(language);
+    await setLanguage(language);
     await loadFood();
   }
   async function submitRsvp(e){e.preventDefault();if(!invitation||!code)return;
@@ -113,9 +115,9 @@
       const available=Math.max(0,(item.quantity_needed||0)-(item.claimed_total||0));
       if(!mine&&available===0)continue;
       const wrap=R.dom('details',{class:'food-item guest-food-disclosure'}),heading=R.dom('summary');
-      const label=translated('food:'+item.id+':name',{fo:item.name_fo,en:item.name_en,de:item.name_de},window.RSVP_I18N.t('Food item'));
+      const label=translated('food:'+item.id+':name',{fo:item.name_fo,en:item.name_en,de:item.name_de},window.RSVP_I18N.t("food.messages.food_item"));
       wrap.dataset.itemId=item.id;wrap.open=expanded.has(item.id);heading.append(R.dom('strong',{},label));
-      if(mine)heading.append(R.dom('span',{class:'tag'},window.RSVP_I18N.t('Selected')));
+      if(mine)heading.append(R.dom('span',{class:'tag'},window.RSVP_I18N.t("interface.messages.selected")));
       const detail=R.dom('div',{class:'guest-food-details'});
       const legacyComments={fo:item.description_fo,en:item.description_en,de:item.description_de};
       const language=window.RSVP_I18N.language;
@@ -123,12 +125,12 @@
       const descriptions=item.description_en===''?
         (localComment&&!/^source amount:/i.test(localComment.trim())?{[language]:localComment}:{}):legacyComments;
       const description=translated('food:'+item.id+':description',descriptions);
-      if(description)detail.append(R.dom('p',{class:'small'},window.RSVP_I18N.t('User Comment')+': '+description));
+      if(description)detail.append(R.dom('p',{class:'small'},window.RSVP_I18N.t("interface.messages.user_comment")+': '+description));
       if(item.recipe_text){
         const recipe=R.dom('details',{class:'food-item-recipe'});
-        const pdf=R.dom('button',{class:'btn secondary',type:'button'},window.RSVP_I18N.t('Print / Save as PDF'));
-        pdf.addEventListener('click',()=>{if(!R.printRecipe(label,item.recipe_text))status(window.RSVP_I18N.t('Allow pop-ups to save the recipe as PDF.'),'warning');});
-        recipe.append(R.dom('summary',{},window.RSVP_I18N.t('Recipe')),R.recipeContent(item.recipe_text),pdf);
+        const pdf=R.dom('button',{class:'btn secondary',type:'button'},window.RSVP_I18N.t("interface.messages.print_save_as_pdf"));
+        pdf.addEventListener('click',()=>{if(!R.printRecipe(label,item.recipe_text))status(window.RSVP_I18N.t("food.messages.allow_pop_ups_to_save_the_recipe_as_pdf"),'warning');});
+        recipe.append(R.dom('summary',{},window.RSVP_I18N.t("food.messages.recipe")),R.recipeContent(item.recipe_text),pdf);
         detail.append(recipe);
       }
       if(!confirmed){
@@ -147,7 +149,7 @@
     if(error)status(R.safeError(error),'error');else status(t('foodSaved'),'success');
     await loadFood();button.disabled=false;
   }
-  async function confirmFood(){if(!code||!window.confirm(window.RSVP_I18N.t("Confirm food selections? This will lock further edits.")))return;
+  async function confirmFood(){if(!code||!window.confirm(window.RSVP_I18N.t("food.messages.confirm_food_selections_this_will_lock_further_edits")))return;
     $('confirmFood').disabled=true;
     const {error}=await R.guestRpc('confirm_household_food',{p_code:code});
     $('confirmFood').disabled=false;if(error){status(R.safeError(error),'error');return;}
@@ -160,11 +162,11 @@
     if(window.location.search)history.replaceState(history.state,'',window.location.pathname+window.location.hash);
     await window.RSVP_I18N.load();language=window.RSVP_I18N.language;
     $('languageSwitcher').addEventListener('click',e=>{const button=e.target.closest('[data-language]');if(button)setLanguage(button.dataset.language,true);});
-    $('codeForm').addEventListener('submit',e=>{e.preventDefault();const candidate=$('inviteCode').value.toUpperCase().trim();if(!R.codePattern.test(candidate)){status(window.RSVP_I18N.t("Invalid invitation code"),'warning');return;}window.location.assign(R.invitationURL(candidate));});
+    $('codeForm').addEventListener('submit',e=>{e.preventDefault();const candidate=$('inviteCode').value.toUpperCase().trim();if(!R.codePattern.test(candidate)){status(window.RSVP_I18N.t("interface.messages.invalid_invitation_code"),'warning');return;}window.location.assign(R.invitationURL(candidate));});
     const refreshFood=()=>{if(foodState&&!foodState.confirmed&&!document.hidden)loadFood();};
     const foodRefresh=setInterval(refreshFood,30000);window.addEventListener('focus',refreshFood);document.addEventListener('visibilitychange',refreshFood);window.addEventListener('pagehide',()=>clearInterval(foodRefresh),{once:true});
     $('rsvpForm').addEventListener('submit',submitRsvp);$('confirmFood').addEventListener('click',confirmFood);
-    setLanguage(language);
+    await setLanguage(language);
     const db=R.getClient();if(!db){$('connectNotice').classList.remove('hidden');return;}
     try{
       const {data,error}=await db.rpc('get_public_event_v2');
@@ -173,6 +175,11 @@
     }catch(e){status(t('offline')+' '+R.safeError(e),'error');return;}
     $('languageSwitcher').classList.toggle('hidden',!eventData&&!rawCode);$('adminLink').classList.toggle('hidden',!!eventData||!!rawCode);
     if(!eventData){status(t('notPublished'));return;}
+    contentTranslations.clear();
+    for(const entry of eventData.translations||[]){
+      if(!contentTranslations.has(entry.content_key))contentTranslations.set(entry.content_key,{});
+      contentTranslations.get(entry.content_key)[entry.language_code]=entry.content_value;
+    }
     if(!window.RSVP_I18N.hasPreference())setLanguage(eventData.event?.default_language||language);
     renderEvent();$('codeCard').classList.remove('hidden');
     if(rawCode){$('inviteCode').value=rawCode;await loadInvitation(rawCode);}

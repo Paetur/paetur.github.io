@@ -6,6 +6,8 @@ const http=require('node:http'),fs=require('node:fs'),path=require('node:path'),
 const root=process.cwd();
 const context={window:{}};vm.runInNewContext(fs.readFileSync('js/translations.js','utf8'),context);
 const catalog=context.window.RSVP_TRANSLATIONS;
+const readLeaf=(lang,key)=>{const [category,...parts]=key.split('.');return parts.reduce((value,part)=>value[part],JSON.parse(fs.readFileSync(`locales/${lang}/${category}.json`,'utf8')));};
+for(const entry of Object.values(catalog))for(const lang of ['fo','de'])entry[lang]=readLeaf(lang,entry.key);
 const tokens=s=>[...s.matchAll(/\{([a-zA-Z][a-zA-Z0-9_]*)\}/g)].map(x=>x[1]).sort().join(',');
 for(const [source,translations]of Object.entries(catalog))for(const lang of ['fo','de']){
  assert.ok(translations[lang]?.trim(),`${lang}: ${source}`);assert.equal(tokens(source),tokens(translations[lang]),`Placeholders ${lang}: ${source}`);
@@ -53,12 +55,35 @@ async function run(browserType){
    assert.equal(await page.locator('#eventTitle').textContent(),'Settings');assert.equal(await page.locator('#householdName').textContent(),'Food');
    await page.locator('input[value="attending"]').check();await page.locator('#languageSwitcher [data-language="de"]').click();
    assert.equal(await page.locator('html').getAttribute('lang'),'de');assert.equal(await page.locator('input[value="attending"]').isChecked(),true);
-   assert.equal(await page.locator('#welcomeMessage').textContent(),'Unser Fest');
+   await page.waitForFunction(()=>document.querySelector('#welcomeMessage').textContent==='Unser Fest');
    assert.equal(await page.locator('#inviteCode').getAttribute('placeholder'),catalog['Invitation code'].de);
    assert.equal(await page.locator('.guest-food-details button').textContent(),'Auswählen');
    assert.equal(await page.locator('#foodList input[type=number]').count(),0);
    assert.deepEqual(errors,[]);await page.close();
   }
+  const ipad=await browser.newPage({viewport:{width:1024,height:768},hasTouch:true});
+  const localeRequests=[];
+  ipad.on('request',request=>{if(request.url().includes('/locales/'))localeRequests.push(request.url());});
+  await ipad.addInitScript(()=>localStorage.setItem('rsvp-interface-language','en'));
+  await ipad.route('**/supabase.min.js',r=>r.fulfill({contentType:'text/javascript',body:mock+'\n'+extra}));
+  await ipad.goto('http://127.0.0.1:'+server.address().port+'/admin/');
+  await ipad.locator('#adminApp:not(.hidden)').waitFor();
+  await ipad.evaluate(()=>window.RSVP_I18N.loadCatalogs(['en','fo','de']));
+  const requestsBefore=localeRequests.length;
+  await ipad.evaluate(()=>Promise.all(Array.from({length:5},()=>window.RSVP_I18N.loadCatalogs(['en','fo','de']))));
+  assert.equal(localeRequests.length,requestsBefore,'repeated locale reads reuse cached requests');
+  assert.equal(requestsBefore,9,'one request per language and category');
+  assert.equal(await ipad.evaluate(()=>window.RSVP_I18N.t('interface.messages.save',{},'de')),catalog.Save.de);
+  await ipad.locator('#editModeButton').click();
+  await ipad.locator('#settingsToggle').click();
+  await ipad.locator('[data-settings-tab="languages"]').click();
+  await ipad.locator('#translationCategory').selectOption('ui');
+  await ipad.locator('#translationKey').selectOption('ui:Save');
+  await ipad.locator('#foodTranslationGrid [data-language-code="de"]').waitFor();
+  assert.equal(await ipad.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),true,'iPad width');
+  fs.mkdirSync('artifacts',{recursive:true});
+  await ipad.screenshot({path:'artifacts/json-languages-ipad-'+browserType.name()+'.png',fullPage:true});
+  await ipad.close();
   console.log('PASS '+browserType.name()+': FO/EN/DE admin, setup, guest, welcome saves, safe custom text, placeholders, mobile layout and retained RSVP answers');
  }finally{await browser.close();}
 }

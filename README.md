@@ -71,6 +71,7 @@ Implemented features still need operational acceptance. Passing automated tests 
 
 ### To-do — verification and launch preparation
 
+- [ ] Complete physical iPad/Safari acceptance for repository JSON catalogs and normalized translation storage. See [language implementation](docs/INTERFACE_LANGUAGES.md).
 - [ ] Verify the deployed Settings → Languages and Backups screens, default/fallback behavior and translations.
 - [ ] Check actual-device mobile Safari behavior, collapsed spacing, keyboard access and accessibility.
 - [ ] Complete controlled invitation → RSVP → confirmation and food journeys, including competing requests, deadlines and submission locks.
@@ -94,6 +95,7 @@ These candidates are not commitments or launch blockers by default.
 
 - [ ] Review all answers before final submission.
 - [ ] Reusable multilingual invitation templates.
+- [ ] Reusable multilingual interface, food and food-type templates, with all enabled languages visible, preview before applying, fill-missing/selected replacement, duplicate/archive and JSON export/import. Deferred for later discussion.
 - [ ] Automatic email/SMS/WhatsApp invitations, reminders and provider delivery tracking.
 - [ ] Feature switches for food, contributions and tasks.
 - [ ] Guest access to contribution and task workflows.
@@ -135,7 +137,8 @@ js/core.js             Client, validation, URL helpers
 js/guest.js            Invitation + RSVP + food UI
 js/admin.js            Admin login, dashboard, membership and event settings
 js/admin-tools.js      Language management and backup/import controls
-js/i18n.js             Language selection, translations and fallback
+js/i18n.js             Cached JSON language loading, translation lookup and fallback
+locales/               Version-controlled interface, food and type catalogs
 js/setup.js            Step-by-step setup workflow
 css/app.css            Responsive styles
 supabase/install.sql   Consolidated SQL Editor install (new databases only)

@@ -11,9 +11,9 @@
   }
   const stateMessage=(m,t='info')=>R.showStatus('setupStatus',m,t);
   function displayStep(next){
-    if(next>2&&!connected){stateMessage(T("Test your Supabase connection before continuing."),'warning');return;}
-    if(next>4&&!verified){stateMessage(T("Administrator verification required."),'warning');return;}
-    if(next===4&&!verified){stateMessage(T("Sign in as an administrator first."),'warning');return;}
+    if(next>2&&!connected){stateMessage(T("interface.messages.test_your_supabase_connection_before_continuing"),'warning');return;}
+    if(next>4&&!verified){stateMessage(T("interface.messages.administrator_verification_required"),'warning');return;}
+    if(next===4&&!verified){stateMessage(T("interface.messages.sign_in_as_an_administrator_first"),'warning');return;}
     step=Math.max(1,Math.min(4,next));
     document.querySelectorAll('[data-step-panel]').forEach(p=>p.classList.toggle('hidden',Number(p.dataset.stepPanel)!==step));
     document.querySelectorAll('[data-step]').forEach(b=>b.classList.toggle('active',Number(b.dataset.step)===step));
@@ -27,21 +27,21 @@
       const db=R.getClient();
       const {error}=await db.rpc('get_public_event');
       if(version!==connectionVersion)return;
-      if(error)throw new Error(T("Database connection or schema validation failed: ")+R.safeError(error));
+      if(error)throw new Error(T("interface.messages.database_connection_or_schema_validation_failed")+R.safeError(error));
       const probe=await R.guestRpc('get_invitation_v2',{p_code:'AAAAAAAA'});
       if(version!==connectionVersion)return;
-      if(probe.error)throw new Error(T("Guest Edge Function is unavailable. Deploy the guest-gateway function first: ")+R.safeError(probe.error));
-      connected=true;stateMessage(T('Connected to {host}. The protected guest gateway responded.',{host:new URL(cfg.supabaseUrl).hostname}),'success');
+      if(probe.error)throw new Error(T("interface.messages.guest_edge_function_is_unavailable_deploy_the_guest_gateway_funct")+R.safeError(probe.error));
+      connected=true;stateMessage(T("interface.messages.connected_to_host_the_protected_guest_gateway_responded",{host:new URL(cfg.supabaseUrl).hostname}),'success');
       setTimeout(()=>{if(version===connectionVersion&&step===2)displayStep(3);},1100);
     }catch(err){if(version===connectionVersion)stateMessage(R.safeError(err),'error');}
     finally{button.disabled=false;}
   }
   function makeBootstrap(){
     const email=$('bootstrapEmail').value.trim();
-    if(!/^\S+@\S+\.\S+$/.test(email)){stateMessage(T("Enter a valid administrator email."),'warning');return;}
+    if(!/^\S+@\S+\.\S+$/.test(email)){stateMessage(T("interface.messages.enter_a_valid_administrator_email"),'warning');return;}
     const safe=email.replace(/'/g,"''");
     $('bootstrapSql').value=`-- Run ONLY in your own Supabase SQL Editor after creating and verifying this Auth user.\nINSERT INTO public.admins (user_id, name)\nSELECT id, 'Primary Administrator'\nFROM auth.users\nWHERE lower(email) = lower('${safe}')\n  AND email_confirmed_at IS NOT NULL\n  AND NOT EXISTS (SELECT 1 FROM public.admins)\nON CONFLICT (user_id) DO NOTHING;\n-- Check: SELECT count(*) FROM public.admins;`;
-    stateMessage(T("First-admin SQL generated. This must be executed in the private Supabase SQL Editor, not in the browser."),'success');
+    stateMessage(T("interface.messages.first_admin_sql_generated_this_must_be_executed_in_the_private_su"),'success');
   }
   async function verifyAdmin(e){
     e.preventDefault();const b=e.submitter||e.target.querySelector('button[type="submit"]');b.disabled=true;
@@ -56,7 +56,7 @@
       const access=await db.rpc('is_admin');
       if(version!==connectionVersion)return;
       if(access.error)throw access.error;
-      if(access.data!==true)throw new Error(T("This account does not have administrator access. Run the first-admin SQL or ask an existing admin to grant access."));
+      if(access.data!==true)throw new Error(T("interface.messages.this_account_does_not_have_administrator_access_run_the_first_adm"));
       verified=true;$('setupAdminPassword').value='';displayStep(4);
     }catch(err){if(version===connectionVersion)stateMessage(R.safeError(err),'error');}
     finally{b.disabled=false;}
@@ -73,12 +73,12 @@
     $('connectForm').addEventListener('input',()=>{invalidateConnection();stateMessage('');});
     $('makeBootstrap').addEventListener('click',makeBootstrap);
     $('copyBootstrap').addEventListener('click',()=>{
-      if(!$('bootstrapSql').value){stateMessage(T("Generate SQL first."),'warning');return;}
-      navigator.clipboard.writeText($('bootstrapSql').value).then(()=>stateMessage(T("SQL copied."),'success')).catch(()=>stateMessage(T("Unable to copy SQL. Select it manually."),'warning'));
+      if(!$('bootstrapSql').value){stateMessage(T("interface.messages.generate_sql_first"),'warning');return;}
+      navigator.clipboard.writeText($('bootstrapSql').value).then(()=>stateMessage(T("interface.messages.sql_copied"),'success')).catch(()=>stateMessage(T("interface.messages.unable_to_copy_sql_select_it_manually"),'warning'));
     });
     $('setupLoginForm').addEventListener('submit',verifyAdmin);
     $('downloadConfig').addEventListener('click',()=>R.dl('config.js',R.configSource()));
-    $('copyConfig').addEventListener('click',()=>navigator.clipboard.writeText(R.configSource()).then(()=>stateMessage(T("Configuration copied."),'success')).catch(()=>stateMessage(T("Clipboard access denied. Download the file instead."),'warning')));
+    $('copyConfig').addEventListener('click',()=>navigator.clipboard.writeText(R.configSource()).then(()=>stateMessage(T("interface.messages.configuration_copied"),'success')).catch(()=>stateMessage(T("interface.messages.clipboard_access_denied_download_the_file_instead"),'warning')));
     displayStep(1);
   }
   document.addEventListener('DOMContentLoaded',()=>{window.RSVP_I18N.load().then(setup).catch(e=>stateMessage(R.safeError(e),'error'));});

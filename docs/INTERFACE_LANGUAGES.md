@@ -1,25 +1,66 @@
 # Languages, fallback and translations
 
-Settings → Languages supports adding language codes (for example `sv` or `pt-BR`), choosing display names/order, enabling/disabling languages and selecting separate event default and fallback languages. English is the final built-in fallback for interface phrases. Language codes use canonical BCP-47-style tags, up to 16 characters; the interface validates their structure with Intl.
+## Repository catalogs
 
-The selected language wins. Missing interface text follows selected language → configured fallback → English source. Missing event/venue/food/session translations follow the same language chain, then the existing canonical session name or generic label where appropriate. Selecting English uses the English source directly, not another language's translation.
+The implementation uses `locales/{language}/interface.json`, `food.json` and `types.json`, initially for English (`en`), Faroese (`fo`) and German (`de`). English defines the keys and source wording. Catalogs use nested objects. For example, `RSVP_I18N.t('interface.messages.save')` looks up the Save label.
 
-FO/EN/DE remain bundled translations. Additional languages are editable translations, not automatically generated translations. Until their texts are entered, the configured fallback appears. Dates use the selected locale; venue-local timezones remain authoritative.
+Keep keys stable when changing wording. All maintained language directories carry the same leaf keys as English. Blank translated values use the fallback. Preserve interpolation placeholders such as `{item}` and `{count}`. Catalog output is plain text.
 
-The default and fallback must be enabled; they cannot be disabled until replacement choices are saved. Disabling a language hides it from visitor selectors and new assignments but retains its translations and existing household/guest/contact values. Codes cannot be renamed or deleted. Existing profiles can retain their disabled language while other fields are edited. Guest invitation eligibility is independent of language.
+Run these checks from the repository root after editing catalogs.
 
-Administration and setup use a browser language preference. Guest preferences take precedence over the household language, then the event default. Guest language buttons preserve checked RSVP answers. The language configuration endpoint exposes only enabled language metadata and public interface phrases while the event is unpublished; invitation details and event content remain behind the publication gate.
+```sh
+node tools/validate-locales.cjs
+```
 
-## Translation editing
+`locales/aliases.json` maps existing English phrase calls and static HTML to stable catalog keys. When adding a phrase, add its English source/key mapping and the same key to every maintained catalog. If the English source changes, update the alias source while retaining its key. Regenerate the English compatibility manifest with `node tools/validate-locales.cjs --generate`. The manifest supports existing source-phrase callers and English startup wording. It contains no Faroese or German translation values. New application calls should reference stable keys.
 
-The Languages translation editor covers interface phrases, event introductions, venue welcomes, session names, food names and descriptions. Blank text removes the translation and uses the fallback. Placeholder sets such as `{item}` and `{count}` must be preserved; the database validates them. All output is plain text.
+Catalog changes are reviewed through GitHub pull requests. Event-specific food, household and venue data must stay out of these public files. Private administrator comments are excluded.
 
-FO/EN/DE venue welcomes and food labels continue to use their existing columns, so the existing venue/food editors and the translation editor edit the same values. Additional languages and per-language session names use `event_content`. Event introductions use its `welcome` key. Additional languages can also be assigned to households, guests and contacts.
+## Loading and iPad behavior
 
-The existing Event settings welcome editors and interface wording preview remain available. Applying interface wording now saves it in the database. Downloading `interface-overrides.js` is an optional file-based customization mechanism; previously committed overrides retain precedence over database/bundled text. Remove an old file override if you want the database editor to control that phrase. Keep `{placeholders}` intact.
+The browser fetches language/category files in parallel and reuses one promise per language/category for the page lifetime. Normal HTTP caching reuses files between visits. Catalog URLs carry a release version in `js/i18n.js`; increment it when releasing changed catalogs. Network failures have a five-second timeout and can be retried. Missing custom-language files are remembered for the page lifetime and fall back to English or the configured intermediate fallback.
 
-Language preferences, profiles and translations are part of application backups. Source code and an optional deployed interface-overrides.js file are backed up separately with the repository. None of these operations changes event publication.
+Language metadata and custom interface wording load together through the existing configuration endpoint. Content translations arrive in one batched `event_content` projection alongside the existing administration data. Guest rendering indexes content translations once. No request is made per food item or per keystroke. Translation forms save changed cells in one atomic request.
 
-## Validation
+The selected language is stored in browser local storage. Guest preference takes precedence over the household language, then the event default. Changing the guest language retains checked RSVP answers. Late language responses cannot repaint over a newer selection.
 
-The browser suites cover FO/EN/DE, adding Swedish, selector updates, saved language preferences, German fallback for missing Swedish text, English source precedence, protected default/fallback disabling, translation persistence and backup/import screens. Database tests cover enabled-language assignment, placeholders, authorization and restoration. Native-speaker review remains part of acceptance for administrator-entered translations.
+## Database layout
+
+The normalized storage is introduced by migration `20261107102351_normalized_translations.sql`. It was applied to the designated live project on 7 November 2026 before deploying the new editors. All eight historical text rows and protected-record fingerprints matched the pre-migration backup.
+
+| Table | Content |
+|---|---|
+| `event_languages` | Language codes, display names, enabled state and ordering |
+| `translation_overrides` | Event-specific overrides of shared JSON wording, with stable key, category and original source metadata |
+| `food_item_translations` | Non-English food names and public user comments |
+| `food_category_translations` | Non-English category names |
+| `food_type_translations` | Non-English custom unit labels and optional plural labels |
+| `venue_translations` | Non-English venue names, welcome messages and guest notes |
+| `session_translations` | Non-English session names and descriptions |
+| `event_translations` | Non-English event introduction and historical invitation wording |
+
+This application has one event per database. Content rows refer to their parent record using a foreign key and have a unique parent/language combination. English stays in canonical fields, including `event_settings.introduction`. Translation rows record the last editor and update time. Administrator read policies protect the tables, and authenticated administrator RPCs validate writes and live sessions. Guests receive public translations through the existing publication-controlled endpoints.
+
+The old physical `event_content` table is replaced by a read-only, security-invoker view. It preserves the existing `content_key / language_code / content_value` payload shape while reading normalized tables. The migration moves its supported existing rows into the new storage atomically and copies existing FO/DE food and venue translations.
+
+Legacy FO/DE columns are retained temporarily for older clients and food payloads. Triggers import legacy-column edits into normalized storage, and translation RPCs synchronize FO/DE changes back to those columns. Their removal requires a subsequent release after deployed-client compatibility has been verified. English compatibility names such as `food_items.name_en` also remain.
+
+Shared wording resolves through file overrides, database overrides, selected-language JSON, the configured intermediate fallback and English. Previously committed `interface-overrides.js` customizations keep their existing priority. Clearing a database override exposes catalog wording again. The configured event fallback remains available. Selecting English uses its source directly. Dates follow the selected locale and venue times follow the venue timezone.
+
+## Editing and language management
+
+Settings → Languages manages enabled languages, default/fallback preferences, interface wording and the event introduction. The main Languages section edits food, food types, food category names, venues and sessions. Existing all-language editors remain available. English custom-unit label overrides retain their existing `ui:Food type: …` identity.
+
+Additional languages can be enabled without adding columns or tables. Their custom translations are entered in the application. A repository catalog is optional for these languages, and missing shared wording falls back until translations are supplied. Language codes cannot be renamed or deleted. Disabling a language retains existing translations and profile assignments.
+
+The default and fallback must be enabled. Invitation eligibility remains independent of language. Neither translation editing nor migration publishes the event.
+
+## Backup and verification
+
+Application backups include the normalized physical tables, editor identities and canonical English content. The compatibility view is excluded because its data is derived. Repository JSON and the optional deployed file overrides are retained with Git history and should be included in repository backups.
+
+Restore requires matching application migrations. Retain pre-migration backups with the corresponding repository revision. Recover an older backup into a matching disposable destination before upgrading that destination.
+
+Validation covers JSON syntax, nested string leaves, key parity, English sources, placeholders and generated manifest consistency. Database suites verify migration preservation, stable override keys, blank deletion, atomic batch rollback, publication and administrator boundaries, plus cross-identity export/restoration. Chromium and WebKit suites cover FO/EN/DE, custom-language fallback, saved preferences, all-language editing and retained RSVP answers. An iPad-size test verifies layout and one request per language/category across repeated reads. Physical iPad/Safari acceptance remains required.
+
+Reusable multilingual templates remain in the optional wish list for later discussion.

@@ -20,7 +20,7 @@
  function row(parent,tag,attrs={},text){const n=R.dom(tag,attrs,text);parent.append(n);return n;}
  function makeTable(headers,values){const table=R.dom('table',{class:'data-table'});const thead=row(table,'thead'),tr=row(thead,'tr');headers.forEach(h=>row(tr,'th',{},h));const tbody=row(table,'tbody');values.forEach(cols=>{const tr=row(tbody,'tr');cols.forEach(v=>{const td=row(tr,'td');if(v instanceof Node)td.append(v);else td.textContent=String(v??'');});});return table;}
  function stat(label,value){const div=R.dom('div',{class:'stat-card'});div.append(R.dom('b',{},value),R.dom('span',{},label));return div;}
- function sessionName(id){return store.sessions.find(s=>s.id===id)?.name||T("Session");}
+ function sessionName(id){return store.sessions.find(s=>s.id===id)?.name||T("interface.messages.session");}
  function settingsTab(name){activeSettingsTab=name;document.querySelectorAll('[data-settings-tab]').forEach(b=>{const active=b.dataset.settingsTab===name;b.classList.toggle('active',active);b.setAttribute('aria-pressed',String(active));});document.querySelectorAll('[data-settings-panel]').forEach(n=>n.classList.toggle('hidden',n.dataset.settingsPanel!==name));if(name==='logs')loadLogs(true);}
  function tab(name,updateUrl=true){
    if(name==='tasks')name='other';
@@ -42,30 +42,31 @@
    }
  }
  function toggleSettings(){tab(activeTab==='settings'?lastMainTab:'settings');}
- function mode(isEditing){R.closePopups();editMode=isEditing;$('adminApp').dataset.mode=isEditing?'edit':'view';const b=$('editModeButton');b.classList.toggle('active',isEditing);b.setAttribute('aria-pressed',String(isEditing));b.title=isEditing?T("Switch to View mode"):T("Switch to Edit mode");b.setAttribute('aria-label',b.title);$('adminModeLabel').textContent=isEditing?T("Edit mode · Changes are saved to the event database"):T("View mode · Manage invitations, food and event details");for(const id of ['eventSettingsForm','eventContentForm','interfaceWordingForm','languagePreferences','addLanguageForm','translationForm']){const form=$(id);for(const field of form.querySelectorAll('input,select,textarea'))field.disabled=!isEditing;}window.RSVP_ADMIN_TOOLS?.mode();}
+ function mode(isEditing){R.closePopups();editMode=isEditing;$('adminApp').dataset.mode=isEditing?'edit':'view';const b=$('editModeButton');b.classList.toggle('active',isEditing);b.setAttribute('aria-pressed',String(isEditing));b.title=isEditing?T("interface.messages.switch_to_view_mode"):T("interface.messages.switch_to_edit_mode");b.setAttribute('aria-label',b.title);$('adminModeLabel').textContent=isEditing?T("interface.messages.edit_mode_changes_are_saved_to_the_event_database"):T("food.messages.view_mode_manage_invitations_food_and_event_details");for(const id of ['eventSettingsForm','eventContentForm','interfaceWordingForm','languagePreferences','addLanguageForm','translationForm']){const form=$(id);for(const field of form.querySelectorAll('input,select,textarea'))field.disabled=!isEditing;}window.RSVP_ADMIN_TOOLS?.mode();}
  async function fetchTable(name,columns='*',order){let q=db.from(name).select(columns);if(order)q=q.order(order);const {data,error}=await q;if(error)throw new Error(`${name}: ${R.safeError(error)}`);return data||[];}
  async function reload(){
-   show(T("Loading event data…"));
+   show(T("interface.messages.loading_event_data"));
    try{
      const keys=['languages','settings','sessions','locations','households','guests','food','claims','submissions','defaults','content','relationGroups','foodCategories','foodTypes','contacts','overrides','responses','queue','deliveries','tasks','otherCategories'];
      const jobs=[fetchTable('event_languages'),fetchTable('event_settings'),fetchTable('event_sessions'),fetchTable('event_locations'),fetchTable('households','id,household_name,invite_code,language,side,relation_group_id,email,phone,food,food_confirmed,rsvp_state,rsvp_submitted_at,late_submission_until,sort_order,parent_id,notes,archived_at,whatsapp,postal_address,preferred_contact_method'),fetchTable('guests','id,household_id,first_name,last_name,courtesy_title,relation,language,is_child,rsvp_status,dietary_requirements,notes,archived_at'),fetchTable('food_items'),fetchTable('food_claims'),fetchTable('rsvp_submissions','id,household_id,submitted_at'),fetchTable('household_session_defaults'),fetchTable('event_content'),fetchTable('relation_groups'),fetchTable('food_categories'),fetchTable('food_item_types'),fetchTable('household_contacts'),fetchTable('guest_session_overrides'),fetchTable('guest_session_responses'),fetchTable('invitation_send_queue'),fetchTable('invitation_deliveries'),fetchTable('other_items'),fetchTable('other_categories')];
      const values=await Promise.all(jobs);keys.forEach((key,i)=>store[key]=values[i]);store.settings=store.settings[0]||null;
      const {data:admins,error:adminsError}=await R.adminRpc('admin_list_members');
      store.admins=adminsError?[]:(admins||[]);
-     if(adminsError)show(T("Admin management API unavailable: ")+R.safeError(adminsError),'warning');else show('');
-     const invitations=await R.adminRpc('admin_list_invitations');store.adminInvitations=invitations.data||[];invitationApiError=invitations.error?T("Administrator invitations are unavailable. The invitation service must be installed before sending."):'';
+     if(adminsError)show(T("interface.messages.admin_management_api_unavailable")+R.safeError(adminsError),'warning');else show('');
+     const invitations=await R.adminRpc('admin_list_invitations');store.adminInvitations=invitations.data||[];invitationApiError=invitations.error?T("interface.messages.administrator_invitations_are_unavailable_the_invitation_service_"):'';
      if(store.languages.length)window.RSVP_I18N.configure({languages:store.languages,default_language:store.settings?.default_language,fallback_language:store.settings?.fallback_language,translations:store.content});
+     await window.RSVP_I18N.loadCatalogs();
      renderAll();return true;
    }catch(e){show(R.safeError(e),'error');return false;}
  }
  function renderAll(){
-   $('adminEventTitle').textContent=store.settings?.event_name||T("Event dashboard");
+   $('adminEventTitle').textContent=store.settings?.event_name||T("interface.messages.event_dashboard");
    const invitedCount=store.guests.filter(g=>!g.archived_at&&!store.households.find(h=>h.id===g.household_id)?.archived_at).length;
-   $('statsGrid').replaceChildren(stat(T("Households"),store.households.filter(h=>!h.archived_at).length),stat(T("Guests"),invitedCount),stat(T("New RSVP submissions"),store.submissions.length),stat(T("Food items"),store.food.length));
+   $('statsGrid').replaceChildren(stat(T("interface.messages.households"),store.households.filter(h=>!h.archived_at).length),stat(T("interface.messages.guests"),invitedCount),stat(T("interface.messages.new_rsvp_submissions"),store.submissions.length),stat(T("food.messages.food_items"),store.food.length));
    const deployed=window.RSVP_CONFIG||{};
    let websiteConfigured=false;
    try{websiteConfigured=Boolean(deployed.supabaseUrl&&deployed.supabaseKey&&R.normalizeUrl(deployed.supabaseUrl)===R.normalizeUrl(R.config().supabaseUrl)&&R.validateKey(deployed.supabaseKey));}catch(_){websiteConfigured=false;}
-   const checks=[[T("Admin account connected"),true],[T("Event name and date entered"),!!(store.settings?.event_name&&store.settings?.event_date)],[T("At least one session created"),store.sessions.some(s=>s.is_active)],[T("Invitations assigned"),store.defaults.some(d=>d.is_invited)],[T("Website connection in deployed config.js"),websiteConfigured],[T("Website address saved in event settings"),!!store.settings?.website_url],[T("Event published"),!!store.settings?.is_published]];
+   const checks=[[T("interface.messages.admin_account_connected"),true],[T("interface.messages.event_name_and_date_entered"),!!(store.settings?.event_name&&store.settings?.event_date)],[T("interface.messages.at_least_one_session_created"),store.sessions.some(s=>s.is_active)],[T("interface.messages.invitations_assigned"),store.defaults.some(d=>d.is_invited)],[T("interface.messages.website_connection_in_deployed_config_js"),websiteConfigured],[T("interface.messages.website_address_saved_in_event_settings"),!!store.settings?.website_url],[T("interface.messages.event_published"),!!store.settings?.is_published]];
    $('launchChecklist').replaceChildren(...checks.map(([label,yes])=>{const li=R.dom('li');li.append(R.dom('span',{class:yes?'yes':'no'},yes?'✓':'○'),document.createTextNode(label));return li;}));
    $('newHousehold').replaceChildren(householdForm({language:store.settings?.default_language||'en',side:'paetur_hentze'}));renderHouseholds();renderInvites();renderDeliveryLog();renderFood();renderAdmins();renderSettings();renderSessions();renderContent();window.RSVP_ADMIN_TOOLS?.render();
  }
@@ -103,8 +104,8 @@
    return button;
  }
  function btn(text,title,onClick,disabled=false){
-   const kind={'↑':'up','↓':'down',[T("Copy link")]:'copy',[T("Edit")]:'edit',[T("Rename")]:'rename',[T("Register category")]:'add'}[text]||'edit';
-   return iconAction(kind,title,onClick,disabled,(text===T("Copy link")?'':'edit-only'));
+   const kind={'↑':'up','↓':'down',[T("interface.messages.copy_link")]:'copy',[T("interface.messages.edit")]:'edit',[T("interface.messages.rename")]:'rename',[T("interface.messages.register_category")]:'add'}[text]||'edit';
+   return iconAction(kind,title,onClick,disabled,(text===T("interface.messages.copy_link")?'':'edit-only'));
  }
  function setDisclosure(details,key,defaultOpen=false,forceOpen=false){
    details.open=forceOpen||(expandedGroups.has(key)?expandedGroups.get(key):defaultOpen);
@@ -123,7 +124,7 @@
    await reload();
    if(success)show(success,'success');
  }
- function householdGroupName(h){return store.relationGroups.find(r=>r.id===h.relation_group_id)?.name||T("Ungrouped");}
+ function householdGroupName(h){return store.relationGroups.find(r=>r.id===h.relation_group_id)?.name||T("interface.messages.ungrouped");}
  function sameGroup(a,b){return a.side===b.side&&a.relation_group_id===b.relation_group_id;}
  function isDescendantOf(candidateId,ancestorId){
    const byId=new Map(store.households.map(h=>[h.id,h]));
@@ -151,28 +152,28 @@
      for(const [key,display] of options)select.append(R.dom('option',{value:key},display));
      select.value=value||'';wrap.append(select);fields.append(wrap);return select;
    }
-   const first=labeledInput(T("First name"),guest.first_name,120,true);
-   const last=labeledInput(T("Last name"),guest.last_name,120);
-   const title=labeledSelect(T("Title"),guest.courtesy_title,[
-     ['',T("None")],['Mr.','Mr.'],['Ms.','Ms.'],['Son',T("Son")],['Daughter',T("Daughter")]]);
-   const relation=labeledInput(T("Relation"),guest.relation,160);
-   const language=labeledSelect(T("Language"),guest.language,[
-     ['',T("Household default")],...languages(guest.language)]);
+   const first=labeledInput(T("interface.messages.first_name"),guest.first_name,120,true);
+   const last=labeledInput(T("interface.messages.last_name"),guest.last_name,120);
+   const title=labeledSelect(T("interface.messages.title"),guest.courtesy_title,[
+     ['',T("interface.messages.none")],['Mr.','Mr.'],['Ms.','Ms.'],['Son',T("interface.messages.son")],['Daughter',T("interface.messages.daughter")]]);
+   const relation=labeledInput(T("interface.messages.relation"),guest.relation,160);
+   const language=labeledSelect(T("interface.messages.language"),guest.language,[
+     ['',T("interface.messages.household_default")],...languages(guest.language)]);
    const childWrap=R.dom('label',{class:'guest-child-field'});
    const child=R.dom('input',{type:'checkbox'});child.checked=!!guest.is_child;
-   childWrap.append(child,R.dom('span',{},T("Child guest")));fields.append(childWrap);
-   const dietary=labeledInput(T("Dietary requirements"),guest.dietary_requirements,1000,false,true);
-   const notes=labeledInput(T("Notes"),guest.notes,2000,false,true);
-   form.append(fields,R.dom('p',{class:'micro'},guest.id?T("RSVP status and household assignment are not changed by editing guest details."):T("New guests inherit this household’s session invitations.")));
+   childWrap.append(child,R.dom('span',{},T("interface.messages.child_guest")));fields.append(childWrap);
+   const dietary=labeledInput(T("interface.messages.dietary_requirements"),guest.dietary_requirements,1000,false,true);
+   const notes=labeledInput(T("interface.messages.notes"),guest.notes,2000,false,true);
+   form.append(fields,R.dom('p',{class:'micro'},guest.id?T("interface.messages.rsvp_status_and_household_assignment_are_not_changed_by_editing_g"):T("interface.messages.new_guests_inherit_this_household_s_session_invitations")));
    const buttons=R.dom('div',{class:'guest-edit-actions'});
-   const save=R.dom('button',{type:'submit',class:'btn'},T("Save guest"));
-   const cancel=R.dom('button',{type:'button',class:'btn secondary'},T("Cancel"));
+   const save=R.dom('button',{type:'submit',class:'btn'},T("interface.messages.save_guest"));
+   const cancel=R.dom('button',{type:'button',class:'btn secondary'},T("interface.messages.cancel"));
    cancel.addEventListener('click',()=>form.classList.add('hidden'));
    buttons.append(save,cancel);form.append(buttons);
    form.addEventListener('submit',async event=>{
      event.preventDefault();event.stopPropagation();
      const firstName=first.value.trim();
-     if(!firstName){first.focus();show(T("First name is required."),'warning');return;}
+     if(!firstName){first.focus();show(T("interface.messages.first_name_is_required"),'warning');return;}
      const payload={
        p_guest_id:guest.id,p_first_name:firstName,p_last_name:last.value.trim()||null,
        p_courtesy_title:title.value||null,p_relation:relation.value.trim()||null,
@@ -185,7 +186,7 @@
        const {error}=guest.id?await R.adminRpc('admin_update_guest',payload):await R.adminRpc('admin_create_guest',{p_household_id:guest.household_id,p_values:fields});
        if(error)throw error;
        const refreshed=await reload();
-       if(refreshed)show(T("Guest details saved."),'success');
+       if(refreshed)show(T("interface.messages.guest_details_saved"),'success');
      }catch(error){show(R.safeError(error),'error');}
      finally{save.disabled=false;form.removeAttribute('aria-busy');}
    });
@@ -193,7 +194,7 @@
  }
  function buildGuestList(guests){
    const list=R.dom('div',{class:'household-guest-list'});
-   list.append(R.dom('div',{class:'guest-list-heading'},T("Individual guests")));
+   list.append(R.dom('div',{class:'guest-list-heading'},T("interface.messages.individual_guests")));
    const sorted=[...guests].sort((a,b)=>String(a.first_name||'').localeCompare(String(b.first_name||''))||
      String(a.last_name||'').localeCompare(String(b.last_name||'')));
    for(const g of sorted.filter(g=>$('showArchived').checked||!g.archived_at)){
@@ -201,15 +202,15 @@
      const header=R.dom('div',{class:'household-guest-row'});
      const info=R.dom('div',{class:'household-guest-info'});
      const name=[g.courtesy_title,g.first_name,g.last_name].filter(Boolean).join(' ');
-     info.append(R.dom('strong',{},name||T("Unnamed guest")));
-     const meta=[g.archived_at?T("Archived"):null,g.is_child?T("Child"):null,g.relation].filter(Boolean).join(' · ');
+     info.append(R.dom('strong',{},name||T("interface.messages.unnamed_guest")));
+     const meta=[g.archived_at?T("interface.messages.archived"):null,g.is_child?T("interface.messages.child"):null,g.relation].filter(Boolean).join(' · ');
      info.append(R.dom('small',{class:'muted'},meta));header.append(info);
      const editor=buildGuestEditor(g);
-     header.append(iconAction('edit',T("Edit guest: ")+name,()=>editor.classList.toggle('hidden'),!!g.archived_at||!!store.households.find(h=>h.id===g.household_id)?.archived_at,'edit-only'));
+     header.append(iconAction('edit',T("interface.messages.edit_guest")+name,()=>editor.classList.toggle('hidden'),!!g.archived_at||!!store.households.find(h=>h.id===g.household_id)?.archived_at,'edit-only'));
      entry.append(header,editor);
      const management=guestManagement(g);header.append(management.actions);entry.append(management.form);list.append(entry);
    }
-   if(!sorted.length)list.append(R.dom('p',{class:'micro'},T("No guests assigned to this household.")));
+   if(!sorted.length)list.append(R.dom('p',{class:'micro'},T("interface.messages.no_guests_assigned_to_this_household")));
    return list;
  }
 
@@ -230,7 +231,7 @@
    form.addEventListener('submit',async e=>{
      e.preventDefault();e.stopPropagation();if(!editMode)return;
      button.disabled=true;form.setAttribute('aria-busy','true');
-     try{if(await save()===false)return;if(await reload())show(T("Changes saved."),'success');}
+     try{if(await save()===false)return;if(await reload())show(T("interface.messages.changes_saved"),'success');}
      catch(error){show(R.safeError(error),'error');}
      finally{button.disabled=false;form.removeAttribute('aria-busy');}
    });return form;
@@ -239,26 +240,26 @@
  function languages(current){const list=store.languages.length?store.languages:window.RSVP_I18N.languages;return list.filter(l=>l.enabled!==false||l.language_code===current).sort((a,b)=>(a.sort_order||0)-(b.sort_order||0)||a.language_code.localeCompare(b.language_code)).map(l=>[l.language_code,l.display_name]);}
  function householdForm(h){
    const f=managementForm();
-   const name=field(f,T("Household name"),h.household_name,null,'text',true,140);
-   const side=field(f,T("Side"),h.side,[['paetur_hentze','Pætur Hentze'],['maria_haass','Maria Haass']]);
-   const group=field(f,T("Relation group"),h.relation_group_id,[['',T("Ungrouped")],...ordered(store.relationGroups,'name').map(g=>[g.id,g.name])]);
-   const lang=field(f,T("Household language"),h.language||store.settings?.default_language||'en',languages(h.language));
-   const parent=field(f,T("Parent household"),h.parent_id,[['',T("None (top level)")]]);
+   const name=field(f,T("interface.messages.household_name"),h.household_name,null,'text',true,140);
+   const side=field(f,T("interface.messages.side"),h.side,[['paetur_hentze','Pætur Hentze'],['maria_haass','Maria Haass']]);
+   const group=field(f,T("interface.messages.relation_group"),h.relation_group_id,[['',T("interface.messages.ungrouped")],...ordered(store.relationGroups,'name').map(g=>[g.id,g.name])]);
+   const lang=field(f,T("interface.messages.household_language"),h.language||store.settings?.default_language||'en',languages(h.language));
+   const parent=field(f,T("interface.messages.parent_household"),h.parent_id,[['',T("interface.messages.none_top_level")]]);
    function parents(){
-     const selected=parent.value||h.parent_id||'';parent.replaceChildren(R.dom('option',{value:''},T("None (top level)")));
+     const selected=parent.value||h.parent_id||'';parent.replaceChildren(R.dom('option',{value:''},T("interface.messages.none_top_level")));
      for(const x of ordered(store.households,'household_name').filter(x=>x.id!==h.id&&!x.archived_at&&x.side===side.value&&(x.relation_group_id||'')===group.value&&!isDescendantOf(x.id,h.id)))parent.append(R.dom('option',{value:x.id},x.household_name));
      parent.value=[...parent.options].some(o=>o.value===selected)?selected:'';
    }
    parents();side.addEventListener('change',parents);group.addEventListener('change',parents);
-   const email=field(f,T("Household email"),h.email,null,'email',false,320);
-   const phone=field(f,T("Household phone"),h.phone,null,'tel',false,80);
+   const email=field(f,T("interface.messages.household_email"),h.email,null,'email',false,320);
+   const phone=field(f,T("interface.messages.household_phone"),h.phone,null,'tel',false,80);
    const whatsapp=field(f,'WhatsApp',h.whatsapp,null,'tel',false,80);
-   const address=field(f,T("Postal address"),h.postal_address,null,'textarea',false,1000);
-   const method=field(f,T("Preferred contact method"),h.preferred_contact_method,[['',T("Unspecified")],['whatsapp','WhatsApp'],['sms','SMS'],['email',T("Email")],['postal',T("Postal")],['manual',T("Manual")]]);
-   const allowFood=h.id?field(f,T("Allow food"),!!h.food,null,'checkbox'):null;
-   const notes=field(f,T("Household notes"),h.notes,null,'textarea');
-   f.append(R.dom('p',{class:'micro span-2'},h.id?T("Grouping changes with child households require moving the children first."):T("Empty households have no invitation code. Add a guest, then use Manage Invites. Assign sessions in Settings.")));
-   return saveForm(f,h.id?T("Save household"):T("Create household"),()=>{
+   const address=field(f,T("interface.messages.postal_address"),h.postal_address,null,'textarea',false,1000);
+   const method=field(f,T("interface.messages.preferred_contact_method"),h.preferred_contact_method,[['',T("interface.messages.unspecified")],['whatsapp','WhatsApp'],['sms','SMS'],['email',T("interface.messages.email")],['postal',T("interface.messages.postal")],['manual',T("interface.messages.manual")]]);
+   const allowFood=h.id?field(f,T("food.messages.allow_food"),!!h.food,null,'checkbox'):null;
+   const notes=field(f,T("interface.messages.household_notes"),h.notes,null,'textarea');
+   f.append(R.dom('p',{class:'micro span-2'},h.id?T("interface.messages.grouping_changes_with_child_households_require_moving_the_childre"):T("interface.messages.empty_households_have_no_invitation_code_add_a_guest_then_use_man")));
+   return saveForm(f,h.id?T("interface.messages.save_household"):T("interface.messages.create_household"),()=>{
      const args={p_id:h.id||null,p_values:{household_name:name.value.trim(),side:side.value,relation_group_id:group.value||null,language:lang.value,parent_id:parent.value||null,email:email.value.trim(),phone:phone.value.trim(),whatsapp:whatsapp.value.trim(),postal_address:address.value.trim(),preferred_contact_method:method.value||null,notes:notes.value.trim()}};
      if(allowFood&&allowFood.checked!==!!h.food){
        return managementRpc('admin_save_household_with_food',{...args,p_food:allowFood.checked,p_expected_food:!!h.food});
@@ -270,84 +271,84 @@
    const restoring=!!record.archived_at;
    return iconAction(restoring?'restore':'archive',T((restoring?'Restore ':'Archive ')+(entity==='households'?'household':entity==='guests'?'guest':'contact')),async()=>{
      if(!editMode)return;
-     const message=restoring?T("Restore this record?"):entity==='households'?T("Archive this household and disable its invitation link? Records and history are preserved."):T("Archive this record? It can be restored later.");
+     const message=restoring?T("interface.messages.restore_this_record"):entity==='households'?T("interface.messages.archive_this_household_and_disable_its_invitation_link_records_an"):T("interface.messages.archive_this_record_it_can_be_restored_later");
      if(!confirm(message))return;
-     await managementRpc('admin_set_archived',{p_entity:entity,p_id:record.id,p_archived:!restoring});await reload();show(restoring?T("Record restored."):T("Record archived."),'success');
+     await managementRpc('admin_set_archived',{p_entity:entity,p_id:record.id,p_archived:!restoring});await reload();show(restoring?T("interface.messages.record_restored"):T("interface.messages.record_archived"),'success');
    },false,'edit-only');
  }
  function guestManagement(g){
    const box=R.dom('div',{class:'guest-management edit-only'});const panel=R.dom('div',{class:'guest-move-panel edit-only hidden'});
    if(!g.archived_at){
-     const f=managementForm();const move=iconAction('move',T("Move guest"),()=>{const opening=panel.classList.contains('hidden');panel.classList.toggle('hidden',!opening);move.setAttribute('aria-expanded',String(opening));if(opening)target.focus();},false,'edit-only');move.setAttribute('aria-expanded','false');box.append(move);
-     const target=field(f,T("Destination household"),'',[['',T("Choose household")],...ordered(store.households,'household_name').filter(h=>h.id!==g.household_id&&!h.archived_at&&h.rsvp_state==='open').map(h=>[h.id,h.household_name])], 'text',true);
-     f.append(R.dom('p',{class:'micro span-2'},T("Current session invitations are preserved as individual overrides. Moves involving RSVP history are blocked.")));
-     saveForm(f,T("Move guest"),async()=>{if(!confirm(T("Move this guest and preserve their current session invitations?")))return false;await managementRpc('admin_move_guest',{p_guest_id:g.id,p_household_id:target.value});});panel.append(f);
+     const f=managementForm();const move=iconAction('move',T("interface.messages.move_guest"),()=>{const opening=panel.classList.contains('hidden');panel.classList.toggle('hidden',!opening);move.setAttribute('aria-expanded',String(opening));if(opening)target.focus();},false,'edit-only');move.setAttribute('aria-expanded','false');box.append(move);
+     const target=field(f,T("interface.messages.destination_household"),'',[['',T("interface.messages.choose_household")],...ordered(store.households,'household_name').filter(h=>h.id!==g.household_id&&!h.archived_at&&h.rsvp_state==='open').map(h=>[h.id,h.household_name])], 'text',true);
+     f.append(R.dom('p',{class:'micro span-2'},T("interface.messages.current_session_invitations_are_preserved_as_individual_overrides")));
+     saveForm(f,T("interface.messages.move_guest"),async()=>{if(!confirm(T("interface.messages.move_this_guest_and_preserve_their_current_session_invitations")))return false;await managementRpc('admin_move_guest',{p_guest_id:g.id,p_household_id:target.value});});panel.append(f);
    }box.append(archiveButton('guests',g));return {actions:box,form:panel};
  }
  function contactSection(h){
-   const section=disclosure(T("Contacts"),'contact-section');
+   const section=disclosure(T("interface.messages.contacts"),'contact-section');
    const contacts=store.contacts.filter(c=>c.household_id===h.id&&($('showArchived').checked||!c.archived_at));
    const list=R.dom('div',{class:'contact-list'});
-   const types={email:T("Email"),phone:T("Phone"),postal:T("Postal address"),other:T("Other")};
-   const methods={whatsapp:'WhatsApp',sms:'SMS',email:T("Email"),postal:T("Postal"),manual:T("Manual")};
+   const types={email:T("interface.messages.email"),phone:T("interface.messages.phone"),postal:T("interface.messages.postal_address"),other:T("interface.messages.other")};
+   const methods={whatsapp:'WhatsApp',sms:'SMS',email:T("interface.messages.email"),postal:T("interface.messages.postal"),manual:T("interface.messages.manual")};
    for(const c of contacts){
      const card=R.dom('article',{class:'contact-card'});card.dataset.contactId=c.id;const header=R.dom('div',{class:'contact-card-header'});const info=R.dom('div',{class:'contact-card-info'});
-     const name=c.contact_name||types[c.contact_type]||T("Contact");info.append(R.dom('strong',{},name),R.dom('span',{class:'contact-card-value'},c.contact_value));
+     const name=c.contact_name||types[c.contact_type]||T("interface.messages.contact");info.append(R.dom('strong',{},name),R.dom('span',{class:'contact-card-value'},c.contact_value));
      const meta=R.dom('div',{class:'contact-card-meta'});meta.append(R.dom('span',{},[types[c.contact_type]||c.contact_type,methods[c.preferred_method],c.language_code?.toUpperCase()].filter(Boolean).join(' · ')));
-     if(c.guest_id){const g=store.guests.find(g=>g.id===c.guest_id);const source=store.households.find(h=>h.id===g?.household_id);meta.append(R.dom('span',{class:'tag'},T("Guest")+(source?' · '+source.household_name:'')));}
-     if(c.is_primary)meta.append(R.dom('span',{class:'tag'},T("Primary")));if(c.archived_at)meta.append(R.dom('span',{class:'tag'},T("Archived")));info.append(meta);header.append(info);
+     if(c.guest_id){const g=store.guests.find(g=>g.id===c.guest_id);const source=store.households.find(h=>h.id===g?.household_id);meta.append(R.dom('span',{class:'tag'},T("interface.messages.guest")+(source?' · '+source.household_name:'')));}
+     if(c.is_primary)meta.append(R.dom('span',{class:'tag'},T("interface.messages.primary")));if(c.archived_at)meta.append(R.dom('span',{class:'tag'},T("interface.messages.archived")));info.append(meta);header.append(info);
      const editor=R.dom('div',{class:'contact-editor edit-only hidden'});editor.id='contact-editor-'+c.id;
      if(!h.archived_at){const actions=R.dom('div',{class:'contact-card-actions edit-only'});
        if(!c.archived_at){
-         const edit=iconAction('edit',T("Edit contact: ")+name,()=>{const opening=editor.classList.contains('hidden');if(opening){editor.replaceChildren(contactForm(h,c,()=>{editor.classList.add('hidden');edit.setAttribute('aria-expanded','false');edit.focus();}));}editor.classList.toggle('hidden',!opening);edit.setAttribute('aria-expanded',String(opening));if(opening)editor.querySelector('input')?.focus();},false,'edit-only');
+         const edit=iconAction('edit',T("interface.messages.edit_contact")+name,()=>{const opening=editor.classList.contains('hidden');if(opening){editor.replaceChildren(contactForm(h,c,()=>{editor.classList.add('hidden');edit.setAttribute('aria-expanded','false');edit.focus();}));}editor.classList.toggle('hidden',!opening);edit.setAttribute('aria-expanded',String(opening));if(opening)editor.querySelector('input')?.focus();},false,'edit-only');
          edit.setAttribute('aria-expanded','false');edit.setAttribute('aria-controls',editor.id);actions.append(edit);
        }
        actions.append(archiveButton('household_contacts',c));header.append(actions);
      }
      card.append(header,editor);list.append(card);
    }
-   if(contacts.length)section.append(list);else section.append(R.dom('p',{class:'micro contact-empty'},T("No contacts added yet.")));
-   if(!h.archived_at){const add=disclosure(T("Add contact"),'edit-only contact-add');add.append(contactForm(h,{}));section.append(add);}return section;
+   if(contacts.length)section.append(list);else section.append(R.dom('p',{class:'micro contact-empty'},T("interface.messages.no_contacts_added_yet")));
+   if(!h.archived_at){const add=disclosure(T("interface.messages.add_contact"),'edit-only contact-add');add.append(contactForm(h,{}));section.append(add);}return section;
  }
  let contactPickerSequence=0;
  function contactGuestPicker(initialId,onSelect,onClear){
    let selectedId=initialId||null;
    const box=R.dom('div',{class:'span-2 contact-guest-picker'});const selected=R.dom('div',{class:'contact-guest-selected'});
-   const picker=disclosure(T("Choose someone from the guest list"),'contact-guest-search');
-   const label=R.dom('label',{},T("Search guests"));const search=R.dom('input',{type:'search',placeholder:T("Guest name or household")});search.maxLength=200;search.setAttribute('aria-label',T("Search guests"));search.autocomplete='off';
+   const picker=disclosure(T("interface.messages.choose_someone_from_the_guest_list"),'contact-guest-search');
+   const label=R.dom('label',{},T("interface.messages.search_guests"));const search=R.dom('input',{type:'search',placeholder:T("interface.messages.guest_name_or_household")});search.maxLength=200;search.setAttribute('aria-label',T("interface.messages.search_guests"));search.autocomplete='off';
    const options=R.dom('div',{class:'contact-guest-results',id:'contact-guest-results-'+(++contactPickerSequence)});search.setAttribute('aria-controls',options.id);label.append(search);
    const hint=R.dom('p',{class:'micro'});hint.setAttribute('role','status');picker.append(label,hint,options);
-   function guestLabel(g){return [g.first_name,g.last_name].filter(Boolean).join(' ')||T("Unnamed guest");}
+   function guestLabel(g){return [g.first_name,g.last_name].filter(Boolean).join(' ')||T("interface.messages.unnamed_guest");}
    function renderSelected(){
      selected.replaceChildren();selected.classList.toggle('hidden',!selectedId);if(!selectedId)return;
-     const guest=store.guests.find(g=>g.id===selectedId);const household=store.households.find(h=>h.id===guest?.household_id);const text=R.dom('span');text.append(R.dom('strong',{},guest?guestLabel(guest):T("Linked guest")),R.dom('small',{class:'muted'},household?.household_name||''));
-     const clear=R.dom('button',{type:'button',class:'small-tool'},T("Remove guest link"));clear.addEventListener('click',()=>{selectedId=null;onClear();renderSelected();});selected.append(text,clear);
+     const guest=store.guests.find(g=>g.id===selectedId);const household=store.households.find(h=>h.id===guest?.household_id);const text=R.dom('span');text.append(R.dom('strong',{},guest?guestLabel(guest):T("interface.messages.linked_guest")),R.dom('small',{class:'muted'},household?.household_name||''));
+     const clear=R.dom('button',{type:'button',class:'small-tool'},T("interface.messages.remove_guest_link"));clear.addEventListener('click',()=>{selectedId=null;onClear();renderSelected();});selected.append(text,clear);
    }
    function renderResults(){
      const normalize=value=>String(value).normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLocaleLowerCase().replaceAll('ß','ss').replaceAll('æ','ae').replaceAll('ø','o').replaceAll('ð','d');
      const query=normalize(search.value.trim());const matches=store.guests.filter(g=>!g.archived_at&&store.households.some(h=>h.id===g.household_id&&!h.archived_at)).filter(g=>normalize([guestLabel(g),store.households.find(h=>h.id===g.household_id)?.household_name].join(' ')).includes(query)).sort((a,b)=>guestLabel(a).localeCompare(guestLabel(b))||a.id.localeCompare(b.id));
-     options.replaceChildren();hint.textContent=matches.length?T('Showing {count} of {total} matching guests.',{count:Math.min(matches.length,10),total:matches.length}):T("No active guests match this search.");
+     options.replaceChildren();hint.textContent=matches.length?T("interface.messages.showing_count_of_total_matching_guests",{count:Math.min(matches.length,10),total:matches.length}):T("interface.messages.no_active_guests_match_this_search");
      for(const g of matches.slice(0,10)){
-       const household=store.households.find(h=>h.id===g.household_id);const button=R.dom('button',{type:'button',class:'contact-guest-option'});button.setAttribute('aria-label',T("Select guest: ")+guestLabel(g)+' — '+household.household_name);
-       button.append(R.dom('strong',{},guestLabel(g)),R.dom('small',{},household.household_name+(g.is_child?T(" · Child"):'')));
+       const household=store.households.find(h=>h.id===g.household_id);const button=R.dom('button',{type:'button',class:'contact-guest-option'});button.setAttribute('aria-label',T("interface.messages.select_guest")+guestLabel(g)+' — '+household.household_name);
+       button.append(R.dom('strong',{},guestLabel(g)),R.dom('small',{},household.household_name+(g.is_child?T("interface.messages.child_2"):'')));
        button.addEventListener('click',()=>{selectedId=g.id;onSelect(g);renderSelected();picker.open=false;search.value='';});options.append(button);
      }
    }
-   search.addEventListener('keydown',event=>{if(event.key===T("Enter")){event.preventDefault();options.querySelector('button')?.focus();}if(event.key==='Escape'){event.preventDefault();picker.open=false;picker.querySelector('summary')?.focus();}});
+   search.addEventListener('keydown',event=>{if(event.key===T("interface.messages.enter")){event.preventDefault();options.querySelector('button')?.focus();}if(event.key==='Escape'){event.preventDefault();picker.open=false;picker.querySelector('summary')?.focus();}});
    search.addEventListener('input',renderResults);picker.addEventListener('toggle',()=>{if(picker.open){renderResults();search.focus();}});
-   renderSelected();box.append(selected,picker,R.dom('p',{class:'micro'},T("Choose a guest or enter a new contact below. Guest selection fills the name and language; enter this person’s contact details separately.")));return box;
+   renderSelected();box.append(selected,picker,R.dom('p',{class:'micro'},T("interface.messages.choose_a_guest_or_enter_a_new_contact_below_guest_selection_fills")));return box;
  }
  function contactForm(h,c,onCancel=null){
-   const f=managementForm();f.classList.add('contact-form');let guestId=c.guest_id||null;const name=field(f,T("Contact name"),c.contact_name,null,'text',false,140);
-   const type=field(f,T("Contact type"),c.contact_type||'email',[['email',T("Email")],['phone',T("Phone")],['postal',T("Postal address")],['other',T("Other")]]);
-   const value=field(f,T("Contact details"),c.contact_value,null,'text',true,1000);value.closest('label').classList.add('span-2');
-   const lang=field(f,T("Contact language"),c.language_code,[['',T("Household default")],...languages(c.language_code)]);
-   const method=field(f,T("Preferred delivery method"),c.preferred_method,[['',T("Unspecified")],['whatsapp','WhatsApp'],['sms','SMS'],['email',T("Email")],['postal',T("Postal")],['manual',T("Manual")]]);
-   const primary=field(f,T("Primary contact for this type"),c.is_primary,null,'checkbox');primary.closest('label').classList.add('span-2','contact-primary');primary.closest('label').prepend(primary);
+   const f=managementForm();f.classList.add('contact-form');let guestId=c.guest_id||null;const name=field(f,T("interface.messages.contact_name"),c.contact_name,null,'text',false,140);
+   const type=field(f,T("interface.messages.contact_type"),c.contact_type||'email',[['email',T("interface.messages.email")],['phone',T("interface.messages.phone")],['postal',T("interface.messages.postal_address")],['other',T("interface.messages.other")]]);
+   const value=field(f,T("interface.messages.contact_details"),c.contact_value,null,'text',true,1000);value.closest('label').classList.add('span-2');
+   const lang=field(f,T("interface.messages.contact_language"),c.language_code,[['',T("interface.messages.household_default")],...languages(c.language_code)]);
+   const method=field(f,T("interface.messages.preferred_delivery_method"),c.preferred_method,[['',T("interface.messages.unspecified")],['whatsapp','WhatsApp'],['sms','SMS'],['email',T("interface.messages.email")],['postal',T("interface.messages.postal")],['manual',T("interface.messages.manual")]]);
+   const primary=field(f,T("interface.messages.primary_contact_for_this_type"),c.is_primary,null,'checkbox');primary.closest('label').classList.add('span-2','contact-primary');primary.closest('label').prepend(primary);
    const guestPicker=contactGuestPicker(guestId,g=>{guestId=g.id;name.value=[g.first_name,g.last_name].filter(Boolean).join(' ');lang.value=g.language||store.households.find(h=>h.id===g.household_id)?.language||'';value.focus();},()=>{guestId=null;});f.prepend(guestPicker);
-   saveForm(f,c.id?T("Save contact"):T("Create contact"),()=>managementRpc('admin_save_contact',{p_id:c.id||null,p_household_id:h.id,p_values:{guest_id:guestId,contact_name:name.value.trim(),contact_type:type.value,contact_value:value.value.trim(),language_code:lang.value||null,preferred_method:method.value||null,is_primary:primary.checked}}));
+   saveForm(f,c.id?T("interface.messages.save_contact"):T("interface.messages.create_contact"),()=>managementRpc('admin_save_contact',{p_id:c.id||null,p_household_id:h.id,p_values:{guest_id:guestId,contact_name:name.value.trim(),contact_type:type.value,contact_value:value.value.trim(),language_code:lang.value||null,preferred_method:method.value||null,is_primary:primary.checked}}));
    const actions=R.dom('div',{class:'span-2 contact-form-actions'});actions.append(f.querySelector('button[type=submit]'));
-   if(onCancel){const cancel=R.dom('button',{type:'button',class:'btn secondary'},T("Cancel"));cancel.addEventListener('click',onCancel);actions.append(cancel);}f.append(actions);return f;
+   if(onCancel){const cancel=R.dom('button',{type:'button',class:'btn secondary'},T("interface.messages.cancel"));cancel.addEventListener('click',onCancel);actions.append(cancel);}f.append(actions);return f;
  }
  const logCategories={households:"Households",guests:"Guests",contacts:"Contacts",rsvp:'RSVP',invitations:"Invitations",login:"Login",venues:"Venues",sessions:"Sessions",food:"Food access",administrators:"Administrators"};
  const logActions={add:"Added",insert:"Added",update:"Updated",delete:"Deleted",move:"Moved",archive:"Archived",restore:"Restored",assign:"Assigned",invitations_changed:"Invitation assignments changed",submitted:"Household submitted",reopened:"RSVP reopened",late_submission_authorized:"Late response allowed",response_submitted:"Guest response submitted",response_corrected:"Guest response corrected",created:"Delivery created",draft:"Draft saved",ready:"Ready to send",sent:"Recorded sent",failed:"Failed delivery",cancelled:"Cancelled",opened:"Invitation opened",login:"Sign-in session",logout:"Signed out",logout_requested:"Sign-out requested",email_requested:"Administrator email requested",email_sent:"Administrator email accepted by service",email_failed:"Administrator email failed",invitation_cancelled:"Administrator invitation cancelled",invitation_accepted:"Administrator invitation accepted",remove:"Access removed",rename:"Renamed",token_refreshed:"Token refreshed"};
@@ -361,106 +362,106 @@
      const subject=R.dom('span',{class:'log-subject'});subject.append(R.dom('strong',{},e.subject),R.dom('small',{class:'muted'},e.household_name||''));
      const kind=R.dom('span');kind.append(R.dom('span',{class:'tag'},T(logCategories[e.category]||e.category)),R.dom('small',{},T(logActions[e.action]||e.action.replaceAll('_',' '))));
      summary.append(time,subject,kind,R.dom('span',{class:'log-actor'},e.actor));d.append(summary);
-     const content=R.dom('div',{class:'log-details'});content.append(R.dom('p',{class:'micro'},T("Reference: ")+e.event_key+' · '+date.toISOString()));
+     const content=R.dom('div',{class:'log-details'});content.append(R.dom('p',{class:'micro'},T("interface.messages.reference")+e.event_key+' · '+date.toISOString()));
      const details=e.details||{};
      if(details.before&&typeof details.before==='object'&&details.after&&typeof details.after==='object'){
        const keys=[...new Set([...Object.keys(details.before),...Object.keys(details.after)])].filter(k=>JSON.stringify(details.before[k])!==JSON.stringify(details.after[k]));
-       content.append(makeTable([T("Field"),T("Before"),T("After")],keys.map(k=>[k,formatLogValue(details.before[k]),formatLogValue(details.after[k])])));
+       content.append(makeTable([T("interface.messages.field"),T("interface.messages.before"),T("interface.messages.after")],keys.map(k=>[k,formatLogValue(details.before[k]),formatLogValue(details.after[k])])));
      }else{for(const [key,value] of Object.entries(details)){if(value==null)continue;const row=R.dom('div',{class:'log-detail-value'});row.append(R.dom('strong',{},key.replaceAll('_',' ')),R.dom('pre',{},formatLogValue(value)));content.append(row);}}
      d.append(content);box.append(d);
    }
-   if(!logEntries.length)box.append(R.dom('p',{class:'muted'},T("No log entries match these filters.")));
-   $('logCount').textContent=T('{count} entries shown · Newest first',{count:logEntries.length});
+   if(!logEntries.length)box.append(R.dom('p',{class:'muted'},T("interface.messages.no_log_entries_match_these_filters")));
+   $('logCount').textContent=T("interface.messages.count_entries_shown_newest_first",{count:logEntries.length});
  }
  async function loadLogs(reset=true){
-   const generation=++logGeneration;$('logMore').disabled=true;$('logApply').disabled=true;$('logStatus').textContent=T("Loading logs…");
+   const generation=++logGeneration;$('logMore').disabled=true;$('logApply').disabled=true;$('logStatus').textContent=T("interface.messages.loading_logs");
    try{
      const filters={p_search:$('logSearch').value.trim(),p_category:$('logCategory').value,p_action:$('logAction').value,p_from:logDateBoundary($('logFrom').value),p_to:logDateBoundary($('logTo').value,true),p_before_at:reset?null:logCursor?.occurred_at||null,p_before_key:reset?null:logCursor?.event_key||null,p_limit:50};
      const {data,error}=await R.adminRpc('admin_query_logs',filters);if(error)throw error;if(generation!==logGeneration)return;
      const incoming=data?.entries||[];logEntries=reset?incoming:[...logEntries,...incoming];logCursor=logEntries.at(-1)||null;logsLoaded=true;renderLogs();
-     const selected=$('logAction').value;$('logAction').replaceChildren(R.dom('option',{value:''},T("All actions")));for(const action of data?.actions||[])$('logAction').append(R.dom('option',{value:action},T(logActions[action]||action.replaceAll('_',' '))));$('logAction').value=selected;
+     const selected=$('logAction').value;$('logAction').replaceChildren(R.dom('option',{value:''},T("interface.messages.all_actions")));for(const action of data?.actions||[])$('logAction').append(R.dom('option',{value:action},T(logActions[action]||action.replaceAll('_',' '))));$('logAction').value=selected;
      $('logMore').classList.toggle('hidden',!data?.has_more);$('logStatus').textContent='';
    }catch(error){if(generation!==logGeneration)return;$('logStatus').textContent=R.safeError(error);if(reset){logEntries=[];renderLogs();}$('logMore').classList.add('hidden');}
    finally{if(generation===logGeneration){$('logMore').disabled=false;$('logApply').disabled=false;}}
  }
 
  function adminTime(value){return value?R.formatDate(value,window.RSVP_I18N?.language||'en',store.settings?.timezone||'Atlantic/Faroe'):'—';}
- function actorName(id){return store.admins.find(a=>a.user_id===id)?.name||T("Administrator");}
+ function actorName(id){return store.admins.find(a=>a.user_id===id)?.name||T("interface.messages.administrator");}
  function rsvpSection(h){
-   const d=disclosure(T("RSVP management"),'feature-section');const zone=store.settings?.timezone||'Atlantic/Faroe';
-   d.append(R.dom('p',{class:'small'},`${h.rsvp_state==='locked'?T("Locked after submission"):T("Open for responses")}${h.rsvp_submitted_at?T(' · Last submission {time}',{time:adminTime(h.rsvp_submitted_at)}):''}`));
-   d.append(R.dom('p',{class:'micro'},T('Event deadline: {deadline} · Late-response permission: {late} · {zone}',{deadline:adminTime(store.settings?.rsvp_deadline),late:adminTime(h.late_submission_until),zone})));
+   const d=disclosure(T("interface.messages.rsvp_management"),'feature-section');const zone=store.settings?.timezone||'Atlantic/Faroe';
+   d.append(R.dom('p',{class:'small'},`${h.rsvp_state==='locked'?T("interface.messages.locked_after_submission"):T("interface.messages.open_for_responses")}${h.rsvp_submitted_at?T("interface.messages.last_submission_time",{time:adminTime(h.rsvp_submitted_at)}):''}`));
+   d.append(R.dom('p',{class:'micro'},T("interface.messages.event_deadline_deadline_late_response_permission_late_zone",{deadline:adminTime(store.settings?.rsvp_deadline),late:adminTime(h.late_submission_until),zone})));
    const rows=[];
    for(const g of store.guests.filter(g=>g.household_id===h.id&&!g.archived_at))for(const s of ordered(store.sessions,'name').filter(s=>s.is_active&&s.requires_rsvp)){
      const override=store.overrides.find(o=>o.guest_id===g.id&&o.session_id===s.id);const invited=override?override.is_invited:store.defaults.find(x=>x.household_id===h.id&&x.session_id===s.id)?.is_invited;if(!invited)continue;
      const current=store.responses.find(r=>r.guest_id===g.id&&r.session_id===s.id)?.rsvp_status||'pending';
-     const name=[g.first_name,g.last_name].filter(Boolean).join(' ');rows.push([name,s.name,({attending:T("Attending"),declined:T("Not attending"),pending:T("Pending")}[current]||current)]);
-     if(!h.archived_at){const editor=disclosure(T("Correct response: ")+name+' · '+s.name,'edit-only');const f=managementForm();const status=field(f,T("Corrected response"),current==='pending'?'':current,[['',T("Choose response")],['attending',T("Attending")],['declined',T("Not attending")]], 'text',true);const reason=field(f,T("Reason for RSVP correction"),'',null,'textarea',true,2000);
-       f.append(R.dom('p',{class:'micro span-2'},T("This updates the current response and records the reason. The original submission and household lock are preserved.")));
-       editor.append(saveForm(f,T("Save correction"),()=>managementRpc('admin_correct_rsvp',{p_guest_id:g.id,p_session_id:s.id,p_status:status.value,p_reason:reason.value.trim()})));d.append(editor);}
+     const name=[g.first_name,g.last_name].filter(Boolean).join(' ');rows.push([name,s.name,({attending:T("interface.messages.attending"),declined:T("interface.messages.not_attending"),pending:T("interface.messages.pending")}[current]||current)]);
+     if(!h.archived_at){const editor=disclosure(T("interface.messages.correct_response")+name+' · '+s.name,'edit-only');const f=managementForm();const status=field(f,T("interface.messages.corrected_response"),current==='pending'?'':current,[['',T("interface.messages.choose_response")],['attending',T("interface.messages.attending")],['declined',T("interface.messages.not_attending")]], 'text',true);const reason=field(f,T("interface.messages.reason_for_rsvp_correction"),'',null,'textarea',true,2000);
+       f.append(R.dom('p',{class:'micro span-2'},T("interface.messages.this_updates_the_current_response_and_records_the_reason_the_orig")));
+       editor.append(saveForm(f,T("interface.messages.save_correction"),()=>managementRpc('admin_correct_rsvp',{p_guest_id:g.id,p_session_id:s.id,p_status:status.value,p_reason:reason.value.trim()})));d.append(editor);}
    }
-   const table=makeTable([T("Guest"),T("Session"),T("Current response")],rows);table.classList.add('rsvp-current-responses');d.insertBefore(table,d.children[2]||null);
-   if(!rows.length)d.append(R.dom('p',{class:'micro'},T("No active RSVP sessions are assigned to this household.")));
+   const table=makeTable([T("interface.messages.guest"),T("interface.messages.session"),T("interface.messages.current_response")],rows);table.classList.add('rsvp-current-responses');d.insertBefore(table,d.children[2]||null);
+   if(!rows.length)d.append(R.dom('p',{class:'micro'},T("interface.messages.no_active_rsvp_sessions_are_assigned_to_this_household")));
    if(!h.archived_at){
-     if(h.rsvp_state==='locked'){const f=managementForm();const reason=field(f,T("Reason for reopening"),'',null,'textarea',true,2000);f.append(R.dom('p',{class:'micro span-2'},T("Reopening lets the household submit again. Previous submissions remain in history. If the event deadline has passed, grant a late-response window after reopening.")));d.append(saveForm(f,T("Reopen RSVP"),async()=>{if(!confirm(T("Reopen this household’s RSVP while preserving its submission history?")))return false;return managementRpc('admin_reopen_household_rsvp',{p_household_id:h.id,p_reason:reason.value.trim()});}));}
-     else{const late=disclosure(T("Allow a late response"),'edit-only');const f=managementForm();const until=field(f,T("Allow responses until (")+zone+')',R.zonedInput(h.late_submission_until,zone),null,'datetime-local',true);const reason=field(f,T("Reason for late response"),'',null,'textarea',true,2000);late.append(saveForm(f,T("Allow late response"),()=>managementRpc('admin_authorize_late_rsvp',{p_household_id:h.id,p_until:R.zonedInstant(until.value,zone),p_reason:reason.value.trim()})));d.append(late);}
+     if(h.rsvp_state==='locked'){const f=managementForm();const reason=field(f,T("interface.messages.reason_for_reopening"),'',null,'textarea',true,2000);f.append(R.dom('p',{class:'micro span-2'},T("interface.messages.reopening_lets_the_household_submit_again_previous_submissions_re")));d.append(saveForm(f,T("interface.messages.reopen_rsvp"),async()=>{if(!confirm(T("interface.messages.reopen_this_household_s_rsvp_while_preserving_its_submission_hist")))return false;return managementRpc('admin_reopen_household_rsvp',{p_household_id:h.id,p_reason:reason.value.trim()});}));}
+     else{const late=disclosure(T("interface.messages.allow_a_late_response"),'edit-only');const f=managementForm();const until=field(f,T("interface.messages.allow_responses_until")+zone+')',R.zonedInput(h.late_submission_until,zone),null,'datetime-local',true);const reason=field(f,T("interface.messages.reason_for_late_response"),'',null,'textarea',true,2000);late.append(saveForm(f,T("interface.messages.allow_late_response"),()=>managementRpc('admin_authorize_late_rsvp',{p_household_id:h.id,p_until:R.zonedInstant(until.value,zone),p_reason:reason.value.trim()})));d.append(late);}
    }
    return d;
  }
  function deliveryEditor(h,q={}){
-   const f=managementForm();const channel=field(f,T("Delivery channel"),q.channel||h.preferred_contact_method||'manual',[['manual',T("Manual / in person")],['email',T("Email")],['whatsapp','WhatsApp'],['sms','SMS'],['postal',T("Postal")]]);
-   const contact=field(f,T("Delivery recipient"),q.contact_id||'',[['',T("Household contact details")],...store.contacts.filter(c=>c.household_id===h.id&&!c.archived_at).map(c=>[c.id,(c.contact_name||c.contact_type)+' · '+c.contact_value])]);
-   const recipient=R.dom('p',{class:'micro span-2'});function showRecipient(){const c=store.contacts.find(c=>c.id===contact.value);const value=c?.contact_value||({email:h.email,sms:h.phone,whatsapp:h.whatsapp,postal:h.postal_address,manual:h.household_name}[channel.value]);recipient.textContent=T("Recipient: ")+(value||T("Missing — add contact details before marking ready."));}showRecipient();channel.addEventListener('change',showRecipient);contact.addEventListener('change',showRecipient);f.append(recipient);
-   const subject=field(f,T("Message subject"),q.message_subject||store.settings?.event_name,null,'text',false,300);
-   const body=field(f,T("Message text"),q.message_body||R.invitationURL(h.invite_code),null,'textarea',true,10000);body.closest('label').classList.add('span-2');
-   const status=field(f,T("Delivery status"),q.status||'draft',[['draft',T("Draft")],['ready',T("Ready to send")],...(q.id?[['failed',T("Failed attempt")],['cancelled',T("Cancelled")]]:[])]);
-   const reason=field(f,T("Delivery change note"),'',null,'textarea',false,2000);status.addEventListener('change',()=>reason.required=['failed','cancelled'].includes(status.value));
-   f.append(R.dom('p',{class:'micro span-2'},T("Saving a draft or marking it ready does not send a message. Review the recipient and text, send it yourself, then record it as sent.")));
-   return saveForm(f,q.id?T("Save delivery changes"):T("Create delivery draft"),()=>managementRpc('admin_save_delivery',{p_id:q.id||null,p_household_id:h.id,p_expected_revision:q.revision??null,p_values:{channel:channel.value,contact_id:contact.value||null,message_subject:subject.value.trim(),message_body:body.value,status:status.value,reason:reason.value.trim()}}));
+   const f=managementForm();const channel=field(f,T("interface.messages.delivery_channel"),q.channel||h.preferred_contact_method||'manual',[['manual',T("interface.messages.manual_in_person")],['email',T("interface.messages.email")],['whatsapp','WhatsApp'],['sms','SMS'],['postal',T("interface.messages.postal")]]);
+   const contact=field(f,T("interface.messages.delivery_recipient"),q.contact_id||'',[['',T("interface.messages.household_contact_details")],...store.contacts.filter(c=>c.household_id===h.id&&!c.archived_at).map(c=>[c.id,(c.contact_name||c.contact_type)+' · '+c.contact_value])]);
+   const recipient=R.dom('p',{class:'micro span-2'});function showRecipient(){const c=store.contacts.find(c=>c.id===contact.value);const value=c?.contact_value||({email:h.email,sms:h.phone,whatsapp:h.whatsapp,postal:h.postal_address,manual:h.household_name}[channel.value]);recipient.textContent=T("interface.messages.recipient")+(value||T("interface.messages.missing_add_contact_details_before_marking_ready"));}showRecipient();channel.addEventListener('change',showRecipient);contact.addEventListener('change',showRecipient);f.append(recipient);
+   const subject=field(f,T("interface.messages.message_subject"),q.message_subject||store.settings?.event_name,null,'text',false,300);
+   const body=field(f,T("interface.messages.message_text"),q.message_body||R.invitationURL(h.invite_code),null,'textarea',true,10000);body.closest('label').classList.add('span-2');
+   const status=field(f,T("interface.messages.delivery_status"),q.status||'draft',[['draft',T("interface.messages.draft")],['ready',T("interface.messages.ready_to_send")],...(q.id?[['failed',T("interface.messages.failed_attempt")],['cancelled',T("interface.messages.cancelled")]]:[])]);
+   const reason=field(f,T("interface.messages.delivery_change_note"),'',null,'textarea',false,2000);status.addEventListener('change',()=>reason.required=['failed','cancelled'].includes(status.value));
+   f.append(R.dom('p',{class:'micro span-2'},T("interface.messages.saving_a_draft_or_marking_it_ready_does_not_send_a_message_review")));
+   return saveForm(f,q.id?T("interface.messages.save_delivery_changes"):T("interface.messages.create_delivery_draft"),()=>managementRpc('admin_save_delivery',{p_id:q.id||null,p_household_id:h.id,p_expected_revision:q.revision??null,p_values:{channel:channel.value,contact_id:contact.value||null,message_subject:subject.value.trim(),message_body:body.value,status:status.value,reason:reason.value.trim()}}));
  }
  function deliveryRecord(h,q,editable=true){
-   const d=disclosure(({email:T('Email'),sms:'SMS',whatsapp:'WhatsApp',postal:T('Postal'),manual:T('Manual')}[q.channel]||q.channel)+' · '+({draft:T('Draft'),ready:T('Ready'),sent:T('Recorded sent'),failed:T('Failed'),cancelled:T('Cancelled')}[q.status]||q.status)+' · '+adminTime(q.updated_at));d.dataset.deliveryId=q.id;
-   const recipient=q.recipient_snapshot||{};d.append(R.dom('p',{class:'small'},T("To: ")+[recipient.contact_name,recipient.contact_value].filter(Boolean).join(' · ')),R.dom('p',{class:'micro'},q.message_subject||''),R.dom('pre',{class:'delivery-message'},q.message_body));
-   const copy=R.dom('button',{type:'button',class:'small-tool'},T("Copy message"));copy.addEventListener('click',async()=>{try{await navigator.clipboard.writeText(q.message_body);show(T("Message copied."),'success');}catch(error){show(R.safeError(error),'error');}});d.append(copy);
+   const d=disclosure(({email:T("interface.messages.email"),sms:'SMS',whatsapp:'WhatsApp',postal:T("interface.messages.postal"),manual:T("interface.messages.manual")}[q.channel]||q.channel)+' · '+({draft:T("interface.messages.draft"),ready:T("interface.messages.ready"),sent:T("interface.messages.recorded_sent"),failed:T("interface.messages.failed"),cancelled:T("interface.messages.cancelled")}[q.status]||q.status)+' · '+adminTime(q.updated_at));d.dataset.deliveryId=q.id;
+   const recipient=q.recipient_snapshot||{};d.append(R.dom('p',{class:'small'},T("interface.messages.to")+[recipient.contact_name,recipient.contact_value].filter(Boolean).join(' · ')),R.dom('p',{class:'micro'},q.message_subject||''),R.dom('pre',{class:'delivery-message'},q.message_body));
+   const copy=R.dom('button',{type:'button',class:'small-tool'},T("interface.messages.copy_message"));copy.addEventListener('click',async()=>{try{await navigator.clipboard.writeText(q.message_body);show(T("interface.messages.message_copied"),'success');}catch(error){show(R.safeError(error),'error');}});d.append(copy);
    if(q.status==='ready'&&!h.archived_at&&q.invitation_code_snapshot===h.invite_code){
      try{const href=window.RSVP_DEVICE_DELIVERY.compose(q);if(href){
        const link=R.dom('a',{class:'small-tool'},T(({email:'Open email',sms:'Open Messages',whatsapp:'Open WhatsApp'})[q.channel]));link.href=href;link.rel='noopener noreferrer';
        if(q.channel==='whatsapp')link.target='_blank';d.append(link);
        d.append(R.dom('p',{class:'micro'},T(q.channel==='sms'?'Copy the message, open Messages, then paste and send.':'Review the message in your device app and tap Send.')));
-       d.append(R.dom('p',{class:'micro'},T('Opening an app does not mark this message as sent. Return here to confirm sending. Delivery and read receipts remain in your messaging app.')));
+       d.append(R.dom('p',{class:'micro'},T("interface.messages.opening_an_app_does_not_mark_this_message_as_sent_return_here_to_")));
      }}catch(error){d.append(R.dom('p',{class:'notice'},T(error.message)));}
-   }else if(q.status==='ready')d.append(R.dom('p',{class:'notice'},T('Refresh and save this delivery again before sending.')));
+   }else if(q.status==='ready')d.append(R.dom('p',{class:'notice'},T("interface.messages.refresh_and_save_this_delivery_again_before_sending")));
    if(editable&&q.status==='sent'&&!h.archived_at){
-     const followup=disclosure(T('Prepare reminder'),'edit-only');
-     followup.append(R.dom('p',{class:'micro'},T('Creates a separate draft using current contact details. Review the recipient and text before sending.')));
+     const followup=disclosure(T("interface.messages.prepare_reminder"),'edit-only');
+     followup.append(R.dom('p',{class:'micro'},T("interface.messages.creates_a_separate_draft_using_current_contact_details_review_the")));
      const code=h.language||store.settings?.default_language||'en';
-     const message=window.RSVP_I18N?.t('A friendly reminder to reply to our invitation:',{},code)||'A friendly reminder to reply to our invitation:';
+     const message=window.RSVP_I18N?.t("interface.messages.a_friendly_reminder_to_reply_to_our_invitation",{},code)||'A friendly reminder to reply to our invitation:';
      followup.append(deliveryEditor(h,{channel:q.channel,contact_id:q.contact_id,message_subject:q.message_subject,message_body:message+'\n'+R.invitationURL(h.invite_code)}));d.append(followup);
    }
-   const sent=store.deliveries.find(x=>x.queue_id===q.id);if(sent)d.append(R.dom('p',{class:'notice success'},T("Manually recorded as sent · ")+adminTime(sent.confirmed_at)+' · '+actorName(sent.confirmed_by)+(sent.delivery_note?' · '+sent.delivery_note:'')));
+   const sent=store.deliveries.find(x=>x.queue_id===q.id);if(sent)d.append(R.dom('p',{class:'notice success'},T("interface.messages.manually_recorded_as_sent")+adminTime(sent.confirmed_at)+' · '+actorName(sent.confirmed_by)+(sent.delivery_note?' · '+sent.delivery_note:'')));
    if(editable&&!['sent','cancelled'].includes(q.status)){
-     const edit=disclosure(T("Edit delivery"),'edit-only');edit.append(deliveryEditor(h,q));d.append(edit);
-     if(q.status==='ready'){const f=managementForm();const note=field(f,T("Sent note"),'',null,'textarea',false,2000);const ack=field(f,T("I sent this message to the displayed recipient"),false,null,'checkbox',true);d.append(saveForm(f,T("Record as sent"),async()=>{if(!ack.checked)return false;return managementRpc('admin_record_delivery_sent',{p_queue_id:q.id,p_expected_revision:q.revision,p_note:note.value.trim()});}));}
+     const edit=disclosure(T("interface.messages.edit_delivery"),'edit-only');edit.append(deliveryEditor(h,q));d.append(edit);
+     if(q.status==='ready'){const f=managementForm();const note=field(f,T("interface.messages.sent_note"),'',null,'textarea',false,2000);const ack=field(f,T("interface.messages.i_sent_this_message_to_the_displayed_recipient"),false,null,'checkbox',true);d.append(saveForm(f,T("interface.messages.record_as_sent"),async()=>{if(!ack.checked)return false;return managementRpc('admin_record_delivery_sent',{p_queue_id:q.id,p_expected_revision:q.revision,p_note:note.value.trim()});}));}
    }
    return d;
  }
  function deliverySection(h){
-   const d=disclosure(T("Invitation delivery"),'feature-section');const records=store.queue.filter(q=>q.household_id===h.id).sort((a,b)=>b.created_at.localeCompare(a.created_at));
-   d.append(R.dom('p',{class:'micro'},records.length?T('{sent} recorded sent · {pending} pending',{sent:records.filter(q=>q.status==='sent').length,pending:records.filter(q=>['draft','ready','failed'].includes(q.status)).length}):T("No delivery recorded yet.")));
-   const create=disclosure(T("Prepare delivery"),'edit-only');create.append(deliveryEditor(h));d.append(create);records.forEach(q=>d.append(deliveryRecord(h,q)));return d;
+   const d=disclosure(T("interface.messages.invitation_delivery"),'feature-section');const records=store.queue.filter(q=>q.household_id===h.id).sort((a,b)=>b.created_at.localeCompare(a.created_at));
+   d.append(R.dom('p',{class:'micro'},records.length?T("interface.messages.sent_recorded_sent_pending_pending",{sent:records.filter(q=>q.status==='sent').length,pending:records.filter(q=>['draft','ready','failed'].includes(q.status)).length}):T("interface.messages.no_delivery_recorded_yet")));
+   const create=disclosure(T("interface.messages.prepare_delivery"),'edit-only');create.append(deliveryEditor(h));d.append(create);records.forEach(q=>d.append(deliveryRecord(h,q)));return d;
  }
  function renderDeliveryLog(){
    const box=$('deliveryLog');box.replaceChildren();const filter=$('deliveryStatusFilter').value;
    const records=store.queue.filter(q=>!filter||q.status===filter).sort((a,b)=>b.created_at.localeCompare(a.created_at));
-   $('deliveryCounts').textContent=T('{ready} ready · {sent} recorded sent · {failed} failed',{ready:store.queue.filter(q=>q.status==='ready').length,sent:store.queue.filter(q=>q.status==='sent').length,failed:store.queue.filter(q=>q.status==='failed').length});
-   for(const q of records){const h=store.households.find(h=>h.id===q.household_id);if(!h)continue;const wrapper=disclosure(h.household_name+(h.archived_at?T(" · Archived"):''));wrapper.append(deliveryRecord(h,q,false));box.append(wrapper);}if(!records.length)box.append(R.dom('p',{class:'micro'},T("No deliveries match this status.")));
+   $('deliveryCounts').textContent=T("interface.messages.ready_ready_sent_recorded_sent_failed_failed",{ready:store.queue.filter(q=>q.status==='ready').length,sent:store.queue.filter(q=>q.status==='sent').length,failed:store.queue.filter(q=>q.status==='failed').length});
+   for(const q of records){const h=store.households.find(h=>h.id===q.household_id);if(!h)continue;const wrapper=disclosure(h.household_name+(h.archived_at?T("interface.messages.archived_2"):''));wrapper.append(deliveryRecord(h,q,false));box.append(wrapper);}if(!records.length)box.append(R.dom('p',{class:'micro'},T("interface.messages.no_deliveries_match_this_status")));
  }
 
  function householdSummary(h,guests){
    const active=guests.filter(g=>!g.archived_at).length;
    const descendants=store.households.filter(x=>!x.archived_at&&isDescendantOf(x.id,h.id));
    const nestedGuests=store.guests.filter(g=>!g.archived_at&&descendants.some(x=>x.id===g.household_id)).length;
-   return [active?T(active===1?'{count} guest':'{count} guests',{count:active}):null,descendants.length||!active?T(descendants.length===1?'{count} sub-household':'{count} sub-households',{count:descendants.length})+' · '+T(nestedGuests===1?'{count} guest in sub-households':'{count} guests in sub-households',{count:nestedGuests}):null,h.language?.toUpperCase(),h.archived_at?T("Archived"):active?null:T("Grouping household")].filter(Boolean).join(' · ');
+   return [active?T(active===1?'{count} guest':'{count} guests',{count:active}):null,descendants.length||!active?T(descendants.length===1?'{count} sub-household':'{count} sub-households',{count:descendants.length})+' · '+T(nestedGuests===1?'{count} guest in sub-households':'{count} guests in sub-households',{count:nestedGuests}):null,h.language?.toUpperCase(),h.archived_at?T("interface.messages.archived"):active?null:T("interface.messages.grouping_household")].filter(Boolean).join(' · ');
  }
  function renderInvites(){
    const box=$('inviteRows');box.replaceChildren();const search=$('inviteSearch').value.trim().toLowerCase();
@@ -470,7 +471,7 @@
      const h=all.find(h=>h.id===inviteDetail.id);
      if(h){
        const panel=R.dom('section',{class:'invite-detail-panel'});
-       const back=R.dom('button',{type:'button',class:'small-tool'},T('Back to households'));
+       const back=R.dom('button',{type:'button',class:'small-tool'},T("interface.messages.back_to_households"));
        back.addEventListener('click',()=>{const id=inviteDetail.id;inviteDetail=null;renderInvites();box.querySelector('[data-invite-household="'+id+'"] button')?.focus();});
        panel.append(back,R.dom('h3',{},h.household_name));
        const tabs=R.dom('div',{class:'invite-detail-tabs'});
@@ -495,12 +496,12 @@
        const button=R.dom('button',{type:'button',class:'small-tool',title:T(label)},caption);button.setAttribute('aria-label',T(label)+' · '+h.household_name);
        button.addEventListener('click',()=>{inviteDetail={id:h.id,section:key};renderInvites();box.querySelector('h3')?.focus();});actions.append(button);
      }
-     const copy=R.dom('button',{type:'button',class:'small-tool'},T('Copy invitation link'));copy.setAttribute('aria-label',T('Copy invitation link')+' · '+h.household_name);
-     copy.addEventListener('click',async()=>{try{await navigator.clipboard.writeText(R.invitationURL(h.invite_code));show(T('Invitation link copied.'),'success');}catch(error){show(R.safeError(error),'error');}});actions.append(copy);
+     const copy=R.dom('button',{type:'button',class:'small-tool'},T("interface.messages.copy_invitation_link"));copy.setAttribute('aria-label',T("interface.messages.copy_invitation_link")+' · '+h.household_name);
+     copy.addEventListener('click',async()=>{try{await navigator.clipboard.writeText(R.invitationURL(h.invite_code));show(T("interface.messages.invitation_link_copied"),'success');}catch(error){show(R.safeError(error),'error');}});actions.append(copy);
      }row.append(actions);container.append(row);
    }
    renderInvitationHierarchy(list,tree,visible,drawRow,'invites',!!search);
-   box.append(list);if(!list.children.length)box.append(R.dom('p',{class:'muted'},T('No matching invitations. Empty and archived households have no active invitation.')));
+   box.append(list);if(!list.children.length)box.append(R.dom('p',{class:'muted'},T("interface.messages.no_matching_invitations_empty_and_archived_households_have_no_act")));
  }
 
  function renderInvitationHierarchy(list,tree,visible,drawRow,scope,forceOpen=false){
@@ -542,7 +543,7 @@
      sideBox.dataset.treeKey='side:'+side;
      setDisclosure(sideBox,sideBox.dataset.treeKey,true,!!search);
      const heading=R.dom('summary',{class:'tree-side'});
-     heading.append(R.dom('span',{},label),R.dom('small',{class:'tree-count'},T('{count} households',{count:sideMembers.length})));
+     heading.append(R.dom('span',{},label),R.dom('small',{class:'tree-count'},T("interface.messages.count_households",{count:sideMembers.length})));
      sideBox.append(heading);
      const sideBody=R.dom('div',{class:'tree-children'});
      const groups=[...new Set(sideMembers.map(h=>h.relation_group_id||''))];
@@ -559,7 +560,7 @@
        setDisclosure(groupBox,groupBox.dataset.treeKey,true,!!search);
        const groupTitle=R.dom('summary',{class:'tree-group'});
        groupTitle.append(R.dom('span',{},householdGroupName(members[0])),
-         R.dom('small',{class:'tree-count'},T('{count} households',{count:members.length})));
+         R.dom('small',{class:'tree-count'},T("interface.messages.count_households",{count:members.length})));
        groupBox.append(groupTitle);
        const groupBody=R.dom('div',{class:'tree-children'});
        const visited=new Set();
@@ -575,31 +576,31 @@
          const card=R.dom('summary',{class:'household-node'});
          const primary=R.dom('div',{class:'household-node-main'});
          const info=R.dom('div',{class:'household-node-name'});
-         info.append(R.dom('strong',{},h.household_name||T("Unnamed household")));
+         info.append(R.dom('strong',{},h.household_name||T("interface.messages.unnamed_household")));
          const guests=store.guests.filter(g=>g.household_id===h.id);
          info.append(R.dom('small',{class:'muted'},householdSummary(h,guests)));
          primary.append(info);
          const actions=R.dom('div',{class:'household-actions'});
-         const editor=disclosure(T("Household details"));editor.classList.add('household-inline-editor');
+         const editor=disclosure(T("interface.messages.household_details"));editor.classList.add('household-inline-editor');
          const summary=R.dom('dl',{class:'household-profile-summary view-only'});
-         for(const [label,value] of [[T("Language"),h.language],[T("Email"),h.email],[T("Phone"),h.phone],['WhatsApp',h.whatsapp],[T("Postal address"),h.postal_address],[T("Preferred contact"),h.preferred_contact_method],[T("Allow food"),h.food?T("Enabled"):T("Disabled")],[T("Notes"),h.notes]]){summary.append(R.dom('dt',{},label),R.dom('dd',{},value||'—'));}editor.append(summary);
-         actions.append(iconAction('edit',T("Edit household: ")+(h.household_name||'household'),()=>{
+         for(const [label,value] of [[T("interface.messages.language"),h.language],[T("interface.messages.email"),h.email],[T("interface.messages.phone"),h.phone],['WhatsApp',h.whatsapp],[T("interface.messages.postal_address"),h.postal_address],[T("interface.messages.preferred_contact"),h.preferred_contact_method],[T("food.messages.allow_food"),h.food?T("interface.messages.enabled"):T("interface.messages.disabled")],[T("interface.messages.notes"),h.notes]]){summary.append(R.dom('dt',{},label),R.dom('dd',{},value||'—'));}editor.append(summary);
+         actions.append(iconAction('edit',T("interface.messages.edit_household")+(h.household_name||'household'),()=>{
            node.open=true;editor.open=!editor.open;if(editor.open)editor.querySelector('input')?.focus();
          },!!h.archived_at,'edit-only'));
          actions.append(archiveButton('households',h));
          const siblings=ordered(members.filter(m=>m.parent_id===h.parent_id),'household_name');
          const pos=siblings.findIndex(m=>m.id===h.id);
-         editor.append(btn('↑',T("Move household up"),()=>rpcAction('admin_move_household',{p_household_id:h.id,p_direction:-1},T("Household order saved.")),pos<=0));
-         editor.append(btn('↓',T("Move household down"),()=>rpcAction('admin_move_household',{p_household_id:h.id,p_direction:1},T("Household order saved.")),pos>=siblings.length-1));
+         editor.append(btn('↑',T("interface.messages.move_household_up"),()=>rpcAction('admin_move_household',{p_household_id:h.id,p_direction:-1},T("interface.messages.household_order_saved")),pos<=0));
+         editor.append(btn('↓',T("interface.messages.move_household_down"),()=>rpcAction('admin_move_household',{p_household_id:h.id,p_direction:1},T("interface.messages.household_order_saved")),pos>=siblings.length-1));
          editor.append(householdForm(h));
          primary.append(actions);card.append(primary);
          const expanded=R.dom('div',{class:'household-expanded'});
          expanded.append(editor,buildGuestList(guests));
-         if(!h.archived_at){const add=disclosure(T("Add guest"),'edit-only');const form=buildGuestEditor({household_id:h.id});form.classList.remove('hidden');add.append(form);expanded.append(add);}
+         if(!h.archived_at){const add=disclosure(T("interface.messages.add_guest"),'edit-only');const form=buildGuestEditor({household_id:h.id});form.classList.remove('hidden');add.append(form);expanded.append(add);}
          expanded.append(contactSection(h));
          if(nested){
            const childList=R.dom('div',{class:'tree-children'});
-           childList.append(R.dom('div',{class:'guest-list-heading'},T("Child households")));
+           childList.append(R.dom('div',{class:'guest-list-heading'},T("interface.messages.child_households")));
            children.forEach(child=>draw(child,childList,depth+1));
            expanded.append(childList);
          }
@@ -612,11 +613,11 @@
      }
      sideBox.append(sideBody);box.append(sideBox);
    }
-   if(!box.children.length)box.append(R.dom('p',{class:'muted'},T("No matching households.")));
+   if(!box.children.length)box.append(R.dom('p',{class:'muted'},T("interface.messages.no_matching_households")));
  }
   function claimedQuantity(item){return store.claims.filter(c=>c.food_item_id===item.id).reduce((n,c)=>n+c.quantity,0);}
  function foodCategoriesSorted(){return ordered(store.foodCategories,'name');}
- function foodItemName(item){return item.name_en||item.name_fo||item.name_de||T("Unnamed item");}
+ function foodItemName(item){return item.name_en||item.name_fo||item.name_de||T("interface.messages.unnamed_item");}
  function foodMenuCategories(){
    const categories=foodCategoriesSorted(),known=new Set(categories.map(c=>c.name));
    const unregistered=[...new Set(store.food.map(f=>f.category||'').filter(c=>!known.has(c)))].sort();
@@ -628,7 +629,7 @@
  }
  function foodCategoryOptions(select,current){
    foodCategoriesSorted().forEach(category=>select.append(R.dom('option',{value:category.name},category.name)));
-   if(current&&!store.foodCategories.some(c=>c.name===current))select.append(R.dom('option',{value:current},current+T(" (unregistered)")));
+   if(current&&!store.foodCategories.some(c=>c.name===current))select.append(R.dom('option',{value:current},current+T("interface.messages.unregistered")));
    select.value=current||'';
  }
  function foodTypeOptions(current){
@@ -643,7 +644,7 @@
  }
  function fillNewFoodTypes(selected=''){
    const select=$('newFoodType');
-   select.replaceChildren(R.dom('option',{value:''},T('Default type ({type})',{type:foodTypeLabel('Piece(s)')})));
+   select.replaceChildren(R.dom('option',{value:''},T("interface.messages.default_type_type",{type:foodTypeLabel('Piece(s)')})));
    for(const [value,label] of foodTypeOptions())select.append(R.dom('option',{value},label));
    select.value=selected;
  }
@@ -652,7 +653,7 @@
    const venues=ordered(store.locations,'name').filter(venue=>!venue.archived_at);
    if(!venues.length||(venues.length<2&&current===null))return ()=>current;
    const group=R.dom('fieldset',{class:'food-venue-options'});
-   group.append(R.dom('legend',{},T('Venues')));
+   group.append(R.dom('legend',{},T("interface.messages.venues")));
    const checks=venues.map(venue=>{
      const check=R.dom('input',{type:'checkbox',value:venue.id});
      check.checked=current===null||current.includes(venue.id);
@@ -676,7 +677,7 @@
  }
  let newFoodVenues=()=>null;
  function foodClaimName(claim){
-   return store.households.find(h=>h.id===claim.household_id)?.household_name||T('Household');
+   return store.households.find(h=>h.id===claim.household_id)?.household_name||T("interface.messages.household_2");
  }
  function foodSelections(item,claims,claimed){
    const section=R.dom('div',{class:'food-selections edit-only'});
@@ -698,29 +699,29 @@
        if(item.active&&canEdit.has(claim.household_id)){
          const form=R.dom('form',{class:'food-selection-form hidden'});
          const quantity=quantityField(form,claim.quantity,foodVenueEligible(eligible.find(h=>h.id===claim.household_id),item)?available+claim.quantity:claim.quantity);
-         amount.append(saveForm(form,T('Save'),()=>managementRpc('admin_set_food_selection',
+         amount.append(saveForm(form,T("interface.messages.save"),()=>managementRpc('admin_set_food_selection',
            selectionArgs(claim.household_id,Number(quantity.value),claim.quantity))));
-         actions.append(iconAction('edit',T('Edit quantity for {household}',{household:name}),()=>{
+         actions.append(iconAction('edit',T("interface.messages.edit_quantity_for_household",{household:name}),()=>{
            form.classList.toggle('hidden');
            if(!form.classList.contains('hidden'))quantity.focus();
          }));
-         actions.append(iconAction('delete',T('Remove selection for {household}',{household:name}),async()=>{
-           if(!confirm(T('Remove the food selection for {household}?',{household:name})))return;
-           await rpcAction('admin_set_food_selection',selectionArgs(claim.household_id,0,claim.quantity),T('Changes saved.'));
+         actions.append(iconAction('delete',T("interface.messages.remove_selection_for_household",{household:name}),async()=>{
+           if(!confirm(T("food.messages.remove_the_food_selection_for_household",{household:name})))return;
+           await rpcAction('admin_set_food_selection',selectionArgs(claim.household_id,0,claim.quantity),T("interface.messages.changes_saved"));
          }));
        }
        return [name,amount,actions];
      });
-     section.append(makeTable([T('Household'),T('Quantity'),''],rows));
+     section.append(makeTable([T("interface.messages.household_2"),T('Quantity'),''],rows));
    }
    const selected=new Set(claims.map(c=>c.household_id));
    const options=eligible.filter(h=>!h.food_confirmed&&!selected.has(h.id)&&foodVenueEligible(h,item)).map(h=>[h.id,h.household_name]);
    if(item.active&&available>0&&options.length){
-     const editor=disclosure(T('+ Add household'),'food-selection-editor');
+     const editor=disclosure(T("interface.messages.add_household_2"),'food-selection-editor');
      const form=R.dom('form',{class:'food-selection-form'});
-     const choice=field(form,T('Household'),'', [['',T('Choose…')],...options],'text',true);
+     const choice=field(form,T("interface.messages.household_2"),'', [['',T('Choose…')],...options],'text',true);
      const quantity=quantityField(form,1,available);
-     editor.append(saveForm(form,T('Save'),()=>managementRpc('admin_set_food_selection',
+     editor.append(saveForm(form,T("interface.messages.save"),()=>managementRpc('admin_set_food_selection',
        selectionArgs(choice.value,Number(quantity.value),0))));
      section.append(editor);
    }
@@ -728,25 +729,25 @@
  }
  function buildFoodEditor(item){
    const form=R.dom('form',{class:'food-edit-form hidden'});
-   const fields=[[T("Name"),'name_en'],[T("User Comment"),'description_en'],[T("Admin Comment"),'admin_comment']];
+   const fields=[[T("interface.messages.name"),'name_en'],[T("interface.messages.user_comment"),'description_en'],[T("interface.messages.admin_comment"),'admin_comment']];
    for(const [labelText,key] of fields){const label=R.dom('label');label.append(R.dom('span',{},labelText));const input=R.dom(key==='name_en'?'input':'textarea',{name:key});input.value=key==='name_en'?foodItemName(item):key==='description_en'?(item.description_en??item.description_fo??item.description_de??''):item[key]||'';input.maxLength=key==='name_en'?300:4000;input.required=key==='name_en';label.append(input);form.append(label);}
    const originalComment=form.elements.namedItem('description_en').value;
-   const quantityLabel=R.dom('label');quantityLabel.append(R.dom('span',{},T("Quantity needed")));const quantity=R.dom('input',{type:'number',min:'0',name:'quantity_needed'});quantity.value=String(item.quantity_needed);quantity.required=true;quantityLabel.append(quantity);form.insertBefore(quantityLabel,form.children[1]);
+   const quantityLabel=R.dom('label');quantityLabel.append(R.dom('span',{},T("interface.messages.quantity_needed")));const quantity=R.dom('input',{type:'number',min:'0',name:'quantity_needed'});quantity.value=String(item.quantity_needed);quantity.required=true;quantityLabel.append(quantity);form.insertBefore(quantityLabel,form.children[1]);
    const currentType=item.quantity_type||'Piece(s)';
-   const type=field(form,T('Type'),currentType,foodTypeOptions(currentType));
+   const type=field(form,T("interface.messages.type"),currentType,foodTypeOptions(currentType));
    form.insertBefore(type.parentElement,form.children[2]);
    const venueHost=R.dom('div',{class:'span-2'});
    const venueIds=foodVenueFields(venueHost,item.venue_ids??null);
    if(venueHost.childElementCount)form.append(venueHost);
-   const activeLabel=R.dom('label',{class:'checkbox-label'});const active=R.dom('input',{type:'checkbox'});active.checked=item.active;activeLabel.append(active,R.dom('span',{},T("Available for guests")));form.append(activeLabel);
+   const activeLabel=R.dom('label',{class:'checkbox-label'});const active=R.dom('input',{type:'checkbox'});active.checked=item.active;activeLabel.append(active,R.dom('span',{},T("interface.messages.available_for_guests")));form.append(activeLabel);
    const footer=R.dom('div',{class:'food-edit-buttons'});
-   const save=R.dom('button',{type:'submit',class:'btn'},T("Save food item"));
-   const cancel=R.dom('button',{type:'button',class:'btn secondary'},T("Cancel"));cancel.addEventListener('click',()=>form.classList.add('hidden'));
+   const save=R.dom('button',{type:'submit',class:'btn'},T("food.messages.save_food_item"));
+   const cancel=R.dom('button',{type:'button',class:'btn secondary'},T("interface.messages.cancel"));cancel.addEventListener('click',()=>form.classList.add('hidden'));
    footer.append(save,cancel);form.append(footer);
    form.addEventListener('submit',async ev=>{
      ev.preventDefault();const required=Number(quantity.value),claim=claimedQuantity(item);
      if(!Number.isInteger(required)||required<claim||(!active.checked&&claim>0)){
-       show(T('Quantity cannot fall below {count} claimed; claimed items cannot be hidden.',{count:claim}),'error');return;
+       show(T("interface.messages.quantity_cannot_fall_below_count_claimed_claimed_items_cannot_be_",{count:claim}),'error');return;
      }
      const record={quantity_needed:required,active:active.checked,quantity_type:type.value,venue_ids:venueIds()};
      for(const [,key] of fields){
@@ -754,24 +755,24 @@
        if(key==='description_en'&&value===originalComment)continue;
        record[key]=value.trim()||(key==='description_en'?'':null);
      }
-     if(!record.name_en){show(T("Name is required."),'error');return;}if(!item.name_fo)record.name_fo=record.name_en;
+     if(!record.name_en){show(T("interface.messages.name_is_required"),'error');return;}if(!item.name_fo)record.name_fo=record.name_en;
      save.disabled=true;form.setAttribute('aria-busy','true');
-     try{const {error}=await db.from('food_items').update(record).eq('id',item.id);if(error)throw error;await reload();show(T("Food item updated."),'success');}
+     try{const {error}=await db.from('food_items').update(record).eq('id',item.id);if(error)throw error;await reload();show(T("food.messages.food_item_updated"),'success');}
      catch(error){show(R.safeError(error),'error');}finally{save.disabled=false;form.removeAttribute('aria-busy');}
    });
    return form;
  }
  function openFoodRecipe(item){
    const dialog=R.dom('dialog',{class:'food-recipe-dialog'});
-   dialog.setAttribute('aria-label',T('Recipe'));
-   const heading=R.dom('h2',{},T('Recipe')+' · '+foodItemName(item));
+   dialog.setAttribute('aria-label',T("food.messages.recipe"));
+   const heading=R.dom('h2',{},T("food.messages.recipe")+' · '+foodItemName(item));
    const form=R.dom('form',{class:'form-grid'});
-   const recipe=field(form,T('Recipe'),item.recipe_text,null,'textarea',false,12000);
+   const recipe=field(form,T("food.messages.recipe"),item.recipe_text,null,'textarea',false,12000);
    recipe.rows=10;
-   const cancel=R.dom('button',{type:'button',class:'btn secondary'},T('Cancel'));
+   const cancel=R.dom('button',{type:'button',class:'btn secondary'},T("interface.messages.cancel"));
    cancel.addEventListener('click',()=>dialog.close());
    form.append(cancel);
-   dialog.append(heading,saveForm(form,T('Save'),async()=>{
+   dialog.append(heading,saveForm(form,T("interface.messages.save"),async()=>{
      const {error}=await db.from('food_items').update({recipe_text:recipe.value.trim()||null}).eq('id',item.id);
      if(error)throw error;
      dialog.close();
@@ -798,30 +799,30 @@
      section.dataset.treeKey='food:'+category.name;
      setDisclosure(section,section.dataset.treeKey,index===0,!!search);
      const heading=R.dom('summary',{class:'food-category-heading'});
-     const title=R.dom('span',{class:'food-category-title'},category.name||T("Uncategorized"));
+     const title=R.dom('span',{class:'food-category-title'},category.name||T("interface.messages.uncategorized"));
      const totals=items.reduce((sum,item)=>({
        claimed:sum.claimed+claimedQuantity(item),capacity:sum.capacity+item.quantity_needed
      }),{claimed:0,capacity:0});
-     heading.append(title,R.dom('small',{class:'tree-count'},T('{items}, {claimed}/{capacity} amounts',{items:items.length===1?T('1 item'):T('{count} items',{count:items.length}),...totals})));
+     heading.append(title,R.dom('small',{class:'tree-count'},T("interface.messages.items_claimed_capacity_amounts",{items:items.length===1?T("interface.messages.1_item"):T("interface.messages.count_items",{count:items.length}),...totals})));
      const controls=R.dom('span',{class:'food-heading-actions'});
      if(category.registered){
        const pos=categories.findIndex(c=>c.id===category.id);
-       controls.append(btn('↑',T("Move category up"),()=>rpcAction('admin_move_food_category',
-         {p_category_id:category.id,p_direction:-1},T("Category order saved.")),pos<=0));
-       controls.append(btn('↓',T("Move category down"),()=>rpcAction('admin_move_food_category',
-         {p_category_id:category.id,p_direction:1},T("Category order saved.")),pos>=categories.length-1));
-       controls.append(btn(T("Rename"),T("Rename food category"),async()=>{
-         const next=prompt(T("New category name"),category.name)?.trim();
+       controls.append(btn('↑',T("interface.messages.move_category_up"),()=>rpcAction('admin_move_food_category',
+         {p_category_id:category.id,p_direction:-1},T("interface.messages.category_order_saved")),pos<=0));
+       controls.append(btn('↓',T("interface.messages.move_category_down"),()=>rpcAction('admin_move_food_category',
+         {p_category_id:category.id,p_direction:1},T("interface.messages.category_order_saved")),pos>=categories.length-1));
+       controls.append(btn(T("interface.messages.rename"),T("food.messages.rename_food_category"),async()=>{
+         const next=prompt(T("interface.messages.new_category_name"),category.name)?.trim();
          if(!next||next===category.name)return;
          await rpcAction('admin_rename_food_category',
-           {p_category_id:category.id,p_name:next},T("Category renamed and linked food items updated."));
+           {p_category_id:category.id,p_name:next},T("food.messages.category_renamed_and_linked_food_items_updated"));
        }));
      }else{
-       controls.append(R.dom('span',{class:'tag pending'},T("Not registered")));
-       if(category.name)controls.append(btn(T("Register category"),T("Register existing category"),async()=>{
+       controls.append(R.dom('span',{class:'tag pending'},T("interface.messages.not_registered")));
+       if(category.name)controls.append(btn(T("interface.messages.register_category"),T("interface.messages.register_existing_category"),async()=>{
          const {error}=await db.from('food_categories').insert({name:category.name,sort_order:categories.length});
          if(error)throw error;
-         await reload();show(T("Category registered."),'success');
+         await reload();show(T("interface.messages.category_registered"),'success');
        }));
      }
      heading.append(controls);section.append(heading);
@@ -833,41 +834,41 @@
        const main=R.dom('summary',{class:'food-manage-main'});
        const info=R.dom('div',{class:'food-item-info'});
        info.append(R.dom('strong',{},foodItemName(f)),
-         R.dom('small',{class:'muted'},T('Amount: {claimed}/{needed} {type}, Shown: {shown}',{needed:f.quantity_needed,claimed:claim,type:foodTypeLabel(f.quantity_type||'Piece(s)'),shown:f.active&&f.quantity_needed>claim?'✓':'–'})));
+         R.dom('small',{class:'muted'},T("interface.messages.amount_claimed_needed_type_shown_shown",{needed:f.quantity_needed,claimed:claim,type:foodTypeLabel(f.quantity_type||'Piece(s)'),shown:f.active&&f.quantity_needed>claim?'✓':'–'})));
        const buttons=R.dom('div',{class:'food-item-actions'});
-       buttons.append(btn('↑',T("Move food item up"),()=>rpcAction('admin_move_food_item',
-         {p_food_item_id:f.id,p_direction:-1},T("Food order saved.")),pos<=0));
-       buttons.append(btn('↓',T("Move food item down"),()=>rpcAction('admin_move_food_item',
-         {p_food_item_id:f.id,p_direction:1},T("Food order saved.")),pos===items.length-1));
+       buttons.append(btn('↑',T("food.messages.move_food_item_up"),()=>rpcAction('admin_move_food_item',
+         {p_food_item_id:f.id,p_direction:-1},T("food.messages.food_order_saved")),pos<=0));
+       buttons.append(btn('↓',T("food.messages.move_food_item_down"),()=>rpcAction('admin_move_food_item',
+         {p_food_item_id:f.id,p_direction:1},T("food.messages.food_order_saved")),pos===items.length-1));
        const edit=buildFoodEditor(f);edit.classList.add('edit-only');
        wrapper.addEventListener('toggle',()=>{if(!wrapper.open)edit.classList.add('hidden');});
-       buttons.append(btn(T("Edit"),T("Edit food item"),()=>{edit.classList.toggle('hidden');if(!edit.classList.contains('hidden'))edit.querySelector('input')?.focus();}));
-       buttons.append(iconAction('delete',T("Archive food item (preserve existing claims)"),async()=>{
-         if(!confirm(T('Archive {item}? Existing claims are preserved; you can reactivate it using Edit.',{item:foodItemName(f)})))return;
+       buttons.append(btn(T("interface.messages.edit"),T("food.messages.edit_food_item"),()=>{edit.classList.toggle('hidden');if(!edit.classList.contains('hidden'))edit.querySelector('input')?.focus();}));
+       buttons.append(iconAction('delete',T("food.messages.archive_food_item_preserve_existing_claims"),async()=>{
+         if(!confirm(T("interface.messages.archive_item_existing_claims_are_preserved_you_can_reactivate_it_",{item:foodItemName(f)})))return;
          const {error}=await db.from('food_items').update({active:false}).eq('id',f.id);
          if(error)throw error;
-         await reload();show(T("Food item archived."),'success');
+         await reload();show(T("food.messages.food_item_archived"),'success');
        },!f.active||claim>0,'edit-only'));
        const changeLabel=R.dom('label',{class:'food-category-picker edit-only'});
-       changeLabel.append(R.dom('span',{},T("Category")));
+       changeLabel.append(R.dom('span',{},T("interface.messages.category")));
        const change=R.dom('select');foodCategoryOptions(change,f.category||'');
-       change.setAttribute('aria-label',T("Category for ")+foodItemName(f));
+       change.setAttribute('aria-label',T("interface.messages.category_for")+foodItemName(f));
        change.addEventListener('change',async()=>{
          change.disabled=true;
          try{await rpcAction('admin_set_food_category',
-           {p_food_item_id:f.id,p_category:change.value},T("Food category updated."));}
+           {p_food_item_id:f.id,p_category:change.value},T("food.messages.food_category_updated"));}
          catch(error){change.value=f.category||'';show(R.safeError(error),'error');}
          finally{change.disabled=false;R.closePopups(true);}
        });
        changeLabel.append(change);
-       const move=iconAction('move',T('Move to category'),()=>{},false,'edit-only');
+       const move=iconAction('move',T("interface.messages.move_to_category"),()=>{},false,'edit-only');
        const popup=R.iconPopup(move,changeLabel);popup.classList.add('edit-only');buttons.append(popup);
        if(f.recipe_text){
-         const pdf=R.dom('a',{class:'food-recipe-link',title:T('Print / Save as PDF')},T('Recipe'));
+         const pdf=R.dom('a',{class:'food-recipe-link',title:T("interface.messages.print_save_as_pdf")},T("food.messages.recipe"));
          pdf.href='#';
          pdf.addEventListener('click',event=>{
            event.preventDefault();event.stopPropagation();
-           if(!R.printRecipe(foodItemName(f),f.recipe_text))show(T('Allow pop-ups to save the recipe as PDF.'),'warning');
+           if(!R.printRecipe(foodItemName(f),f.recipe_text))show(T("food.messages.allow_pop_ups_to_save_the_recipe_as_pdf"),'warning');
          });
          info.insertBefore(pdf,info.lastElementChild);
        }
@@ -890,17 +891,17 @@
      }
      section.append(itemList);box.append(section);
    }
-   if(!box.children.length)box.append(R.dom('p',{class:'muted'},T("No matching food items.")));
+   if(!box.children.length)box.append(R.dom('p',{class:'muted'},T("food.messages.no_matching_food_items")));
  }
  async function sendAdminInvitation(values){
    let result=await db.auth.getSession(),session=result.data?.session;
    if(session?.expires_at&&session.expires_at*1000<Date.now()+60000){result=await db.auth.refreshSession();session=result.data?.session;}
-   if(result.error||!session?.access_token||session.access_token.startsWith('sb_'))throw new Error(T("Sign in again before sending an invitation."));
+   if(result.error||!session?.access_token||session.access_token.startsWith('sb_'))throw new Error(T("interface.messages.sign_in_again_before_sending_an_invitation"));
    const cfg=R.config();
    // Never retry an email send automatically: a timed-out request may have sent it.
    const response=await fetch(R.normalizeUrl(cfg.supabaseUrl)+'/functions/v1/admin-invitations',{method:'POST',headers:{apikey:cfg.supabaseKey,Authorization:'Bearer '+session.access_token,'Content-Type':'application/json'},body:JSON.stringify(values),signal:AbortSignal.timeout(30000)});
-   let value;try{value=await response.json();}catch{throw new Error(T("Email status is uncertain. Refresh pending invitations before retrying."));}
-   if(!response.ok)throw new Error(value.error||T("Invitation could not be sent."));return value;
+   let value;try{value=await response.json();}catch{throw new Error(T("interface.messages.email_status_is_uncertain_refresh_pending_invitations_before_retr"));}
+   if(!response.ok)throw new Error(value.error||T("interface.messages.invitation_could_not_be_sent"));return value;
  }
  async function refreshAdminInvitations(){
    const result=await R.adminRpc('admin_list_invitations');if(!result.error){store.adminInvitations=result.data||[];renderAdminInvitations();}
@@ -908,51 +909,51 @@
  function renderAdminInvitations(){
    const list=$('adminInvitationsList');list.replaceChildren();$('adminInvitationsStatus').textContent=invitationApiError;
    $('addAdminForm').querySelector('button').disabled=!!invitationApiError;
-   if(!store.adminInvitations.length){list.append(R.dom('p',{class:'small muted'},T("No pending invitations.")));return;}
+   if(!store.adminInvitations.length){list.append(R.dom('p',{class:'small muted'},T("interface.messages.no_pending_invitations")));return;}
    for(const invitation of store.adminInvitations){
      const expired=new Date(invitation.expires_at)<=new Date();
      const card=R.dom('div',{class:'admin-member admin-invitation-card'}),details=R.dom('div',{class:'admin-invitation-details'}),actions=R.dom('div',{class:'admin-invitation-actions edit-only'});
-     const state=expired?T("Expired"):({sent:T("Awaiting acceptance"),failed:T("Email failed"),sending:T("Sending / status pending")}[invitation.delivery_state]||T("Pending"));
-     details.append(R.dom('div',{class:'name'},invitation.name),R.dom('div',{class:'email'},invitation.email),R.dom('p',{class:'micro'},state+T(' · Expires {time}',{time:adminTime(invitation.expires_at)})));
+     const state=expired?T("interface.messages.expired"):({sent:T("interface.messages.awaiting_acceptance"),failed:T("interface.messages.email_failed"),sending:T("interface.messages.sending_status_pending")}[invitation.delivery_state]||T("interface.messages.pending"));
+     details.append(R.dom('div',{class:'name'},invitation.name),R.dom('div',{class:'email'},invitation.email),R.dom('p',{class:'micro'},state+T("interface.messages.expires_time",{time:adminTime(invitation.expires_at)})));
      if(invitation.last_error_code){
-       const errors={email_address_not_authorized:T("Email sending is restricted. Check the email configuration."),over_email_send_rate_limit:T("The email service sending limit was reached. Wait before resending."),over_request_rate_limit:T("The email service request limit was reached. Wait before resending."),email_status_unknown:T("Email delivery status is uncertain. Check before resending.")};
-       details.append(R.dom('p',{class:'micro',title:invitation.last_error_code},errors[invitation.last_error_code]||T("The email could not be sent. Check the email configuration before resending.")));
+       const errors={email_address_not_authorized:T("interface.messages.email_sending_is_restricted_check_the_email_configuration"),over_email_send_rate_limit:T("interface.messages.the_email_service_sending_limit_was_reached_wait_before_resending"),over_request_rate_limit:T("interface.messages.the_email_service_request_limit_was_reached_wait_before_resending"),email_status_unknown:T("interface.messages.email_delivery_status_is_uncertain_check_before_resending")};
+       details.append(R.dom('p',{class:'micro',title:invitation.last_error_code},errors[invitation.last_error_code]||T("interface.messages.the_email_could_not_be_sent_check_the_email_configuration_before_")));
      }
-     const resend=R.dom('button',{class:'btn secondary',type:'button'},T("Resend")),cancel=R.dom('button',{class:'btn secondary',type:'button'},T("Cancel"));
+     const resend=R.dom('button',{class:'btn secondary',type:'button'},T("interface.messages.resend")),cancel=R.dom('button',{class:'btn secondary',type:'button'},T("interface.messages.cancel"));
      const status=R.dom('p',{class:'small admin-invitation-status',role:'status'});
-     resend.addEventListener('click',async()=>{if(!editMode||!confirm(T("Send another administrator invitation email to ")+invitation.email+'?'))return;resend.disabled=true;cancel.disabled=true;status.textContent=T("Sending invitation…");try{await sendAdminInvitation({id:invitation.id,email:invitation.email,name:invitation.name});await refreshAdminInvitations();show(T("Administrator invitation email sent."),'success');}catch(error){status.textContent=R.safeError(error);}finally{resend.disabled=false;cancel.disabled=false;}});
-     cancel.addEventListener('click',async()=>{if(!editMode||!confirm(T("Cancel administrator invitation for ")+invitation.email+'?'))return;resend.disabled=true;cancel.disabled=true;try{await managementRpc('admin_cancel_invitation',{p_id:invitation.id});await refreshAdminInvitations();show(T("Administrator invitation cancelled."),'success');}catch(error){status.textContent=R.safeError(error);}finally{resend.disabled=false;cancel.disabled=false;}});
+     resend.addEventListener('click',async()=>{if(!editMode||!confirm(T("interface.messages.send_another_administrator_invitation_email_to")+invitation.email+'?'))return;resend.disabled=true;cancel.disabled=true;status.textContent=T("interface.messages.sending_invitation");try{await sendAdminInvitation({id:invitation.id,email:invitation.email,name:invitation.name});await refreshAdminInvitations();show(T("interface.messages.administrator_invitation_email_sent"),'success');}catch(error){status.textContent=R.safeError(error);}finally{resend.disabled=false;cancel.disabled=false;}});
+     cancel.addEventListener('click',async()=>{if(!editMode||!confirm(T("interface.messages.cancel_administrator_invitation_for")+invitation.email+'?'))return;resend.disabled=true;cancel.disabled=true;try{await managementRpc('admin_cancel_invitation',{p_id:invitation.id});await refreshAdminInvitations();show(T("interface.messages.administrator_invitation_cancelled"),'success');}catch(error){status.textContent=R.safeError(error);}finally{resend.disabled=false;cancel.disabled=false;}});
      actions.append(resend,cancel);card.append(details,actions,status);list.append(card);
    }
  }
  function renderAdmins(){
    const div=$('adminList');div.replaceChildren();$('authUsersLink').href=store.settings?`https://supabase.com/dashboard/project/${new URL(R.config().supabaseUrl).hostname.split('.')[0]}/auth/users`:'https://supabase.com/dashboard/projects';
-   if(!store.admins.length){div.append(R.dom('p',{class:'muted'},T("Administrator list unavailable. Apply migration 006 if needed.")));return;}
+   if(!store.admins.length){div.append(R.dom('p',{class:'muted'},T("interface.messages.administrator_list_unavailable_apply_migration_006_if_needed")));return;}
    store.admins.forEach(a=>{
      const wrap=R.dom('div',{class:'admin-member'}),left=R.dom('div');left.append(R.dom('div',{class:'name'},a.name),R.dom('div',{class:'email'},a.email));
      const rename=R.dom('form',{class:'admin-member-rename edit-only hidden'});
-     const name=field(rename,T('Display name'),a.name,null,'text',true,120);
-     const cancel=R.dom('button',{class:'btn secondary',type:'button'},T('Cancel'));
-     const edit=iconAction('edit',T('Edit administrator name')+' · '+a.name,()=>{
+     const name=field(rename,T("interface.messages.display_name"),a.name,null,'text',true,120);
+     const cancel=R.dom('button',{class:'btn secondary',type:'button'},T("interface.messages.cancel"));
+     const edit=iconAction('edit',T("interface.messages.edit_administrator_name")+' · '+a.name,()=>{
        rename.classList.remove('hidden');name.focus();name.select();
      },false,'edit-only');
      cancel.addEventListener('click',()=>{
        name.value=a.name;rename.classList.add('hidden');edit.focus();
      });
      rename.append(cancel);
-     left.append(saveForm(rename,T('Save'),()=>{
+     left.append(saveForm(rename,T("interface.messages.save"),()=>{
        const value=name.value.trim();
-       if(!value)throw Error(T('Name is required.'));
+       if(!value)throw Error(T("interface.messages.name_is_required"));
        if(value===a.name){cancel.click();return false;}
        return managementRpc('admin_rename_member',{p_user_id:a.user_id,p_name:value});
      }));
-     const remove=iconAction('delete',T("Revoke administrator access for ")+a.email,null,false,'edit-only danger');
+     const remove=iconAction('delete',T("interface.messages.revoke_administrator_access_for")+a.email,null,false,'edit-only danger');
      remove.disabled=store.admins.length<=1;
-     remove.title=store.admins.length<=1?T("You cannot remove the last administrator."):T("Revoke administrator access");remove.setAttribute('aria-label',remove.title);
+     remove.title=store.admins.length<=1?T("interface.messages.you_cannot_remove_the_last_administrator"):T("interface.messages.revoke_administrator_access");remove.setAttribute('aria-label',remove.title);
      remove.addEventListener('click',async()=>{
-       if(!confirm(T('Revoke administrator access for {email}?',{email:a.email})))return;
+       if(!confirm(T("interface.messages.revoke_administrator_access_for_email",{email:a.email})))return;
        remove.disabled=true;const {error}=await R.adminRpc('admin_remove_member',{p_user_id:a.user_id});
-       if(error)show(R.safeError(error),'error');else {show(T("Administrator access revoked."),'success');await reload();}
+       if(error)show(R.safeError(error),'error');else {show(T("interface.messages.administrator_access_revoked"),'success');await reload();}
        remove.disabled=false;
      });
      const actions=R.dom('div',{class:'admin-member-actions'});actions.append(edit,remove);
@@ -970,14 +971,14 @@
    language.value=I.language;
    function load(){value.value=I.wording(phrase.value,language.value);value.placeholder=I.t(phrase.value,{},language.value);$('wordingPreview').textContent=I.t(phrase.value,{},language.value);}
    phrase.addEventListener('change',load);language.addEventListener('change',load);load();
-   $('interfaceWordingForm').addEventListener('submit',async e=>{e.preventDefault();if(!editMode)return;try{await managementRpc('admin_save_translation',{p_key:'ui:'+phrase.value,p_language:language.value,p_value:value.value});I.applyWording(phrase.value,language.value,value.value);$('wordingPreview').textContent=I.t(phrase.value,{},language.value);show(T('Translation saved.'),'success');}catch(error){show(R.safeError(error),'error');}});
+   $('interfaceWordingForm').addEventListener('submit',async e=>{e.preventDefault();if(!editMode)return;try{await managementRpc('admin_save_translation',{p_key:'ui:'+phrase.value,p_language:language.value,p_value:value.value});I.applyWording(phrase.value,language.value,value.value);$('wordingPreview').textContent=I.t(phrase.value,{},language.value);show(T("interface.messages.translation_saved"),'success');}catch(error){show(R.safeError(error),'error');}});
    $('downloadWording').addEventListener('click',()=>R.dl('interface-overrides.js',I.source()));
    $('eventContentForm').addEventListener('submit',async e=>{
      e.preventDefault();if(!editMode)return;
      const button=e.target.querySelector('button');button.disabled=true;
      try{const rows=['fo','en','de'].map(lang=>({content_key:'welcome',language_code:lang,content_value:$('welcome_'+lang).value.trim()}));
-       const {error}=await db.from('event_content').upsert(rows,{onConflict:'content_key,language_code'});if(error)throw error;
-       await reload();show(T('Welcome messages saved.'),'success');
+       const {error}=await R.adminRpc('admin_save_translations',{p_changes:rows.map(row=>({key:row.content_key,language:row.language_code,value:row.content_value}))});if(error)throw error;
+       await reload();show(T("interface.messages.welcome_messages_saved"),'success');
      }catch(error){show(R.safeError(error),'error');}finally{button.disabled=false;}
    });
  }
@@ -988,29 +989,29 @@
    $('settingName').value=e.event_name||'';$('settingType').value=e.event_type||'other';$('settingDate').value=e.event_date||'';
    $('settingLanguage').value=e.default_language||'en';$('settingTimezone').value=e.timezone||'UTC';
    $('settingUrl').value=e.website_url||'';$('settingDeadline').value=stamp(e.rsvp_deadline);
-   $('publicationState').textContent=e.is_published?T("Event is published: invited guests can access RSVP. You can unpublish it below."):T("Event is unpublished: guest-facing event details and food remain hidden until you publish.");
+   $('publicationState').textContent=e.is_published?T("interface.messages.event_is_published_invited_guests_can_access_rsvp_you_can_unpubli"):T("food.messages.event_is_unpublished_guest_facing_event_details_and_food_remain_h");
    $('publicationState').classList.toggle('success',!!e.is_published);$('publicationState').classList.toggle('warning',!e.is_published);
    $('publishEventButton').disabled=!!e.is_published;
    $('unpublishEventButton').disabled=!e.is_published;
  }
  function venueForm(v){
-   const f=managementForm();const name=field(f,T("Venue name"),v.name,null,'text',true,140);
-   const country=field(f,T("Country code"),v.country_code,null,'text',false,2);country.placeholder='FO or DE';
-   const address=field(f,T("Venue address"),v.address,null,'textarea',false,1000);
-   const timezone=field(f,T("Venue timezone"),v.timezone||store.settings?.timezone||'Atlantic/Faroe',null,'text',true,100);
+   const f=managementForm();const name=field(f,T("interface.messages.venue_name"),v.name,null,'text',true,140);
+   const country=field(f,T("interface.messages.country_code"),v.country_code,null,'text',false,2);country.placeholder='FO or DE';
+   const address=field(f,T("interface.messages.venue_address"),v.address,null,'textarea',false,1000);
+   const timezone=field(f,T("interface.messages.venue_timezone"),v.timezone||store.settings?.timezone||'Atlantic/Faroe',null,'text',true,100);
    timezone.placeholder='Atlantic/Faroe or Europe/Berlin';
-   const map=field(f,T("Map link (HTTPS)"),v.map_url,null,'url',false,2000);
-   const notes=field(f,T("Guest venue notes"),v.notes,null,'textarea');
-   const welcome=Object.fromEntries(['fo','en','de'].map(lang=>[lang,field(f,T("Welcome message — ")+({fo:T("Faroese"),en:T("English"),de:T("German")}[lang]),v['welcome_'+lang],null,'textarea',false,4000)]));
-   const welcomeBox=R.dom('fieldset',{class:'span-2 venue-welcome-editor'});welcomeBox.append(R.dom('legend',{},T("Venue welcome")),
-     R.dom('p',{class:'micro'},T('Appears under the session at this venue on the guest invitation.')));
+   const map=field(f,T("interface.messages.map_link_https"),v.map_url,null,'url',false,2000);
+   const notes=field(f,T("interface.messages.guest_venue_notes"),v.notes,null,'textarea');
+   const welcome=Object.fromEntries(['fo','en','de'].map(lang=>[lang,field(f,T("interface.messages.welcome_message")+({fo:T("interface.messages.faroese"),en:T("interface.messages.english"),de:T("interface.messages.german")}[lang]),v['welcome_'+lang],null,'textarea',false,4000)]));
+   const welcomeBox=R.dom('fieldset',{class:'span-2 venue-welcome-editor'});welcomeBox.append(R.dom('legend',{},T("interface.messages.venue_welcome")),
+     R.dom('p',{class:'micro'},T("interface.messages.appears_under_the_session_at_this_venue_on_the_guest_invitation")));
    for(const control of Object.values(welcome))welcomeBox.append(control.closest('label'));f.append(welcomeBox);
-   const archived=field(f,T("Archived venue"),!!v.archived_at,null,'checkbox');
-   const form=saveForm(f,v.id?T("Save venue"):T("Create venue"),()=>managementRpc('admin_save_venue',{p_id:v.id||null,p_values:{name:name.value.trim(),country_code:country.value.trim().toUpperCase()||null,address:address.value.trim(),timezone:timezone.value.trim(),map_url:map.value.trim(),notes:notes.value.trim(),...Object.fromEntries(Object.entries(welcome).map(([lang,control])=>['welcome_'+lang,control.value.trim()])),archived:archived.checked}}));
+   const archived=field(f,T("interface.messages.archived_venue"),!!v.archived_at,null,'checkbox');
+   const form=saveForm(f,v.id?T("interface.messages.save_venue"):T("interface.messages.create_venue"),()=>managementRpc('admin_save_venue',{p_id:v.id||null,p_values:{name:name.value.trim(),country_code:country.value.trim().toUpperCase()||null,address:address.value.trim(),timezone:timezone.value.trim(),map_url:map.value.trim(),notes:notes.value.trim(),...Object.fromEntries(Object.entries(welcome).map(([lang,control])=>['welcome_'+lang,control.value.trim()])),archived:archived.checked}}));
    const footer=R.dom('div',{class:'venue-form-actions span-2'});
    footer.append(form.lastElementChild);
    if(v.id&&!v.archived_at){
-     const food=R.dom('button',{class:'small-tool',type:'button'},T('Manage food'));
+     const food=R.dom('button',{class:'small-tool',type:'button'},T("food.messages.manage_food"));
      food.addEventListener('click',()=>venueFoodDialog(v));footer.append(food);
    }
    const archiveLabel=archived.closest('label');archiveLabel.classList.add('checkbox-label');
@@ -1018,37 +1019,37 @@
    return form;
  }
  function sessionForm(s){
-   const f=managementForm();const name=field(f,T("Session name"),s.name,null,'text',true,140);
-   const key=field(f,T("Session key"),s.session_key,null,'text',true,80);key.pattern='[a-z0-9_-]+';
-   const venue=field(f,T("Session venue"),s.location_id,[['',T("No venue")],...ordered(store.locations,'name').filter(v=>!v.archived_at).map(v=>[v.id,v.name+(v.country_code?' · '+v.country_code:'')])]);
+   const f=managementForm();const name=field(f,T("interface.messages.session_name"),s.name,null,'text',true,140);
+   const key=field(f,T("interface.messages.session_key"),s.session_key,null,'text',true,80);key.pattern='[a-z0-9_-]+';
+   const venue=field(f,T("interface.messages.session_venue"),s.location_id,[['',T("interface.messages.no_venue")],...ordered(store.locations,'name').filter(v=>!v.archived_at).map(v=>[v.id,v.name+(v.country_code?' · '+v.country_code:'')])]);
    const zone=()=>store.locations.find(v=>v.id===venue.value)?.timezone||store.settings?.timezone||'UTC';
-   const starts=field(f,T("Starts (venue local time)"),R.zonedInput(s.starts_at,zone()),null,'datetime-local');
-   const ends=field(f,T("Ends (venue local time)"),R.zonedInput(s.ends_at,zone()),null,'datetime-local');
-   const hint=R.dom('p',{class:'micro span-2'});const updateHint=()=>{hint.textContent=T('Times are entered in {zone}. Changing venue keeps the typed local time; review before saving.',{zone:zone()});};updateHint();venue.addEventListener('change',updateHint);f.append(hint);
-   const rsvp=field(f,T("RSVP required"),s.requires_rsvp!==false,null,'checkbox');
-   const active=field(f,T("Active session"),s.is_active!==false,null,'checkbox');
-   return saveForm(f,s.id?T("Save session"):T("Create session"),()=>managementRpc('admin_save_session',{p_id:s.id||null,p_values:{name:name.value.trim(),session_key:key.value.trim(),location_id:venue.value||null,starts_at:R.zonedInstant(starts.value,zone()),ends_at:R.zonedInstant(ends.value,zone()),requires_rsvp:rsvp.checked,is_active:active.checked}}));
+   const starts=field(f,T("interface.messages.starts_venue_local_time"),R.zonedInput(s.starts_at,zone()),null,'datetime-local');
+   const ends=field(f,T("interface.messages.ends_venue_local_time"),R.zonedInput(s.ends_at,zone()),null,'datetime-local');
+   const hint=R.dom('p',{class:'micro span-2'});const updateHint=()=>{hint.textContent=T("interface.messages.times_are_entered_in_zone_changing_venue_keeps_the_typed_local_ti",{zone:zone()});};updateHint();venue.addEventListener('change',updateHint);f.append(hint);
+   const rsvp=field(f,T("interface.messages.rsvp_required"),s.requires_rsvp!==false,null,'checkbox');
+   const active=field(f,T("interface.messages.active_session"),s.is_active!==false,null,'checkbox');
+   return saveForm(f,s.id?T("interface.messages.save_session"):T("interface.messages.create_session"),()=>managementRpc('admin_save_session',{p_id:s.id||null,p_values:{name:name.value.trim(),session_key:key.value.trim(),location_id:venue.value||null,starts_at:R.zonedInstant(starts.value,zone()),ends_at:R.zonedInstant(ends.value,zone()),requires_rsvp:rsvp.checked,is_active:active.checked}}));
  }
  function sessionAssignmentForm(h){
-   const d=disclosure(T("Session invitations"));
-   d.append(R.dom('p',{class:'micro'},T("Household defaults apply to each guest unless an individual exception is selected. Language does not determine invitations.")));
+   const d=disclosure(T("interface.messages.session_invitations"));
+   d.append(R.dom('p',{class:'micro'},T("interface.messages.household_defaults_apply_to_each_guest_unless_an_individual_excep")));
    const f=managementForm();const fields=[];const guests=store.guests.filter(g=>g.household_id===h.id&&!g.archived_at);
    const locked=h.rsvp_state!=='open'||store.submissions.some(x=>x.household_id===h.id);
    for(const s of ordered(store.sessions,'name')){
-     const venue=store.locations.find(v=>v.id===s.location_id);const title=s.name+(venue?' · '+venue.name:'')+(s.is_active?'':T(" (inactive)"));
+     const venue=store.locations.find(v=>v.id===s.location_id);const title=s.name+(venue?' · '+venue.name:'')+(s.is_active?'':T("interface.messages.inactive_2"));
      const invited=!!store.defaults.find(x=>x.household_id===h.id&&x.session_id===s.id)?.is_invited;
-     const household=field(f,title+T(" — household"),String(invited),[['false',T("Not invited")],['true',T("Invited")]]);fields.push({session_id:s.id,guest_id:null,control:household});
+     const household=field(f,title+T("interface.messages.household"),String(invited),[['false',T("interface.messages.not_invited")],['true',T("interface.messages.invited")]]);fields.push({session_id:s.id,guest_id:null,control:household});
      for(const g of guests){
        const existing=store.overrides.find(x=>x.guest_id===g.id&&x.session_id===s.id);
-       const control=field(f,[g.first_name,g.last_name].filter(Boolean).join(' ')+' — '+s.name,existing?String(existing.is_invited):'inherit',[['inherit',T("Follow household")],['true',T("Invited")],['false',T("Not invited")]]);
+       const control=field(f,[g.first_name,g.last_name].filter(Boolean).join(' ')+' — '+s.name,existing?String(existing.is_invited):'inherit',[['inherit',T("interface.messages.follow_household")],['true',T("interface.messages.invited")],['false',T("interface.messages.not_invited")]]);
        fields.push({session_id:s.id,guest_id:g.id,control});
      }
-     const summary=R.dom('p',{class:'micro view-only'},title+': '+(invited?T("Household invited"):T("Household not invited")));d.append(summary);
-     for(const g of guests){const o=store.overrides.find(x=>x.guest_id===g.id&&x.session_id===s.id);if(o)d.append(R.dom('p',{class:'micro view-only'},g.first_name+': '+(o.is_invited?T("Invited"):T("Not invited"))));}
+     const summary=R.dom('p',{class:'micro view-only'},title+': '+(invited?T("interface.messages.household_invited"):T("interface.messages.household_not_invited")));d.append(summary);
+     for(const g of guests){const o=store.overrides.find(x=>x.guest_id===g.id&&x.session_id===s.id);if(o)d.append(R.dom('p',{class:'micro view-only'},g.first_name+': '+(o.is_invited?T("interface.messages.invited"):T("interface.messages.not_invited"))));}
    }
-   if(locked){d.append(R.dom('p',{class:'notice'},T("Invitations are protected because this household has RSVP history.")));return d;}
-   saveForm(f,T("Save session invitations"),()=>managementRpc('admin_save_session_assignments',{p_household_id:h.id,p_assignments:fields.map(x=>({session_id:x.session_id,guest_id:x.guest_id,is_invited:x.control.value==='inherit'?null:x.control.value==='true'}))}));
-   if(fields.length)d.append(f);else d.append(R.dom('p',{},T("Create sessions in Settings first.")));return d;
+   if(locked){d.append(R.dom('p',{class:'notice'},T("interface.messages.invitations_are_protected_because_this_household_has_rsvp_history")));return d;}
+   saveForm(f,T("interface.messages.save_session_invitations"),()=>managementRpc('admin_save_session_assignments',{p_household_id:h.id,p_assignments:fields.map(x=>({session_id:x.session_id,guest_id:x.guest_id,is_invited:x.control.value==='inherit'?null:x.control.value==='true'}))}));
+   if(fields.length)d.append(f);else d.append(R.dom('p',{},T("interface.messages.create_sessions_in_settings_first")));return d;
  }
  function assignmentDialog({title,name,help,empty,drawChoices,saveChanges}){
    const dialog=R.dom('dialog',{class:'food-recipe-dialog venue-assignment-dialog'});
@@ -1058,12 +1059,12 @@
    const list=R.dom('div',{class:'venue-assignment-list'});
    const selectAllLabel=R.dom('label',{class:'checkbox-label venue-select-all'});
    const selectAll=R.dom('input',{type:'checkbox'});
-   selectAllLabel.append(selectAll,document.createTextNode(T('Select all')));
+   selectAllLabel.append(selectAll,document.createTextNode(T("interface.messages.select_all")));
    const footer=R.dom('div',{class:'venue-assignment-footer'});
    const status=R.dom('p',{class:'small'});
    status.setAttribute('role','status');
-   const cancel=R.dom('button',{class:'btn secondary',type:'button'},T('Cancel'));
-   const save=R.dom('button',{class:'btn',type:'submit'},T('Save'));
+   const cancel=R.dom('button',{class:'btn secondary',type:'button'},T("interface.messages.cancel"));
+   const save=R.dom('button',{class:'btn',type:'submit'},T("interface.messages.save"));
    cancel.addEventListener('click',()=>dialog.close());
    footer.append(cancel,save);
    form.append(selectAllLabel,list,status,footer);
@@ -1100,7 +1101,7 @@
      save.disabled=true;form.setAttribute('aria-busy','true');status.textContent='';
      try{
        await saveChanges(add,remove);
-       dialog.close();await reload();show(T('Changes saved.'),'success');
+       dialog.close();await reload();show(T("interface.messages.changes_saved"),'success');
      }catch(error){status.textContent=R.safeError(error);}
      finally{form.removeAttribute('aria-busy');updateSelection();}
    });
@@ -1111,15 +1112,15 @@
  }
  function venueFoodDialog(venue){
    assignmentDialog({
-     title:T('Venue food'),name:venue.name,
-     help:T('Checked items are available at this venue. Changes apply here only. Existing household claims are kept.'),
-     empty:T('No food items to manage.'),
+     title:T("food.messages.venue_food"),name:venue.name,
+     help:T("interface.messages.checked_items_are_available_at_this_venue_changes_apply_here_only"),
+     empty:T("food.messages.no_food_items_to_manage"),
      drawChoices(list,addCheck){
        for(const category of foodMenuCategories()){
          const items=foodMenuItems(category.name).filter(item=>item.active||item.venue_ids?.includes(venue.id));
          if(!items.length)continue;
          const group=R.dom('fieldset',{class:'venue-assignment-category'});
-         group.append(R.dom('legend',{},category.name||T('Uncategorized')));
+         group.append(R.dom('legend',{},category.name||T("interface.messages.uncategorized")));
          for(const item of items){
            const checked=item.venue_ids?.includes(venue.id)||(item.active&&item.venue_ids==null);
            addCheck(group,item.id,foodItemName(item),checked);
@@ -1148,16 +1149,16 @@
      while(parent&&byId.has(parent)&&!visible.has(parent)){visible.add(parent);parent=byId.get(parent).parent_id;}
    }
    assignmentDialog({
-     title:T('Manage households'),name:session.name,
-     help:T('Checked households are invited to this session. Individual guest exceptions stay in place.'),
-     empty:T('No households to manage.'),
+     title:T("interface.messages.manage_households"),name:session.name,
+     help:T("interface.messages.checked_households_are_invited_to_this_session_individual_guest_e"),
+     empty:T("interface.messages.no_households_to_manage"),
      drawChoices(list,addCheck){
        renderInvitationHierarchy(list,tree,visible,(h,parent)=>{
          const members=guests.get(h.id);
          if(!members){parent.append(R.dom('p',{class:'micro muted'},h.household_name));return;}
          const locked=protectedIds.has(h.id);
-         const flags=[members.some(id=>overrides.has(id))?T('Guest exceptions'):null,
-           locked?T('Protected by RSVP history'):null].filter(Boolean).join(' · ');
+         const flags=[members.some(id=>overrides.has(id))?T("interface.messages.guest_exceptions"):null,
+           locked?T("interface.messages.protected_by_rsvp_history"):null].filter(Boolean).join(' · ');
          addCheck(parent,h.id,h.household_name,invited.has(h.id),locked,flags);
        });
      },
@@ -1174,12 +1175,12 @@
    if(metadata)details.append(R.dom('small',{class:'muted'},metadata));
    layout.append(details);
    const links=R.dom('span',{class:'venue-summary-links'});
-   if(archived)links.append(R.dom('small',{class:'muted'},T('Archived')));
+   if(archived)links.append(R.dom('small',{class:'muted'},T("interface.messages.archived")));
    if(mapUrl){
      try{
        const url=new URL(mapUrl);
        if(url.protocol==='https:'){
-         const link=R.dom('a',{class:'venue-map-link'},T('Map link')+' ↗');
+         const link=R.dom('a',{class:'venue-map-link'},T("interface.messages.map_link")+' ↗');
          link.href=url.href;link.target='_blank';link.rel='noopener noreferrer';
          link.addEventListener('click',event=>event.stopPropagation());
          links.append(link);
@@ -1204,17 +1205,17 @@
    for(const [index,s] of sessions.entries()){
      const v=store.locations.find(v=>v.id===s.location_id);
      const metadata=[v?.name,
-       s.starts_at?R.formatDate(s.starts_at,window.RSVP_I18N?.language||'en',v?.timezone||store.settings?.timezone):T("Unscheduled"),
-       v?.timezone,s.requires_rsvp?T("RSVP required"):T("Information only")
+       s.starts_at?R.formatDate(s.starts_at,window.RSVP_I18N?.language||'en',v?.timezone||store.settings?.timezone):T("interface.messages.unscheduled"),
+       v?.timezone,s.requires_rsvp?T("interface.messages.rsvp_required"):T("interface.messages.information_only")
      ].filter(Boolean).join(' · ');
      const actions=R.dom('span',{class:'session-order-actions edit-only'});
      actions.append(
-       btn('↑',T('Move session up'),()=>rpcAction('admin_move_session',{p_session_id:s.id,p_direction:-1},T('Session order saved.')),index===0),
-       btn('↓',T('Move session down'),()=>rpcAction('admin_move_session',{p_session_id:s.id,p_direction:1},T('Session order saved.')),index===sessions.length-1)
+       btn('↑',T("interface.messages.move_session_up"),()=>rpcAction('admin_move_session',{p_session_id:s.id,p_direction:-1},T("interface.messages.session_order_saved")),index===0),
+       btn('↓',T("interface.messages.move_session_down"),()=>rpcAction('admin_move_session',{p_session_id:s.id,p_direction:1},T("interface.messages.session_order_saved")),index===sessions.length-1)
      );
-     const d=venueSummaryRow(s.name+(s.is_active?'':T(" · Inactive")),metadata,v?.map_url,false,actions);
+     const d=venueSummaryRow(s.name+(s.is_active?'':T("interface.messages.inactive")),metadata,v?.map_url,false,actions);
      const form=sessionForm(s);
-     const households=R.dom('button',{class:'small-tool',type:'button'},T('Manage households'));
+     const households=R.dom('button',{class:'small-tool',type:'button'},T("interface.messages.manage_households"));
      households.addEventListener('click',async()=>{
        if(!editMode)return;
        households.disabled=true;
@@ -1231,8 +1232,8 @@
    if(error)throw error;
    if(access!==true){
      const invitation=await R.adminRpc('admin_my_invitation');
-     if(invitation.error)throw new Error(T("Your account does not have administrator access, or invitation acceptance is unavailable. Ask an administrator to check your invitation."));
-     if(!invitation.data)throw new Error(T("No active administrator invitation was found for this account. Ask an administrator to send or resend it."));
+     if(invitation.error)throw new Error(T("interface.messages.your_account_does_not_have_administrator_access_or_invitation_acc"));
+     if(!invitation.data)throw new Error(T("interface.messages.no_active_administrator_invitation_was_found_for_this_account_ask"));
      pendingAdminInvitation=invitation.data;
      $('loginPanel').classList.add('hidden');$('acceptInvitationPanel').classList.remove('hidden');
      $('acceptInvitationDetails').textContent=invitation.data.name+' · '+invitation.data.email;
@@ -1243,7 +1244,7 @@
    $('acceptInvitationPanel').classList.add('hidden');pendingAdminInvitation=null;
    $('loginPanel').classList.add('hidden');$('adminApp').classList.remove('hidden');$('adminTopActions').classList.remove('hidden');$('loggedInAs').textContent=user.email||'';
    const fragment=location.hash.slice(1)==='tasks'?'other':location.hash.slice(1);activeTab=['dashboard','venues','households','invites','food','other','language','settings'].includes(fragment)?fragment:'dashboard';
-   tab(activeTab,false);mode(false);await reload();const logged=await R.adminRpc('admin_record_session',{p_action:'login'});if(logged.error)show(T("Signed in, but session logging is unavailable."),'warning');
+   tab(activeTab,false);mode(false);await reload();const logged=await R.adminRpc('admin_record_session',{p_action:'login'});if(logged.error)show(T("interface.messages.signed_in_but_session_logging_is_unavailable"),'warning');
  }
  async function init(){
    window.addEventListener('popstate',()=>{
@@ -1252,7 +1253,7 @@
    });
    await window.RSVP_I18N.load();
    db=R.getClient();
-   if(!db){$('loginPanel').classList.remove('hidden');show(T("Database not connected. Complete the setup wizard first."),'warning');$('loginForm').querySelector('button').disabled=true;return;}
+   if(!db){$('loginPanel').classList.remove('hidden');show(T("interface.messages.database_not_connected_complete_the_setup_wizard_first"),'warning');$('loginForm').querySelector('button').disabled=true;return;}
    const {data:{user:current}}=await db.auth.getUser();if(current){user=current;try{await checkAccess();}catch(e){show(R.safeError(e),'error');}}
    $('loginForm').addEventListener('submit',async e=>{
      e.preventDefault();show('');const button=e.target.querySelector('button');button.disabled=true;
@@ -1262,7 +1263,7 @@
      }catch(err){show(R.safeError(err),'error');}
      button.disabled=false;
    });
-   $('logout').addEventListener('click',async()=>{const logged=await R.adminRpc('admin_record_session',{p_action:'logout_requested'});if(logged.error)show(T("Session logging is unavailable."),'warning');const result=await db.auth.signOut();if(result.error)show(R.safeError(result.error),'error');else location.reload();});
+   $('logout').addEventListener('click',async()=>{const logged=await R.adminRpc('admin_record_session',{p_action:'logout_requested'});if(logged.error)show(T("interface.messages.session_logging_is_unavailable"),'warning');const result=await db.auth.signOut();if(result.error)show(R.safeError(result.error),'error');else location.reload();});
    document.querySelectorAll('[data-tab]').forEach(b=>b.addEventListener('click',()=>tab(b.dataset.tab)));
    document.querySelectorAll('[data-settings-tab]').forEach(b=>b.addEventListener('click',()=>settingsTab(b.dataset.settingsTab)));
    $('settingsToggle').addEventListener('click',()=>toggleSettings());
@@ -1275,7 +1276,7 @@
    $('editModeButton').addEventListener('click',()=>mode(!editMode));
    $('refreshButton').addEventListener('click',async()=>{
      const button=$('refreshButton');button.disabled=true;button.classList.add('is-refreshing');
-     try{if(await reload()){if(activeTab==='settings'&&activeSettingsTab==='logs')await loadLogs(true);show(T("Event data refreshed."),'success');}}
+     try{if(await reload()){if(activeTab==='settings'&&activeSettingsTab==='logs')await loadLogs(true);show(T("interface.messages.event_data_refreshed"),'success');}}
      finally{button.classList.remove('is-refreshing');button.disabled=false;}
    });
    $('expandHouseholds').addEventListener('click',()=>expandHouseholdTree(true));
@@ -1295,9 +1296,9 @@
    $('collapseFoodItems').addEventListener('click',()=>setFoodDisclosure('.food-compact-item, .food-compact-item details[open]',false));
    $('addFoodType').addEventListener('click',async()=>{
      if(!editMode)return;
-     const name=prompt(T('New food item type'))?.trim();
+     const name=prompt(T("food.messages.new_food_item_type"))?.trim();
      if(!name)return;
-     if(name.length>60){show(T('Food item type must be at most 60 characters.'),'error');return;}
+     if(name.length>60){show(T("food.messages.food_item_type_must_be_at_most_60_characters"),'error');return;}
      if(!foodTypeOptions().some(([value])=>value===name)){
        const {error}=await db.from('food_item_types').insert({name});
        if(error){show(R.safeError(error),'error');return;}
@@ -1308,61 +1309,61 @@
    $('foodSearch').addEventListener('input',renderFood);
    $('addCategoryForm').addEventListener('submit',async e=>{
      e.preventDefault();const input=$('categoryName'),name=input.value.trim();if(!name)return;const button=e.target.querySelector('button');button.disabled=true;
-     try{const {error}=await db.from('food_categories').insert({name,sort_order:store.foodCategories.length});if(error)throw error;input.value='';await reload();show(T("Food category added."),'success');}
+     try{const {error}=await db.from('food_categories').insert({name,sort_order:store.foodCategories.length});if(error)throw error;input.value='';await reload();show(T("food.messages.food_category_added"),'success');}
      catch(error){show(R.safeError(error),'error');}finally{button.disabled=false;}
    });
    $('addFoodForm').addEventListener('submit',async e=>{
      e.preventDefault();const button=e.target.querySelector('button');button.disabled=true;
      const category=$('newFoodCategory').value;const count=Number($('newFoodQuantity').value);
-     if(!Number.isInteger(count)||count<0){show(T("Enter a non-negative quantity."),'error');button.disabled=false;return;}
+     if(!Number.isInteger(count)||count<0){show(T("interface.messages.enter_a_non_negative_quantity"),'error');button.disabled=false;return;}
      const items=store.food.filter(f=>f.category===category);
      const record={category,name_fo:$('newFoodFo').value.trim(),name_en:$('newFoodFo').value.trim(),description_en:$('newFoodUserComment').value.trim()||null,admin_comment:$('newFoodAdminComment').value.trim()||null,quantity_needed:count,quantity_type:$('newFoodType').value||'Piece(s)',venue_ids:newFoodVenues(),active:true,sort_order:Math.max(0,...items.map(f=>f.sort_order||0))+1};
-     try{const {error}=await db.from('food_items').insert(record);if(error)throw error;e.target.reset();await reload();show(T("Food item added."),'success');}
+     try{const {error}=await db.from('food_items').insert(record);if(error)throw error;e.target.reset();await reload();show(T("food.messages.food_item_added"),'success');}
      catch(error){show(R.safeError(error),'error');}finally{button.disabled=false;}
    });
    $('addAdminForm').addEventListener('submit',async e=>{
-     e.preventDefault();if(!editMode)return;const button=e.target.querySelector('button');button.disabled=true;$('adminInviteStatus').textContent=T("Sending invitation…");
-     try{const result=await sendAdminInvitation({email:$('newAdminEmail').value.trim(),name:$('newAdminName').value.trim()});e.target.reset();await reload();$('adminInviteStatus').textContent=T('Administrator invitation email sent.');show(T("Administrator invitation email sent."),'success');}
+     e.preventDefault();if(!editMode)return;const button=e.target.querySelector('button');button.disabled=true;$('adminInviteStatus').textContent=T("interface.messages.sending_invitation");
+     try{const result=await sendAdminInvitation({email:$('newAdminEmail').value.trim(),name:$('newAdminName').value.trim()});e.target.reset();await reload();$('adminInviteStatus').textContent=T("interface.messages.administrator_invitation_email_sent");show(T("interface.messages.administrator_invitation_email_sent"),'success');}
      catch(error){$('adminInviteStatus').textContent=R.safeError(error);await refreshAdminInvitations();}
      finally{button.disabled=false;}
    });
    $('acceptInvitationForm').addEventListener('submit',async e=>{
-     e.preventDefault();if(!pendingAdminInvitation)return;const button=e.target.querySelector('button[type="submit"]');button.disabled=true;$('acceptInvitationStatus').textContent=T("Accepting invitation…");
+     e.preventDefault();if(!pendingAdminInvitation)return;const button=e.target.querySelector('button[type="submit"]');button.disabled=true;$('acceptInvitationStatus').textContent=T("interface.messages.accepting_invitation");
      try{
        if(pendingAdminInvitation.needs_password){
-         const password=$('invitationPassword').value;if(password.length<12||password!==$('invitationPasswordConfirm').value)throw new Error(T("Enter matching passwords of at least 12 characters."));
+         const password=$('invitationPassword').value;if(password.length<12||password!==$('invitationPasswordConfirm').value)throw new Error(T("interface.messages.enter_matching_passwords_of_at_least_12_characters"));
          const result=await db.auth.updateUser({password});if(result.error)throw result.error;
          $('invitationPassword').value='';$('invitationPasswordConfirm').value='';pendingAdminInvitation.needs_password=false;
        }
        const {error}=await R.adminRpc('admin_accept_invitation',{p_id:pendingAdminInvitation.id});if(error)throw error;
-       history.replaceState(null,'',location.pathname);await checkAccess();show(T("Administrator invitation accepted."),'success');
+       history.replaceState(null,'',location.pathname);await checkAccess();show(T("interface.messages.administrator_invitation_accepted"),'success');
      }catch(error){$('acceptInvitationStatus').textContent=R.safeError(error);}finally{button.disabled=false;}
    });
    $('declineInvitationSession').addEventListener('click',async()=>{const {error}=await db.auth.signOut();if(error)$('acceptInvitationStatus').textContent=R.safeError(error);else location.assign(location.pathname);});
    $('eventSettingsForm').addEventListener('submit',async e=>{
      e.preventDefault();const deadline=$('settingDeadline').value;
-     if(deadline&&!Number.isFinite(new Date(deadline).valueOf())){show(T("Invalid RSVP deadline."),'error');return;}
+     if(deadline&&!Number.isFinite(new Date(deadline).valueOf())){show(T("interface.messages.invalid_rsvp_deadline"),'error');return;}
      const settings={event_name:$('settingName').value.trim(),event_type:$('settingType').value.trim(),event_date:$('settingDate').value||null,default_language:$('settingLanguage').value,fallback_language:store.settings?.fallback_language||'en',timezone:$('settingTimezone').value.trim(),website_url:$('settingUrl').value.trim()||null,rsvp_deadline:deadline?new Date(deadline).toISOString():null,updated_at:new Date().toISOString()};
      const {error}=await db.from('event_settings').upsert({id:1,...settings},{onConflict:'id'});
-     if(error)show(R.safeError(error),'error');else{show(T("Event settings saved."),'success');await reload();}
+     if(error)show(R.safeError(error),'error');else{show(T("interface.messages.event_settings_saved"),'success');await reload();}
    });
    $('publishEventButton').addEventListener('click',async()=>{
-     if(!editMode){show(T("Switch to Edit mode first."),'warning');return;}
-     if(!$('publishAck').checked){show(T("Confirm the release acknowledgement before publishing."),'warning');return;}
+     if(!editMode){show(T("interface.messages.switch_to_edit_mode_first"),'warning');return;}
+     if(!$('publishAck').checked){show(T("interface.messages.confirm_the_release_acknowledgement_before_publishing"),'warning');return;}
      const ready=store.settings?.event_name&&store.settings?.event_date&&store.settings?.website_url&&store.sessions.some(x=>x.is_active)&&store.defaults.some(x=>x.is_invited);
-     if(!ready){show(T("Complete the event name, date, website URL, active session and invitations before publishing."),'error');return;}
-     if(!confirm(T("Publish this event now? Invite-code holders may access guest RSVP and food details. Proceed only after security and guest-flow testing.")))return;
+     if(!ready){show(T("interface.messages.complete_the_event_name_date_website_url_active_session_and_invit"),'error');return;}
+     if(!confirm(T("food.messages.publish_this_event_now_invite_code_holders_may_access_guest_rsvp_")))return;
      const button=$('publishEventButton');button.disabled=true;
      const {error}=await db.from('event_settings').update({is_published:true,updated_at:new Date().toISOString()}).eq('id',1);
-     if(error)show(R.safeError(error),'error');else{show(T("Event published."),'success');$('publishAck').checked=false;await reload();}
+     if(error)show(R.safeError(error),'error');else{show(T("interface.messages.event_published_2"),'success');$('publishAck').checked=false;await reload();}
      button.disabled=false;
    });
    $('unpublishEventButton').addEventListener('click',async()=>{
-     if(!editMode){show(T("Switch to Edit mode first."),'warning');return;}
-     if(!confirm(T("Unpublish this event? Guest access to published event details will stop.")))return;
+     if(!editMode){show(T("interface.messages.switch_to_edit_mode_first"),'warning');return;}
+     if(!confirm(T("interface.messages.unpublish_this_event_guest_access_to_published_event_details_will")))return;
      const button=$('unpublishEventButton');button.disabled=true;
      const {error}=await db.from('event_settings').update({is_published:false,updated_at:new Date().toISOString()}).eq('id',1);
-     if(error)show(R.safeError(error),'error');else{show(T("Event unpublished."),'success');await reload();}
+     if(error)show(R.safeError(error),'error');else{show(T("interface.messages.event_unpublished"),'success');await reload();}
      button.disabled=false;
    });
 

@@ -81,6 +81,10 @@ Implemented features still need operational acceptance. Passing automated tests 
 - [ ] Finish independent installer and migration/permission parity verification and documentation reconciliation. Automated disposable-database restoration checks already pass.
 - [ ] Obtain explicit approval before public launch; keep the event unpublished until then.
 
+### Deferred to-do
+
+- [ ] Revisit database language deletion and its translations, including how to handle households, guests and contacts that use the language. Deletion is deferred.
+
 ### Process
 
 1. Verify the deployed language and backup screens.

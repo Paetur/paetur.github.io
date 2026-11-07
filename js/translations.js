@@ -2303,5 +2303,50 @@ window.RSVP_TRANSLATIONS = {
   },
   "No matching entries.": {
     "key": "interface.messages.no_matching_entries"
+  },
+  "Welcome Message": {
+    "key": "interface.messages.welcome_message_title"
+  },
+  "Categories": {
+    "key": "interface.messages.categories"
+  },
+  "Types": {
+    "key": "interface.messages.types"
+  },
+  "Rows per page": {
+    "key": "interface.messages.rows_per_page"
+  },
+  "Previous": {
+    "key": "interface.messages.previous"
+  },
+  "Next": {
+    "key": "interface.messages.next"
+  },
+  "Page {page} of {pages}": {
+    "key": "interface.messages.page_page_of_pages"
+  },
+  "Edit translation": {
+    "key": "interface.messages.edit_translation"
+  },
+  "Export CSV": {
+    "key": "interface.messages.export_csv"
+  },
+  "Use the pencil to open an item, then save your changes.": {
+    "key": "interface.messages.use_the_pencil_to_open_an_item_then_save_your_changes"
+  },
+  "Translate welcome messages, venues, sessions and food. Interface wording is in Settings → Languages.": {
+    "key": "interface.messages.main_language_help"
+  },
+  "Guest note": {
+    "key": "interface.messages.guest_note"
+  },
+  "Translate the item name and the note shown to guests. Types are translated in Languages → Food → Types.": {
+    "key": "interface.messages.food_translation_help"
+  },
+  "English source": {
+    "key": "interface.messages.english_source"
+  },
+  "Unavailable": {
+    "key": "interface.messages.unavailable"
   }
 };

@@ -1,0 +1,87 @@
+const {chromium,webkit}=require('playwright');
+const {mock}=require('./helpers/admin-fixture.cjs');
+const {selectContentTranslation,openWordingEditor}=require('./helpers/language-ui.cjs');
+const {parseCsv,importLanguageCsv}=require('../tools/import-language-csv.cjs');
+const fs=require('node:fs'),path=require('node:path'),http=require('node:http'),os=require('node:os'),assert=require('node:assert/strict');
+const root=process.cwd(),preview=process.env.CONSISTENCY_PREVIEW;
+const server=http.createServer((request,response)=>{
+ let name=new URL(request.url,'http://localhost').pathname;if(name.endsWith('/'))name+='index.html';const file=path.resolve(root,'.'+name);
+ if(!file.startsWith(root+path.sep)||!fs.existsSync(file)){response.writeHead(404);response.end();return;}
+ response.setHeader('Content-Type',({'.html':'text/html','.js':'text/javascript','.css':'text/css','.json':'application/json'}[path.extname(file)]||'text/plain')+';charset=utf-8');
+ response.end(file.endsWith('.html')?fs.readFileSync(file,'utf8').replace(/ integrity="[^"]+"/g,''):fs.readFileSync(file));
+});
+const extra=`fixtures.event_languages=[{language_code:'fo',display_name:'Føroyskt',sort_order:1,enabled:true},{language_code:'en',display_name:'English',sort_order:2,enabled:true},{language_code:'de',display_name:'Deutsch',sort_order:3,enabled:true},{language_code:'sv',display_name:'Svenska',sort_order:4,enabled:false}];
+fixtures.event_content=['fo','en','de'].map(language_code=>({content_key:'welcome',language_code,content_value:{fo:'Vælkomin til veitsluna.',en:'Welcome to our celebration.',de:'Willkommen zu unserem Fest.'}[language_code]}));
+fixtures.event_locations=[{id:'venue',name:'Main hall',timezone:'UTC'}];fixtures.event_sessions[0].location_id='venue';
+fixtures.other_categories=[{id:'other',name:'Preparations',sort_order:0}];fixtures.other_items=[{id:'task',category_id:'other',item:'Arrange chairs',notes:'Keep the entrance clear',assigned_to:'Example helper',status:'open',sort_order:1,updated_at:'2026-11-07T12:00:00Z'}];
+const original=client.rpc;client.rpc=async(name,args)=>{if(name==='admin_save_translation'){window.__wordingSaves=(window.__wordingSaves||0)+1;fixtures.event_content=fixtures.event_content.filter(row=>row.content_key!==args.p_key||row.language_code!==args.p_language);if(args.p_value)fixtures.event_content.push({content_key:args.p_key,language_code:args.p_language,content_value:args.p_value});return {data:null,error:null};}if(name==='admin_save_other'){window.__otherSaves=(window.__otherSaves||0)+1;const row={id:args.p_id,...args.p_values,updated_at:'2026-11-07T12:01:00Z'};Object.assign(fixtures.other_items.find(item=>item.id===args.p_id),row);return {data:row,error:null};}return original(name,args);};`;
+async function run(type){const browser=await type.launch({headless:true});try{
+ const page=await browser.newPage({viewport:{width:1024,height:900}}),errors=[];page.on('pageerror',error=>errors.push(error.message));
+ await page.addInitScript(()=>localStorage.setItem('rsvp-interface-language','en'));
+ await page.route('**/supabase.min.js',route=>route.fulfill({contentType:'text/javascript',body:mock+'\n'+extra}));
+ await page.goto('http://127.0.0.1:'+server.address().port+'/admin/');await page.locator('#adminApp:not(.hidden)').waitFor();
+ assert.deepEqual(await page.locator('.admin-main-tabs [role="tab"]').evaluateAll(tabs=>tabs.map(tab=>tab.dataset.tab)),['dashboard','venues','households','food','other','invites','language']);
+ await selectContentTranslation(page,'welcome');
+ assert.deepEqual(await page.locator('#contentTranslationTabs button').allTextContents(),['Welcome Message','Venues','Sessions','Food']);
+ assert.equal(await page.locator('#foodTranslationGrid textarea').count(),3);
+ assert.equal(await page.locator('#translationSearch').isVisible(),false);
+ assert.equal(await page.locator('#settingLanguage').count(),0);
+ assert.equal(await page.locator('#foodTranslationTabs').isVisible(),false);
+ if(preview&&type.name()==='webkit'){await page.evaluate(()=>document.documentElement.dataset.theme='dark');await page.locator('[data-panel="language"]').screenshot({path:preview+'/main-language-tabs.png'});}
+ await selectContentTranslation(page,'food');assert.deepEqual(await page.locator('#foodTranslationTabs button').allTextContents(),['Food','Categories','Types']);
+ await page.locator('[data-tab="other"]').click();const task=page.locator('[data-other-id="task"]');
+ assert.equal(await task.locator('input:visible,textarea:visible,select:visible').count(),0);
+ await page.locator('#editModeButton').click();await task.getByRole('button',{name:/Edit item/}).click();
+ await task.locator('textarea').fill('Bring linen');assert.equal(await page.evaluate(()=>window.__otherSaves||0),0);
+ if(preview&&type.name()==='webkit')await page.locator('[data-panel="other"]').screenshot({path:preview+'/other-text-and-editor.png'});
+ await task.getByRole('button',{name:'Save item',exact:true}).click();await task.locator('form').waitFor({state:'hidden'});
+ assert.ok((await task.locator('.other-line-summary').textContent()).includes('Bring linen'));
+ await page.locator('[data-tab="food"]').click();const item=page.locator('.food-compact-item').first();
+ assert.equal(await item.evaluate(node=>node.open),false);
+ const edit=item.getByRole('button',{name:'Edit food item',exact:true});assert.ok(await edit.isVisible());
+ assert.equal(await edit.evaluate(button=>!!button.closest('summary .food-header-actions')),true);
+ await edit.click();assert.ok(await item.locator('.food-edit-form').isVisible());
+ assert.equal(await item.getByRole('button',{name:'Save food item',exact:true}).isDisabled(),true);
+ await item.locator('[data-food-language]').click();
+ const popup=page.locator('.food-language-dialog');await popup.waitFor();
+ assert.equal(await popup.getByLabel(/^Type ·/).count(),0);
+ assert.equal(await popup.getByLabel(/^Guest note ·/).count(),3);
+ assert.equal(await popup.getByRole('button',{name:'Save translations',exact:true}).isDisabled(),true);
+ if(preview&&type.name()==='webkit')await popup.screenshot({path:preview+'/food-language-popup.png'});
+ await popup.getByRole('button',{name:'Cancel',exact:true}).click();
+ if(preview&&type.name()==='webkit')await page.locator('[data-panel="food"]').screenshot({path:preview+'/food-header-actions.png'});
+ await page.locator('#settingsToggle').click();await page.locator('[data-settings-tab="languages"]').click();
+ assert.equal(await page.locator('.settings-tabs').getAttribute('role'),'tablist');
+ assert.equal(await page.locator('#contentTranslationTabs').isVisible(),false);
+ assert.deepEqual(await page.locator('#interfaceLanguageTabs button').allTextContents(),['Føroyskt','English','Deutsch']);
+ assert.equal(await page.locator('.wording-row').count(),25);assert.equal(await page.locator('.wording-edit-form:visible').count(),0);
+ await page.getByRole('button',{name:'Next',exact:true}).click();await page.getByText(/Page 2 of/).waitFor();
+ await page.getByRole('combobox',{name:'Rows per page',exact:true}).selectOption('10');assert.equal(await page.locator('.wording-row').count(),10);
+ let wording=await openWordingEditor(page,'de','interface.messages.households');
+ await wording.locator('textarea').fill('Unfinished wording');
+ await page.locator('#interfaceLanguageTabs [data-translation-tab="en"]').click();
+ await page.locator('#interfaceLanguageTabs [data-translation-tab="de"]').click();
+ wording=page.locator('[data-wording-key="interface.messages.households"]');assert.equal(await wording.locator('textarea').inputValue(),'Unfinished wording');
+ const translated='Haushalte, "Familien"\nWeitere';await wording.locator('textarea').fill(translated);
+ assert.equal(await page.evaluate(()=>window.__wordingSaves||0),0);
+ await wording.locator('button[type="submit"]').click();await page.waitForFunction(()=>window.RSVP_I18N.t('Households',{},'de')==='Haushalte, "Familien"\nWeitere');
+ await page.locator('#translationSearch').fill('');await page.waitForFunction(()=>document.querySelectorAll('.wording-row').length===10);
+ if(preview&&type.name()==='webkit')await page.locator('.settings-page').screenshot({path:preview+'/settings-language-list.png'});
+ await page.locator('summary').filter({hasText:'Choose enabled languages'}).click();
+ const language=page.locator('#languageRows [data-language-code="de"]');
+ assert.equal(await language.locator('button[type="submit"] svg').count(),1);
+ const downloadEvent=page.waitForEvent('download');await language.getByRole('button',{name:/Export CSV/}).click();const download=await downloadEvent;
+ assert.equal(download.suggestedFilename(),'rsvp-locales-de.csv');const csv=fs.readFileSync(await download.path(),'utf8');
+ const rows=parseCsv(csv);assert.deepEqual(rows[0],['language_code','category','key','source','translation']);assert.equal(rows.find(row=>row[3]==='Households')[4],translated);
+ const temporary=fs.mkdtempSync(path.join(os.tmpdir(),'rsvp-browser-csv-'));
+ try{
+  fs.mkdirSync(path.join(temporary,'locales/en'),{recursive:true});
+  fs.copyFileSync('locales/aliases.json',path.join(temporary,'locales/aliases.json'));
+  for(const category of ['interface','food','types'])fs.copyFileSync('locales/en/'+category+'.json',path.join(temporary,'locales/en',category+'.json'));
+  importLanguageCsv(csv,temporary);
+  assert.equal(JSON.parse(fs.readFileSync(path.join(temporary,'locales/de/interface.json'),'utf8')).messages.households,translated);
+ }finally{fs.rmSync(temporary,{recursive:true,force:true});}
+ await page.setViewportSize({width:390,height:844});assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),true,'mobile settings width');
+ assert.deepEqual(errors,[]);await page.close();console.log('PASS '+type.name()+': navigation order, content tabs, Other panels, food header actions, paginated wording drafts and browser CSV-to-JSON round trip');
+}finally{await browser.close();}}
+(async()=>{if(preview)fs.mkdirSync(preview,{recursive:true});await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));try{await run(chromium);await run(webkit);}finally{server.close();}})().catch(error=>{console.error(error);process.exitCode=1;});

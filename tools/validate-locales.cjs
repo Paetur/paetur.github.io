@@ -27,7 +27,8 @@ for (const entry of fs.readdirSync('locales', {withFileTypes:true}).filter(entry
 const aliases = JSON.parse(fs.readFileSync('locales/aliases.json','utf8'));
 for (const [source, path] of Object.entries(aliases)) {
  const [category,...parts] = path.split('.');
- assert.equal(english[category]?.[parts.join('.')],source,'Invalid alias '+path);
+ assert.ok(Object.hasOwn(english[category]||{},parts.join('.')),'Invalid alias '+path);
+ assert.deepEqual(tokens(english[category][parts.join('.')]),tokens(source),'Alias placeholders '+path);
 }
 for (const file of fs.readdirSync('js').filter(file=>file.endsWith('.js'))) {
  const code = fs.readFileSync('js/'+file,'utf8');

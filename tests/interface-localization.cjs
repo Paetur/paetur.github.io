@@ -1,3 +1,4 @@
+const {selectContentTranslation,openWordingEditor}=require('./helpers/language-ui.cjs');
 // Only the synthetic SDK fixture server removes production integrity checks.
 // Local-only multilingual browser checks. All application data and saves are synthetic.
 const {chromium,webkit}=require('playwright');
@@ -38,13 +39,14 @@ async function run(browserType){
    assert.equal(await page.locator('[data-tab="households"]').textContent(),lang==='en'?'Households':catalog.Households[lang]);
    await page.locator('#settingsToggle').click();await page.locator('#editModeButton').click();
    await page.locator('[data-settings-tab="languages"]').click();
-   await page.locator('#translationCategory').selectOption('welcome');
+   await selectContentTranslation(page,'welcome');
    for(const l of ['fo','en','de'])await page.locator('#foodTranslationGrid [data-language-code="'+l+'"] textarea').fill('Message '+l);
    await page.locator('#foodTranslationGrid button[type="submit"]').click();
    await page.waitForFunction(()=>['fo','en','de'].every(l=>window.__fixtures.event_content.some(c=>c.content_key==='welcome'&&c.language_code===l&&c.content_value==='Message '+l)));
    assert.equal(await page.evaluate(()=>window.__fixtures.event_settings[0].is_published),false);
-   await page.locator('#translationCategory').selectOption('ui');await page.locator('#translationKey').selectOption('ui:Households');await page.locator('#foodTranslationGrid [data-language-code="'+lang+'"] textarea').fill('<img src=x onerror=alert(1)>');
-   await page.locator('#foodTranslationGrid button[type="submit"]').click();
+   const wordingRow=await openWordingEditor(page,lang,'interface.messages.households');
+   await wordingRow.locator('textarea').fill('<img src=x onerror=alert(1)>');
+   await wordingRow.locator('button[type="submit"]').click();
    await page.waitForFunction(l=>window.RSVP_I18N.t('Households',{},l)==='<img src=x onerror=alert(1)>',lang);
    assert.equal(await page.locator('#foodTranslationGrid img').count(),0);
    assert.equal(await page.evaluate(()=>{try{window.RSVP_I18N.applyWording('Quantity for {item}','de','Menge');return false;}catch{return true;}}),true);
@@ -77,9 +79,7 @@ async function run(browserType){
   await ipad.locator('#editModeButton').click();
   await ipad.locator('#settingsToggle').click();
   await ipad.locator('[data-settings-tab="languages"]').click();
-  await ipad.locator('#translationCategory').selectOption('ui');
-  await ipad.locator('#translationKey').selectOption('ui:Save');
-  await ipad.locator('#foodTranslationGrid [data-language-code="de"]').waitFor();
+  await openWordingEditor(ipad,'de','interface.messages.save');
   assert.equal(await ipad.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),true,'iPad width');
   fs.mkdirSync('artifacts',{recursive:true});
   await ipad.screenshot({path:'artifacts/json-languages-ipad-'+browserType.name()+'.png',fullPage:true});

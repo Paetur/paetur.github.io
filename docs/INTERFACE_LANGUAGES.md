@@ -12,7 +12,7 @@ Run these checks from the repository root after editing catalogs.
 node tools/validate-locales.cjs
 ```
 
-`locales/aliases.json` maps existing English phrase calls and static HTML to stable catalog keys. When adding a phrase, add its English source/key mapping and the same key to every maintained catalog. If the English source changes, update the alias source while retaining its key. Regenerate the English compatibility manifest with `node tools/validate-locales.cjs --generate`. The manifest supports existing source-phrase callers and English startup wording. It contains no Faroese or German translation values. New application calls should reference stable keys.
+`locales/aliases.json` maps existing English phrase calls and static HTML to stable catalog keys. When adding a phrase, add its English source/key mapping and the same key to every maintained catalog. Keep existing compatibility aliases when English display wording changes. Their placeholder sets must still match; the stable key continues to identify the phrase. Regenerate the English compatibility manifest with `node tools/validate-locales.cjs --generate`. The manifest supports existing source-phrase callers and English startup wording. It contains no Faroese or German translation values. New application calls should reference stable keys.
 
 Catalog changes are reviewed through GitHub pull requests. Event-specific food, household and venue data must stay out of these public files. Private administrator comments are excluded.
 
@@ -64,3 +64,11 @@ Restore requires matching application migrations. Retain pre-migration backups w
 Validation covers JSON syntax, nested string leaves, key parity, English sources, placeholders and generated manifest consistency. Database suites verify migration preservation, stable override keys, blank deletion, atomic batch rollback, publication and administrator boundaries, plus cross-identity export/restoration. Chromium and WebKit suites cover FO/EN/DE, custom-language fallback, saved preferences, all-language editing and retained RSVP answers. An iPad-size test verifies layout and one request per language/category across repeated reads. Physical iPad/Safari acceptance remains required.
 
 Reusable multilingual templates remain in the optional wish list for later discussion.
+
+## CSV export and static imports
+
+Choose enabled languages provides an Export CSV icon for each language. The UTF-8 CSV contains `language_code,category,key,source,translation`. Keys are relative to the category JSON file. The source column keeps the original compatibility phrase, and translation values combine saved database wording with repository catalog values. Missing non-English wording remains blank. Event-specific venue, session and food-record translations are outside this shared-catalog export.
+
+Run `node tools/import-language-csv.cjs rsvp-locales-fo.csv` from the repository root, then `node tools/validate-locales.cjs`. The importer validates the complete key set, language code, source identities and placeholders before writing the three language JSON files. Review and commit the diff through a pull request. CSV quoting preserves commas, quotes and multiline text. English display wording can change while compatibility aliases and stable keys remain intact.
+
+Database language deletion is deferred to the to-do list.

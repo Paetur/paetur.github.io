@@ -766,5 +766,20 @@
   "Use main Edit, then the pencil to edit and save a line.": "interface.messages.use_main_edit_then_the_pencil_to_edit_and_save_a_line",
   "Add a category first.": "interface.messages.add_a_category_first",
   "Tasks and things to bring, grouped by category. Use main Edit, then the pencil to edit a line.": "interface.messages.tasks_and_things_to_bring_grouped_by_category_use_main_edit_then_",
-  "No matching entries.": "interface.messages.no_matching_entries"
+  "No matching entries.": "interface.messages.no_matching_entries",
+  "Welcome Message": "interface.messages.welcome_message_title",
+  "Categories": "interface.messages.categories",
+  "Types": "interface.messages.types",
+  "Rows per page": "interface.messages.rows_per_page",
+  "Previous": "interface.messages.previous",
+  "Next": "interface.messages.next",
+  "Page {page} of {pages}": "interface.messages.page_page_of_pages",
+  "Edit translation": "interface.messages.edit_translation",
+  "Export CSV": "interface.messages.export_csv",
+  "Use the pencil to open an item, then save your changes.": "interface.messages.use_the_pencil_to_open_an_item_then_save_your_changes",
+  "Translate welcome messages, venues, sessions and food. Interface wording is in Settings → Languages.": "interface.messages.main_language_help",
+  "Guest note": "interface.messages.guest_note",
+  "Translate the item name and the note shown to guests. Types are translated in Languages → Food → Types.": "interface.messages.food_translation_help",
+  "English source": "interface.messages.english_source",
+  "Unavailable": "interface.messages.unavailable"
 }

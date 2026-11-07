@@ -577,3 +577,8 @@ html[data-theme="dark"] code{background:#253b32;color:var(--ink)}
 .venue-assignment-list .hierarchy-section,.venue-assignment-list .hierarchy-group{padding:4px 8px;margin:4px 0}
 .venue-assignment-list .tree-children{min-width:0}
 .venue-assignment-list label small{margin-inline-start:auto;text-align:end}
+
+.food-language-dialog{width:min(64rem,calc(100vw - 32px))}
+.food-language-dialog .food-translation-row label{grid-column:auto}
+.food-language-dialog form>button~button{margin-inline-start:8px}
+#adminApp .food-language-dialog .btn.secondary{background:var(--white);color:var(--ink);border:1px solid var(--line)}

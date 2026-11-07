@@ -32,7 +32,7 @@ async function checksum(db,b){b.checksum=await value(db,"SELECT encode(sha256(co
  const sid='bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',food='cccccccc-cccc-4ccc-8ccc-cccccccccccc';
  await src.query("INSERT INTO public.event_sessions(id,session_key,name) VALUES($1,'dinner','Dinner')",[sid]);
  await src.query('INSERT INTO public.household_session_defaults VALUES($1,$2,true)',[household,sid]);
- await src.query("INSERT INTO public.food_items(id,name_fo,name_en,quantity_needed,recipe_text) VALUES($1,'Matur','Food',3,'Mix ingredients')",[food]);
+ await src.query("INSERT INTO public.food_items(id,name_en,quantity_needed,recipe_text) VALUES($1,'Food',3,'Mix ingredients')",[food]);
  await src.query('UPDATE public.households SET food=true WHERE id=$1',[household]);await src.exec('UPDATE public.event_settings SET is_published=true');
  await src.query('SELECT public.submit_household_rsvp($1,$2,$3)',[code,session,[{guest_id:guest,session_id:sid,status:'attending'}]]);
  await src.query('SELECT public.set_household_food_claim($1,$2,2,null)',[code,food]);await src.query('SELECT public.confirm_household_food($1)',[code]);

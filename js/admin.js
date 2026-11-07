@@ -78,6 +78,7 @@
    const glyph={up:'↑',down:'↓'}[kind]||'';
    const button=R.dom('button',{class:'admin-row-icon '+extraClass,type:'button',title},glyph);
    const drawings={
+     language:['M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0','M3 12h18','M12 3c5 5 5 13 0 18','M12 3c-5 5-5 13 0 18'],
      move:['M4 7h15','m15 3 4 4-4 4','M20 17H5','m9 13-4 4 4 4'],
      edit:['m16 5 3 3','M4 20l4-1 12-12a2.1 2.1 0 0 0-3-3L5 16l-1 4Z'],
      delete:['M3 6h18','M8 6V4h8v2','M5 6l1 14h12l1-14','M10 10v6','M14 10v6'],
@@ -617,7 +618,7 @@
  }
   function claimedQuantity(item){return store.claims.filter(c=>c.food_item_id===item.id).reduce((n,c)=>n+c.quantity,0);}
  function foodCategoriesSorted(){return ordered(store.foodCategories,'name');}
- function foodItemName(item){return item.name_en||item.name_fo||item.name_de||T("interface.messages.unnamed_item");}
+ function foodItemName(item){return item.name_en||T("interface.messages.unnamed_item");}
  function foodMenuCategories(){
    const categories=foodCategoriesSorted(),known=new Set(categories.map(c=>c.name));
    const unregistered=[...new Set(store.food.map(f=>f.category||'').filter(c=>!known.has(c)))].sort();
@@ -625,7 +626,7 @@
      ...unregistered.map(name=>({name,id:null,registered:false}))];
  }
  function foodMenuItems(category){
-   return ordered(store.food.filter(item=>(item.category||'')===category),'name_fo');
+   return ordered(store.food.filter(item=>(item.category||'')===category),'name_en');
  }
  function foodCategoryOptions(select,current){
    foodCategoriesSorted().forEach(category=>select.append(R.dom('option',{value:category.name},category.name)));
@@ -730,7 +731,7 @@
  function buildFoodEditor(item){
    const form=R.dom('form',{class:'food-edit-form hidden'});
    const fields=[[T("interface.messages.name"),'name_en'],[T("interface.messages.user_comment"),'description_en'],[T("interface.messages.admin_comment"),'admin_comment']];
-   for(const [labelText,key] of fields){const label=R.dom('label');label.append(R.dom('span',{},labelText));const input=R.dom(key==='name_en'?'input':'textarea',{name:key});input.value=key==='name_en'?foodItemName(item):key==='description_en'?(item.description_en??item.description_fo??item.description_de??''):item[key]||'';input.maxLength=key==='name_en'?300:4000;input.required=key==='name_en';label.append(input);form.append(label);}
+   for(const [labelText,key] of fields){const label=R.dom('label');label.append(R.dom('span',{},labelText));const input=R.dom(key==='name_en'?'input':'textarea',{name:key});input.value=key==='name_en'?foodItemName(item):key==='description_en'?(item.description_en??''):item[key]||'';input.maxLength=key==='name_en'?300:4000;input.required=key==='name_en';label.append(input);form.append(label);}
    const originalComment=form.elements.namedItem('description_en').value;
    const quantityLabel=R.dom('label');quantityLabel.append(R.dom('span',{},T("interface.messages.quantity_needed")));const quantity=R.dom('input',{type:'number',min:'0',name:'quantity_needed'});quantity.value=String(item.quantity_needed);quantity.required=true;quantityLabel.append(quantity);form.insertBefore(quantityLabel,form.children[1]);
    const currentType=item.quantity_type||'Piece(s)';
@@ -755,11 +756,14 @@
        if(key==='description_en'&&value===originalComment)continue;
        record[key]=value.trim()||(key==='description_en'?'':null);
      }
-     if(!record.name_en){show(T("interface.messages.name_is_required"),'error');return;}if(!item.name_fo)record.name_fo=record.name_en;
+     if(!record.name_en){show(T("interface.messages.name_is_required"),'error');return;}
      save.disabled=true;form.setAttribute('aria-busy','true');
      try{const {error}=await db.from('food_items').update(record).eq('id',item.id);if(error)throw error;await reload();show(T("food.messages.food_item_updated"),'success');}
      catch(error){show(R.safeError(error),'error');}finally{save.disabled=false;form.removeAttribute('aria-busy');}
    });
+   for(const control of form.querySelectorAll('input,select,textarea')){
+     control.dataset.foodOriginal=control.type==='checkbox'?String(control.checked):control.value;
+   }
    return form;
  }
  function openFoodRecipe(item){
@@ -792,7 +796,7 @@
    const categories=foodCategoriesSorted();
    for(const [index,category] of foodMenuCategories().entries()){
      const items=foodMenuItems(category.name);
-     const visible=items.filter(f=>!search||[f.name_fo,f.name_en,f.name_de,f.category]
+     const visible=items.filter(f=>!search||[f.name_en,f.category]
        .join(' ').toLowerCase().includes(search));
      if(search&&!visible.length)continue;
      const section=R.dom('details',{class:'food-category tree-disclosure'});
@@ -879,9 +883,15 @@
          main.append(commitments);
        }
        const detail=R.dom('div',{class:'food-expanded'}),comments=R.dom('div',{class:'food-comment-grid'});
-       for(const [label,value] of [['User Comment',f.description_en??f.description_fo??f.description_de],['Admin Comment',f.admin_comment]])if(value?.trim())comments.append(R.dom('p',{class:'small'},T(label)+': '+value));
+       for(const [label,value] of [['User Comment',f.description_en],['Admin Comment',f.admin_comment]])if(value?.trim())comments.append(R.dom('p',{class:'small'},T(label)+': '+value));
        detail.dataset.hasComments=String(!!comments.children.length);
        if(comments.children.length)detail.append(comments);
+       const languageButton=iconAction('language',T('interface.messages.language'),()=>{
+         window.RSVP_ADMIN_TOOLS.openFoodTranslations(f,languageButton).catch(error=>show(R.safeError(error),'error'));
+       },false,'edit-only');
+       languageButton.dataset.foodLanguage=f.id;
+       languageButton.setAttribute('aria-haspopup','dialog');
+       buttons.append(languageButton);
        const recipeButton=R.dom('button',{type:'button',class:'small-tool edit-only'},T(f.recipe_text?'Edit recipe':'+ Add recipe'));
        recipeButton.addEventListener('click',()=>openFoodRecipe(f));
        buttons.append(recipeButton);
@@ -1002,12 +1012,16 @@
    timezone.placeholder='Atlantic/Faroe or Europe/Berlin';
    const map=field(f,T("interface.messages.map_link_https"),v.map_url,null,'url',false,2000);
    const notes=field(f,T("interface.messages.guest_venue_notes"),v.notes,null,'textarea');
-   const welcome=Object.fromEntries(['fo','en','de'].map(lang=>[lang,field(f,T("interface.messages.welcome_message")+({fo:T("interface.messages.faroese"),en:T("interface.messages.english"),de:T("interface.messages.german")}[lang]),v['welcome_'+lang],null,'textarea',false,4000)]));
+   const welcome=Object.fromEntries(languages().filter(([code])=>!store.languages.length||store.languages.find(language=>language.language_code===code)?.enabled).map(([code,label])=>{
+     const value=store.content.find(content=>content.content_key==='venue:'+v.id+':welcome'&&content.language_code===code)?.content_value
+       ??(code==='en'?v.welcome_en:'');
+     return [code,field(f,T("interface.messages.welcome_message")+label,value,null,'textarea',false,4000)];
+   }));
    const welcomeBox=R.dom('fieldset',{class:'span-2 venue-welcome-editor'});welcomeBox.append(R.dom('legend',{},T("interface.messages.venue_welcome")),
      R.dom('p',{class:'micro'},T("interface.messages.appears_under_the_session_at_this_venue_on_the_guest_invitation")));
    for(const control of Object.values(welcome))welcomeBox.append(control.closest('label'));f.append(welcomeBox);
    const archived=field(f,T("interface.messages.archived_venue"),!!v.archived_at,null,'checkbox');
-   const form=saveForm(f,v.id?T("interface.messages.save_venue"):T("interface.messages.create_venue"),()=>managementRpc('admin_save_venue',{p_id:v.id||null,p_values:{name:name.value.trim(),country_code:country.value.trim().toUpperCase()||null,address:address.value.trim(),timezone:timezone.value.trim(),map_url:map.value.trim(),notes:notes.value.trim(),...Object.fromEntries(Object.entries(welcome).map(([lang,control])=>['welcome_'+lang,control.value.trim()])),archived:archived.checked}}));
+   const form=saveForm(f,v.id?T("interface.messages.save_venue"):T("interface.messages.create_venue"),()=>managementRpc('admin_save_venue_with_translations',{p_id:v.id||null,p_values:{name:name.value.trim(),country_code:country.value.trim().toUpperCase()||null,address:address.value.trim(),timezone:timezone.value.trim(),map_url:map.value.trim(),notes:notes.value.trim(),archived:archived.checked},p_translations:Object.fromEntries(Object.entries(welcome).map(([lang,control])=>[lang,control.value.trim()]))}));
    const footer=R.dom('div',{class:'venue-form-actions span-2'});
    footer.append(form.lastElementChild);
    if(v.id&&!v.archived_at){
@@ -1317,7 +1331,7 @@
      const category=$('newFoodCategory').value;const count=Number($('newFoodQuantity').value);
      if(!Number.isInteger(count)||count<0){show(T("interface.messages.enter_a_non_negative_quantity"),'error');button.disabled=false;return;}
      const items=store.food.filter(f=>f.category===category);
-     const record={category,name_fo:$('newFoodFo').value.trim(),name_en:$('newFoodFo').value.trim(),description_en:$('newFoodUserComment').value.trim()||null,admin_comment:$('newFoodAdminComment').value.trim()||null,quantity_needed:count,quantity_type:$('newFoodType').value||'Piece(s)',venue_ids:newFoodVenues(),active:true,sort_order:Math.max(0,...items.map(f=>f.sort_order||0))+1};
+     const record={category,name_en:$('newFoodName').value.trim(),description_en:$('newFoodUserComment').value.trim()||null,admin_comment:$('newFoodAdminComment').value.trim()||null,quantity_needed:count,quantity_type:$('newFoodType').value||'Piece(s)',venue_ids:newFoodVenues(),active:true,sort_order:Math.max(0,...items.map(f=>f.sort_order||0))+1};
      try{const {error}=await db.from('food_items').insert(record);if(error)throw error;e.target.reset();await reload();show(T("food.messages.food_item_added"),'success');}
      catch(error){show(R.safeError(error),'error');}finally{button.disabled=false;}
    });

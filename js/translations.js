@@ -2300,5 +2300,8 @@ window.RSVP_TRANSLATIONS = {
   },
   "Tasks and things to bring, grouped by category. Use main Edit, then the pencil to edit a line.": {
     "key": "interface.messages.tasks_and_things_to_bring_grouped_by_category_use_main_edit_then_"
+  },
+  "No matching entries.": {
+    "key": "interface.messages.no_matching_entries"
   }
 };

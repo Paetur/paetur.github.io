@@ -698,6 +698,7 @@
     "no_items_in_this_category": "Keine Einträge in dieser Kategorie.",
     "use_main_edit_then_the_pencil_to_edit_and_save_a_line": "Zentralen Bearbeitungsmodus aktivieren und eine Zeile mit dem Stift bearbeiten und speichern.",
     "add_a_category_first": "Zuerst eine Kategorie hinzufügen.",
-    "tasks_and_things_to_bring_grouped_by_category_use_main_edit_then_": "Aufgaben und mitzubringende Dinge nach Kategorien. Zentralen Bearbeitungsmodus aktivieren und eine Zeile mit dem Stift bearbeiten."
+    "tasks_and_things_to_bring_grouped_by_category_use_main_edit_then_": "Aufgaben und mitzubringende Dinge nach Kategorien. Zentralen Bearbeitungsmodus aktivieren und eine Zeile mit dem Stift bearbeiten.",
+    "no_matching_entries": "Keine passenden Einträge."
   }
 }

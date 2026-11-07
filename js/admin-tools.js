@@ -2,6 +2,7 @@
  'use strict';
  const I=window.RSVP_I18N,T=(text,params)=>I.t(text,params);
  let ctx,backup=null,preview=null,lastLanguageOrder=0,fileGeneration=0,translationScopeValue='settings',foodTranslationId='',foodTranslationCategory='',foodTypeTranslationKey='',translationLocaleSignature='';
+ const contentTranslationIds={};
  const $=id=>document.getElementById(id);
  function enabled(){const rows=ctx.getStore().languages;return rows.length?rows.filter(l=>l.enabled).sort((a,b)=>(a.sort_order||0)-(b.sort_order||0)||a.language_code.localeCompare(b.language_code)):I.languages;}
  function options(select,rows,selected){select.replaceChildren(...rows.map(([value,label])=>ctx.R.dom('option',{value},label)));if(rows.some(([value])=>value===selected))select.value=selected;}
@@ -64,6 +65,49 @@
    key.startsWith('ui:Food type: ')?key.slice('ui:Food type: '.length):I.t(key.slice(3),{},language),
    saveTranslationRows);
  }
+ function renderContentTranslations(category,search){
+  const R=ctx.R,s=ctx.getStore(),host=$('foodTranslationGrid');
+  const groups={
+   'food-category':{
+    label:'Food categories',
+    records:ctx.foodMenuCategories().filter(record=>record.registered),
+    fields:[['Name','name','name']]
+   },
+   venue:{
+    label:'Venue',records:ctx.ordered(s.locations,'name'),
+    fields:[['Name','name','name'],['Welcome messages','welcome','welcome_en','textarea'],['Guest venue notes','notes','notes','textarea']]
+   },
+   session:{
+    label:'Session',records:ctx.ordered(s.sessions,'name'),
+    fields:[['Name','name','name'],['Description','description','description','textarea']]
+   }
+  };
+  const group=groups[category];
+  const records=group.records.filter(record=>record.name.toLowerCase().includes(search));
+  host.replaceChildren();
+  const pickers=R.dom('div',{class:'food-translation-picker'});
+  const label=R.dom('label',{},T(group.label));
+  const picker=R.dom('select');picker.setAttribute('aria-label',T(group.label));
+  options(picker,records.map(record=>[record.id,record.name]),contentTranslationIds[category]);
+  picker.addEventListener('change',()=>{
+   contentTranslationIds[category]=picker.value;
+   renderContentTranslations(category,search);
+  });
+  label.append(picker);pickers.append(label);host.append(pickers);
+  if(!records.length){
+   host.append(R.dom('p',{class:'muted'},T('interface.messages.no_matching_entries')));
+   return;
+  }
+  contentTranslationIds[category]=picker.value;
+  const record=records.find(record=>record.id===picker.value);
+  const columns=group.fields.map(([label,field,source,kind])=>[label,category+':'+record.id+':'+field,kind]);
+  renderTranslationRows(host,columns,(key,language)=>{
+   const field=group.fields.find(field=>key.endsWith(':'+field[1]));
+   if(language==='en')return record[field[2]]||'';
+   if(category==='venue'&&field[1]==='welcome')return record['welcome_'+language]||'';
+   return '';
+  },saveTranslationRows);
+ }
  async function saveTranslationRows(changes,markSaved){
   await rpc('admin_save_translations',{p_changes:changes});
   changes.forEach(markSaved);
@@ -83,15 +127,17 @@
   for(const language of enabled()){
    const row=R.dom('div',{class:'food-translation-row'+(columns.length===1?' food-type-translation-row':'')});
    row.dataset.languageCode=language.language_code;
+   row.style.setProperty('--translation-columns',columns.length);
    row.append(R.dom('strong',{},language.display_name));
-   for(const [label,key] of columns){
-    const wrap=R.dom('label',{},T(label));
+   for(const [label,key,kind] of columns){
+    const wrap=R.dom('label');
+    wrap.append(R.dom('span',{},T(label)));
     const value=s.content.find(c=>c.content_key===key&&c.language_code===language.language_code)?.content_value
       ??fallback(key,language.language_code);
-    const input=R.dom(multiline?'textarea':'input',{type:'text'});
+    const input=R.dom(kind||(multiline?'textarea':'input'),{type:'text'});
     input.value=value;
     input.maxLength=12000;
-    if(multiline)input.rows=2;
+    if(multiline||kind==='textarea')input.rows=2;
     input.setAttribute('aria-label',T(label)+' · '+language.display_name);
     input.disabled=!ctx.isEditing();
     cells.push({key,language:language.language_code,input,original:value});
@@ -129,12 +175,17 @@
   const categories=translationScopeValue==='settings'?[['ui',T("interface.messages.interface_wording")],['welcome',T("interface.messages.event_welcome")]]:[['food',T("food.messages.food")],['food-category',T("food.messages.food_categories")],['food-types',T("food.messages.food_types")],['venue',T("interface.messages.venues")],['session',T("interface.messages.sessions")]];
   options($('translationCategory'),categories,$('translationCategory').value);
   const category=$('translationCategory').value,search=$('translationSearch').value.toLowerCase();
-  const foodMatrix=translationScopeValue==='content'&&(category==='food'||category==='food-types');
+  const foodMatrix=translationScopeValue==='content';
   const settingsMatrix=translationScopeValue==='settings';
   $('translationForm').classList.toggle('food-matrix-active',foodMatrix);
   $('translationForm').classList.toggle('settings-matrix-active',settingsMatrix);
   $('foodTranslationGrid').classList.toggle('hidden',!foodMatrix&&!settingsMatrix);
-  if(foodMatrix){if(category==='food')renderFoodTranslations(search);else renderFoodTypeTranslations(search);return;}
+  if(foodMatrix){
+   if(category==='food')renderFoodTranslations(search);
+   else if(category==='food-types')renderFoodTypeTranslations(search);
+   else renderContentTranslations(category,search);
+   return;
+  }
   options($('translationKey'),translationKeys().filter(([key,label])=>keyCategory(key)===category&&(!search||label.toLowerCase().includes(search))),$('translationKey').value);
   if(settingsMatrix){renderSettingsTranslations();return;}
   $('translationForm').querySelector('button[type="submit"]').disabled=!$('translationKey').value;loadTranslation();

@@ -2,9 +2,9 @@
   "project": "RSVP Manager",
   "updatedAt": "2026-11-14",
   "assessmentDate": "2026-11-13",
-  "release": "0.9.0-alpha.2",
+  "release": "0.9.0-alpha.4",
   "sourceURL": "https://github.com/Paetur/RSVP-Manager",
-  "releaseURL": "https://github.com/Paetur/RSVP-Manager/releases/tag/v0.9.0-alpha.2",
+  "releaseURL": "https://github.com/Paetur/RSVP-Manager/releases/tag/v0.9.0-alpha.4",
   "maturity": 95.05,
   "readiness": 86.05,
   "modules": [
@@ -66,12 +66,12 @@
     }
   ],
   "next": [
-    "Administrator password recovery",
-    "Optional encrypted backups and restores",
-    "Custom follow-up messages for food-interest answers",
-    "An organizer overview of food-interest answers",
-    "Physical-device and accessibility acceptance",
+    "Administrator password recovery and email-delivery acceptance",
+    "Live cloud acceptance of experimental automatic setup",
+    "Deployment recovery documentation",
+    "Physical-device, accessibility and native-sharing acceptance",
     "End-to-end guest-journey acceptance",
+    "Final multilingual content and privacy review",
     "Further interface and translation refinements"
   ]
 }

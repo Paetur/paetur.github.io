@@ -2,9 +2,9 @@
   "project": "RSVP Manager",
   "updatedAt": "2026-11-14",
   "assessmentDate": "2026-11-13",
-  "release": "0.9.0-alpha.5",
+  "release": "0.9.0-alpha.6",
   "sourceURL": "https://github.com/Paetur/RSVP-Manager",
-  "releaseURL": "https://github.com/Paetur/RSVP-Manager/releases/tag/v0.9.0-alpha.5",
+  "releaseURL": "https://github.com/Paetur/RSVP-Manager/releases/tag/v0.9.0-alpha.6",
   "maturity": 95.05,
   "readiness": 86.05,
   "modules": [
@@ -74,19 +74,19 @@
     "Final multilingual content and privacy review",
     "Further interface and translation refinements"
   ],
-  "developmentStatus": "Approved admin-header and template-sharing refinements are committed in development. They are not included in the current alpha.5 public release.",
+  "developmentStatus": "Alpha.6 releases the approved desktop version label, compact phone header and saved/draft template sharing with the landing preview link.",
   "completedMilestones": [
     {
-      "title": "Alpha.5 invitation pictures, saved delivery snapshots and native-sharing fallbacks",
+      "title": "Alpha.6 desktop version label and compact phone header",
       "scope": "Released"
     },
     {
-      "title": "Alpha.5 hosted deployment and scoped backend update verified with existing data preserved",
-      "scope": "Deployed"
+      "title": "Themed Test sharing from saved or edited templates using the landing preview",
+      "scope": "Released"
     },
     {
-      "title": "Desktop version label, compact phone header and saved/draft landing-preview sharing",
-      "scope": "Committed in development; unreleased"
+      "title": "Alpha.6 hosted deployment verified with existing data and unpublished state preserved",
+      "scope": "Deployed"
     }
   ]
 }

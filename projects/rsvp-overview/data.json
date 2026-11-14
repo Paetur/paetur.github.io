@@ -2,9 +2,9 @@
   "project": "RSVP Manager",
   "updatedAt": "2026-11-14",
   "assessmentDate": "2026-11-13",
-  "release": "0.9.0-alpha.4",
+  "release": "0.9.0-alpha.5",
   "sourceURL": "https://github.com/Paetur/RSVP-Manager",
-  "releaseURL": "https://github.com/Paetur/RSVP-Manager/releases/tag/v0.9.0-alpha.4",
+  "releaseURL": "https://github.com/Paetur/RSVP-Manager/releases/tag/v0.9.0-alpha.5",
   "maturity": 95.05,
   "readiness": 86.05,
   "modules": [
@@ -67,11 +67,26 @@
   ],
   "next": [
     "Administrator password recovery and email-delivery acceptance",
+    "Real-device picture/text sharing, accessibility and layout acceptance",
     "Live cloud acceptance of experimental automatic setup",
     "Deployment recovery documentation",
-    "Physical-device, accessibility and native-sharing acceptance",
     "End-to-end guest-journey acceptance",
     "Final multilingual content and privacy review",
     "Further interface and translation refinements"
+  ],
+  "developmentStatus": "Approved admin-header and template-sharing refinements are committed in development. They are not included in the current alpha.5 public release.",
+  "completedMilestones": [
+    {
+      "title": "Alpha.5 invitation pictures, saved delivery snapshots and native-sharing fallbacks",
+      "scope": "Released"
+    },
+    {
+      "title": "Alpha.5 hosted deployment and scoped backend update verified with existing data preserved",
+      "scope": "Deployed"
+    },
+    {
+      "title": "Desktop version label, compact phone header and saved/draft landing-preview sharing",
+      "scope": "Committed in development; unreleased"
+    }
   ]
 }

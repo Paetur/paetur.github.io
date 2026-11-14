@@ -15,7 +15,7 @@ for name in ['iphone','hk-bussar']:
  p=OUT/name/'index.html';s=p.read_text();assert '<main' in s
  s=s.replace('<main',nav+'<main',1);p.write_text(s)
 data=json.loads((ROOT/'projects/rsvp-overview/data.json').read_text())
-assert set(data)=={'project','updatedAt','assessmentDate','release','sourceURL','releaseURL','maturity','readiness','modules','next'}
+assert set(data)=={'project','updatedAt','assessmentDate','release','sourceURL','releaseURL','maturity','readiness','modules','next','developmentStatus','completedMilestones'}
 assert all(set(row)=={'name','progress'} for row in data['modules'])
 encoded=json.dumps(data,ensure_ascii=False).replace('<','\\u003c').replace('>','\\u003e').replace('&','\\u0026')
 page=(ROOT/'projects/rsvp-overview/template.html').read_text().replace('/*DATA*/',encoded)

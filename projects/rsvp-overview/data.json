@@ -1,0 +1,77 @@
+{
+  "project": "RSVP Manager",
+  "updatedAt": "2026-11-14",
+  "assessmentDate": "2026-11-13",
+  "release": "0.9.0-alpha.2",
+  "sourceURL": "https://github.com/Paetur/RSVP-Manager",
+  "releaseURL": "https://github.com/Paetur/RSVP-Manager/releases/tag/v0.9.0-alpha.2",
+  "maturity": 95.05,
+  "readiness": 86.05,
+  "modules": [
+    {
+      "name": "Guest invitation & RSVP",
+      "progress": 96
+    },
+    {
+      "name": "Invitation customization",
+      "progress": 92
+    },
+    {
+      "name": "Households, guests & groups",
+      "progress": 98
+    },
+    {
+      "name": "Venues & sessions",
+      "progress": 95
+    },
+    {
+      "name": "Food, groups & recipes",
+      "progress": 96
+    },
+    {
+      "name": "Invites & delivery tracking",
+      "progress": 95
+    },
+    {
+      "name": "Other tasks/items",
+      "progress": 92
+    },
+    {
+      "name": "Languages & wording",
+      "progress": 93
+    },
+    {
+      "name": "Administrator access & authentication",
+      "progress": 90
+    },
+    {
+      "name": "Database, API & data safeguards",
+      "progress": 97
+    },
+    {
+      "name": "Backup & recovery",
+      "progress": 98
+    },
+    {
+      "name": "Hosting & operations",
+      "progress": 97
+    },
+    {
+      "name": "Testing & CI",
+      "progress": 96
+    },
+    {
+      "name": "Documentation & maintainability",
+      "progress": 94
+    }
+  ],
+  "next": [
+    "Administrator password recovery",
+    "Optional encrypted backups and restores",
+    "Custom follow-up messages for food-interest answers",
+    "An organizer overview of food-interest answers",
+    "Physical-device and accessibility acceptance",
+    "End-to-end guest-journey acceptance",
+    "Further interface and translation refinements"
+  ]
+}

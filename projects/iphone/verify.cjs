@@ -1,0 +1,60 @@
+const fs=require('node:fs');
+const vm=require('node:vm');
+const assert=require('node:assert/strict');
+const html=fs.readFileSync('dist/index.html','utf8');
+const elements=new Map();
+function el(id){if(!elements.has(id))elements.set(id,{value:{model:'standard',compat:'all',feature:'ai',search:''}[id]||'',hidden:false,innerHTML:'',listeners:{},addEventListener(type,fn){this.listeners[type]=fn;}});return elements.get(id);}
+const context=vm.createContext({document:{getElementById:el}});
+vm.runInContext(html.match(/<script>([\s\S]*?)<\/script>/)[1],context);
+const run=s=>vm.runInContext(s,context);
+function change(id,value){const e=el(id);e.value=value;e.listeners[id==='search'?'input':'change']({target:e});}
+const names=()=>JSON.parse(run('JSON.stringify(matches(MODELS,state).map(r=>r.name))'));
+assert.equal(run('MODELS.length'),55);
+assert.equal(run('new Set(MODELS.map(r=>r.name)).size'),55);
+assert.equal(run('HEADERS.length'),13);
+assert.equal(el('feature-wrap').hidden,true);
+assert(!names().some(x=>x.includes('Pro')||x.includes('Duo')));
+change('model','all');assert.equal(names().length,55);
+change('compat','latest');assert.equal(names().length,34);
+assert(!names().includes('iPhone XS'));assert(names().includes('iPhone SE (2nd generation)'));
+change('compat','feature');assert.equal(el('feature-wrap').hidden,false);
+for(const [key,label] of JSON.parse(run('JSON.stringify(FEATURES)'))){change('feature',key);assert(run(`matches(MODELS,state).every(r=>r[${JSON.stringify(key)}]===true)`));assert(names().length>0,label);}
+change('feature','ai');assert(names().includes('iPhone 15 Pro'));assert(!names().includes('iPhone 15'));
+change('feature','magsafe');assert(names().includes('iPhone 17e'));assert(!names().includes('iPhone 16e'));
+change('compat','all');change('model','pro');assert(names().every(x=>x.endsWith(' Pro')));assert.equal(names().length,8);
+change('model','promax');assert(names().every(x=>x.endsWith(' Pro Max')));assert.equal(names().length,8);
+change('model','all');change('search','  IPHONE 16E  ');assert.deepEqual(names(),['iPhone 16e']);
+change('search','<script>');assert.equal(names().length,0);assert(el('body').innerHTML.includes('No models match'));
+change('search','Duo');assert.deepEqual(names(),['iPhone Duo']);
+assert.equal((el('body').innerHTML.match(/<td>/g)||[]).length,13);
+change('compat','feature');change('feature','faceid');assert.equal(names().length,0);
+el('reset').listeners.click();assert.equal(el('model').value,'standard');assert.equal(el('compat').value,'all');assert.equal(el('search').value,'');assert.equal(el('feature-wrap').hidden,true);
+assert.equal(names().length,38);
+assert.equal(run("MODELS.find(r=>r.name==='iPhone SE (3rd generation)').satellite"),false);
+assert.equal(run("MODELS.find(r=>r.name==='iPhone 17e').uwb"),false);
+assert.equal(run("MODELS.find(r=>r.name==='iPhone Duo').faceid"),false);
+function requireFeature(key,checked){el('require-'+key).checked=checked;el('required-options').listeners.change({target:{dataset:{required:key},checked}});}
+change('model','all');
+requireFeature('usbc',true);requireFeature('magsafe',true);requireFeature('promotion',true);
+assert(run('matches(MODELS,state).every(r=>r.usbc&&r.magsafe&&r.promotion)'));
+assert(names().includes('iPhone 17'));assert(!names().includes('iPhone 16'));
+assert.equal(el('required-summary').textContent,'3 features required');
+change('search','17e');assert.equal(names().length,0);
+requireFeature('promotion',false);assert.deepEqual(names(),['iPhone 17e']);
+change('compat','feature');change('feature','uwb');assert.equal(names().length,0);
+el('reset').listeners.click();
+assert.equal(run('state.required.length'),0);assert.equal(el('required-summary').textContent,'Any hardware');
+assert.equal(el('require-usbc').checked,false);assert.equal(el('require-magsafe').checked,false);
+assert.equal(el('required-picker').open,false);assert.equal(names().length,38);
+function pickModel(name,checked){const index=run(`MODELS.findIndex(r=>r.name===${JSON.stringify(name)})`);assert(index>=0);el('pick-model-'+index).checked=checked;el('models-options').listeners.change({target:{dataset:{modelIndex:String(index)},checked}});}
+pickModel('iPhone 16',true);pickModel('iPhone 16 Pro',true);
+assert.equal(el('model').value,'all');assert.deepEqual(names().sort(),['iPhone 16','iPhone 16 Pro']);
+assert.equal(el('models-summary').textContent,'2 models selected');
+requireFeature('promotion',true);assert.deepEqual(names(),['iPhone 16 Pro']);
+requireFeature('promotion',false);pickModel('iPhone 16',false);assert.deepEqual(names(),['iPhone 16 Pro']);
+el('clear-models').listeners.click();assert.equal(names().length,55);assert.equal(el('models-summary').textContent,'All models');
+pickModel('iPhone 17e',true);el('reset').listeners.click();
+assert.equal(run('state.selected.length'),0);assert.equal(names().length,38);
+assert.equal(el('models-picker').open,false);assert.equal(el('models-summary').textContent,'All models');
+assert(!html.includes('+.required-picker'));
+console.log('PASS: all previous checks plus model multi-selection, mixed families, combined hardware filters, deselection, clear selection and reset.');

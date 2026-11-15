@@ -1,10 +1,10 @@
 {
   "project": "RSVP Manager",
-  "updatedAt": "2026-11-14",
+  "updatedAt": "2026-11-15",
   "assessmentDate": "2026-11-13",
-  "release": "0.9.0-alpha.6",
+  "release": "0.9.0-alpha.7",
   "sourceURL": "https://github.com/Paetur/RSVP-Manager",
-  "releaseURL": "https://github.com/Paetur/RSVP-Manager/releases/tag/v0.9.0-alpha.6",
+  "releaseURL": "https://github.com/Paetur/RSVP-Manager/releases/tag/v0.9.0-alpha.7",
   "maturity": 95.05,
   "readiness": 86.05,
   "modules": [
@@ -74,18 +74,34 @@
     "Final multilingual content and privacy review",
     "Further interface and translation refinements"
   ],
-  "developmentStatus": "Alpha.6 releases the approved desktop version label, compact phone header and saved/draft template sharing with the landing preview link.",
+  "developmentStatus": "Alpha.7 releases the approved interface/delivery refinements, scoped placeholders, guest-name preferences, record timestamps and guarded same-installation event rollback. Fresh installation and upgrade backup contracts are aligned. The event remains unpublished; device, email, accessibility and real-cloud acceptance remain separate.",
   "completedMilestones": [
     {
-      "title": "Alpha.6 desktop version label and compact phone header",
+      "title": "Alpha.7 Overview, scrolling navigation and template-based delivery with optional customization",
       "scope": "Released"
     },
     {
-      "title": "Themed Test sharing from saved or edited templates using the landing preview",
+      "title": "Record-owned inline editors/confirmations and compact mobile controls",
       "scope": "Released"
     },
     {
-      "title": "Alpha.6 hosted deployment verified with existing data and unpublished state preserved",
+      "title": "Guest titles, shared surname preferences and combined household display names",
+      "scope": "Released"
+    },
+    {
+      "title": "Scoped placeholders, venue/session timestamps and canonical backup manifests",
+      "scope": "Released"
+    },
+    {
+      "title": "Guarded same-installation replacement restore alongside clean recovery",
+      "scope": "Released"
+    },
+    {
+      "title": "Atomic fresh installation and data-preserving alpha.6 upgrade",
+      "scope": "Released"
+    },
+    {
+      "title": "Hosted alpha.7 deployment with existing data/photos/configuration and unpublished state preserved",
       "scope": "Deployed"
     }
   ]

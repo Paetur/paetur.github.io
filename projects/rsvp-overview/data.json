@@ -1,10 +1,10 @@
 {
   "project": "RSVP Manager",
-  "updatedAt": "2026-11-15",
+  "updatedAt": "2026-11-18",
   "assessmentDate": "2026-11-13",
-  "release": "0.9.0-alpha.7",
+  "release": "0.9.0-alpha.8",
   "sourceURL": "https://github.com/Paetur/RSVP-Manager",
-  "releaseURL": "https://github.com/Paetur/RSVP-Manager/releases/tag/v0.9.0-alpha.7",
+  "releaseURL": "https://github.com/Paetur/RSVP-Manager/releases/tag/v0.9.0-alpha.8",
   "maturity": 95.05,
   "readiness": 86.05,
   "modules": [
@@ -66,42 +66,42 @@
     }
   ],
   "next": [
-    "Administrator password recovery and email-delivery acceptance",
-    "Real-device picture/text sharing, accessibility and layout acceptance",
-    "Live cloud acceptance of experimental automatic setup",
+    "Administrator invitation and password recovery email delivery tests",
+    "Real-device sharing, accessibility and layout tests",
+    "On-device testing of the experimental iPhone Shortcuts workflow",
     "Deployment recovery documentation",
     "End-to-end guest-journey acceptance",
     "Final multilingual content and privacy review",
     "Further interface and translation refinements"
   ],
-  "developmentStatus": "Alpha.7 releases the approved interface/delivery refinements, scoped placeholders, guest-name preferences, record timestamps and guarded same-installation event rollback. Fresh installation and upgrade backup contracts are aligned. The event remains unpublished; device, email, accessibility and real-cloud acceptance remain separate.",
+  "developmentStatus": "Alpha.8 adds named invitation templates, bulk draft preparation in Manage Invites, administrator password recovery, and Yes/No confirmations for backup restore and wipe. First-administrator setup offers a trusted local companion or SQL Editor. The experimental iPhone Shortcuts workflow is off by default and still needs on-device testing.",
   "completedMilestones": [
     {
-      "title": "Alpha.7 Overview, scrolling navigation and template-based delivery with optional customization",
+      "title": "Manage Invites prepares missing drafts from named templates and supports service and invitation status filters",
       "scope": "Released"
     },
     {
-      "title": "Record-owned inline editors/confirmations and compact mobile controls",
+      "title": "Review up to ten selected households and hand off invitations through Apple Share or Copy & Paste",
       "scope": "Released"
     },
     {
-      "title": "Guest titles, shared surname preferences and combined household display names",
+      "title": "Administrator password recovery and guarded first-administrator setup",
       "scope": "Released"
     },
     {
-      "title": "Scoped placeholders, venue/session timestamps and canonical backup manifests",
+      "title": "Wipe and restore validates the file during the safety download step, then offers Yes/No confirmation",
       "scope": "Released"
     },
     {
-      "title": "Guarded same-installation replacement restore alongside clean recovery",
+      "title": "Compact settings, separate phone and wide invitation previews, and improved Languages reading and CSV export",
       "scope": "Released"
     },
     {
-      "title": "Atomic fresh installation and data-preserving alpha.6 upgrade",
+      "title": "Optional iPhone Shortcuts batch preparation and delivery status tracking",
       "scope": "Released"
     },
     {
-      "title": "Hosted alpha.7 deployment with existing data/photos/configuration and unpublished state preserved",
+      "title": "Hosted alpha.8 deployment with existing records, private photos and configuration preserved",
       "scope": "Deployed"
     }
   ]

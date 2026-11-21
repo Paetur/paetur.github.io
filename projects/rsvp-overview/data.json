@@ -2,9 +2,9 @@
   "project": "RSVP Manager",
   "updatedAt": "2026-11-21",
   "assessmentDate": "2026-11-21",
-  "release": "0.9.0-beta.1",
+  "release": "0.9.0-beta.2",
   "sourceURL": "https://github.com/Paetur/RSVP-Manager",
-  "releaseURL": "https://github.com/Paetur/RSVP-Manager/releases/tag/v0.9.0-beta.1",
+  "releaseURL": "https://github.com/Paetur/RSVP-Manager/releases/tag/v0.9.0-beta.2",
   "maturity": 88.22,
   "readiness": 71.25,
   "modules": [
@@ -66,14 +66,18 @@
     }
   ],
   "next": [
-    "Verify keyboard and screen-reader access, supported devices and remaining share targets",
-    "Test actual administrator invitation and password recovery email delivery",
-    "Review template language tags, unique matches, multilingual content and privacy settings",
+    "Extend device, accessibility and sharing checks beyond the workflows already verified",
+    "Complete the remaining live and device checks for experimental Shortcuts",
+    "Review final event content and document the retention and deletion policy",
     "Document and rehearse deployment recovery for supported installations",
     "Continue interface and translation refinements"
   ],
-  "developmentStatus": "Beta.1 is the first public beta prerelease. Full verification includes the published guest journey on disposable data. The application uses the same database schema and backup contract as alpha.9. The organizer has confirmed manual Copy, share and Mark Sent in their tested scope. Apple Shortcuts remains experimental and disabled by default.",
+  "developmentStatus": "Beta.2 adds the Needs draft filter, selection of all visible eligible households and per-household delivery history. Manual invitation batches can exceed ten households. The dashboard loads one copy of each picture shared by several drafts. The database update retains the existing application tables and backup format. Apple Shortcuts remains experimental and disabled by default.",
   "completedMilestones": [
+    {
+      "title": "Needs draft, visible selection, household delivery history and larger manual batches. Full verification covers a twelve-household batch.",
+      "scope": "Released"
+    },
     {
       "title": "Disposable published guest journey in full verification, including RSVP replies and retry, organizer corrections and competing food claims",
       "scope": "Released"
@@ -103,7 +107,7 @@
       "scope": "Verified locally"
     },
     {
-      "title": "Hosted alpha.9 deployment with existing records, private photos and configuration preserved; event kept unpublished",
+      "title": "Hosted beta.2 deployment verified with existing records, private photos and configuration preserved.",
       "scope": "Deployed"
     }
   ]

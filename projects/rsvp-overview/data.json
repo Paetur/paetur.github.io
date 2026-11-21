@@ -1,10 +1,10 @@
 {
   "project": "RSVP Manager",
-  "updatedAt": "2026-11-18",
+  "updatedAt": "2026-11-21",
   "assessmentDate": "2026-11-13",
-  "release": "0.9.0-alpha.8",
+  "release": "0.9.0-alpha.9",
   "sourceURL": "https://github.com/Paetur/RSVP-Manager",
-  "releaseURL": "https://github.com/Paetur/RSVP-Manager/releases/tag/v0.9.0-alpha.8",
+  "releaseURL": "https://github.com/Paetur/RSVP-Manager/releases/tag/v0.9.0-alpha.9",
   "maturity": 95.05,
   "readiness": 86.05,
   "modules": [
@@ -74,34 +74,34 @@
     "Final multilingual content and privacy review",
     "Further interface and translation refinements"
   ],
-  "developmentStatus": "Alpha.8 adds named invitation templates, bulk draft preparation in Manage Invites, administrator password recovery, and Yes/No confirmations for backup restore and wipe. First-administrator setup offers a trusted local companion or SQL Editor. The experimental iPhone Shortcuts workflow is off by default and still needs on-device testing.",
+  "developmentStatus": "Alpha.9 brings invitation summaries, status and Food filters, selection and manual sending actions into Invites. Service chips copy numbers or email addresses; Draft/Ready copies the invitation, with a Text fallback for experimental picture-and-text copying. Rows 1 and 2 have separate saved defaults, and Household, Service and Invitation stay visible. Real-device picture/caption paste and the native Shortcuts workflow still need acceptance.",
   "completedMilestones": [
     {
-      "title": "Manage Invites prepares missing drafts from named templates and supports service and invitation status filters",
+      "title": "Consolidated Invites dashboard with clickable invitation-status and Food filters, selection and manual sending actions",
       "scope": "Released"
     },
     {
-      "title": "Review up to ten selected households and hand off invitations through Apple Share or Copy & Paste",
+      "title": "Compact Service number/email copy and Draft/Ready invitation copy with guarded selected Mark Sent",
       "scope": "Released"
     },
     {
-      "title": "Administrator password recovery and guarded first-administrator setup",
+      "title": "Separate one-row field and two-row paired-column defaults, fixed Household/Service/Invitation, and service or relational grouping",
       "scope": "Released"
     },
     {
-      "title": "Wipe and restore validates the file during the safety download step, then offers Yes/No confirmation",
+      "title": "Template service/language matching and a separate private Picture album",
       "scope": "Released"
     },
     {
-      "title": "Compact settings, separate phone and wide invitation previews, and improved Languages reading and CSV export",
+      "title": "Experimental picture-and-text invitation copy with an explicit Text fallback; device paste acceptance remains open",
       "scope": "Released"
     },
     {
-      "title": "Optional iPhone Shortcuts batch preparation and delivery status tracking",
-      "scope": "Released"
+      "title": "Six-item synthetic dry-run batch completed without Sent or RSVP writes; further device/live acceptance remains open",
+      "scope": "Verified locally"
     },
     {
-      "title": "Hosted alpha.8 deployment with existing records, private photos and configuration preserved",
+      "title": "Hosted alpha.9 deployment with existing records, private photos and configuration preserved; event kept unpublished",
       "scope": "Deployed"
     }
   ]

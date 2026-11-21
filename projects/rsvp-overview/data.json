@@ -2,9 +2,9 @@
   "project": "RSVP Manager",
   "updatedAt": "2026-11-21",
   "assessmentDate": "2026-11-21",
-  "release": "0.9.0-beta.2",
+  "release": "0.9.0-beta.3",
   "sourceURL": "https://github.com/Paetur/RSVP-Manager",
-  "releaseURL": "https://github.com/Paetur/RSVP-Manager/releases/tag/v0.9.0-beta.2",
+  "releaseURL": "https://github.com/Paetur/RSVP-Manager/releases/tag/v0.9.0-beta.3",
   "maturity": 88.22,
   "readiness": 71.25,
   "modules": [
@@ -72,8 +72,12 @@
     "Document and rehearse deployment recovery for supported installations",
     "Continue interface and translation refinements"
   ],
-  "developmentStatus": "Beta.2 adds the Needs draft filter, selection of all visible eligible households and per-household delivery history. Manual invitation batches can exceed ten households. The dashboard loads one copy of each picture shared by several drafts. The database update retains the existing application tables and backup format. Apple Shortcuts remains experimental and disabled by default.",
+  "developmentStatus": "Beta.3 puts Generate Drafts first and adds Mark ready and Make draft for selected households. Current invitation opens above RSVP with a separate delivery history. The database update preserves the saved details when returning a Ready invitation to Draft and retains the existing backup format. The project has 49 completed milestones (47 released and two operator-confirmed), seven active tasks and 11 approved guides. Apple Shortcuts remains experimental and disabled by default.",
   "completedMilestones": [
+    {
+      "title": "Reversible invitation readiness, a single Invitation copy button and a separate Current invitation panel above RSVP.",
+      "scope": "Released"
+    },
     {
       "title": "Needs draft, visible selection, household delivery history and larger manual batches. Full verification covers a twelve-household batch.",
       "scope": "Released"
@@ -87,7 +91,7 @@
       "scope": "Released"
     },
     {
-      "title": "Compact Service number/email copy and Draft/Ready invitation copy with guarded selected Mark Sent",
+      "title": "Compact Service number or email copying and guarded selection for Mark Sent.",
       "scope": "Released"
     },
     {
@@ -99,7 +103,7 @@
       "scope": "Released"
     },
     {
-      "title": "Picture-and-text invitation copy with an explicit Text fallback. Broader device and share-target checks remain open.",
+      "title": "Picture-and-text invitation copying with a text fallback when combined copy is unavailable.",
       "scope": "Released"
     },
     {
@@ -107,7 +111,7 @@
       "scope": "Verified locally"
     },
     {
-      "title": "Hosted beta.2 deployment verified with existing records, private photos and configuration preserved.",
+      "title": "Hosted beta.3 deployment verified with existing records, private photos and configuration preserved.",
       "scope": "Deployed"
     }
   ]

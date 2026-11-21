@@ -2,9 +2,9 @@
   "project": "RSVP Manager",
   "updatedAt": "2026-11-21",
   "assessmentDate": "2026-11-21",
-  "release": "0.9.0-alpha.9",
+  "release": "0.9.0-beta.1",
   "sourceURL": "https://github.com/Paetur/RSVP-Manager",
-  "releaseURL": "https://github.com/Paetur/RSVP-Manager/releases/tag/v0.9.0-alpha.9",
+  "releaseURL": "https://github.com/Paetur/RSVP-Manager/releases/tag/v0.9.0-beta.1",
   "maturity": 88.22,
   "readiness": 71.25,
   "modules": [
@@ -66,15 +66,18 @@
     }
   ],
   "next": [
-    "Complete the end-to-end guest journey on disposable published data",
     "Verify keyboard and screen-reader access, supported devices and remaining share targets",
     "Test actual administrator invitation and password recovery email delivery",
     "Review template language tags, unique matches, multilingual content and privacy settings",
-    "Document and rehearse deployment recovery and define beta upgrade and restore support",
+    "Document and rehearse deployment recovery for supported installations",
     "Continue interface and translation refinements"
   ],
-  "developmentStatus": "The 21 November reassessment uses stricter acceptance criteria and recommends staying on alpha.9 while the guest journey, accessibility, email and recovery checks are completed. The operator confirmed the manual Copy, share and Mark Sent workflow and the Rows and Shown controls. Broader device and share-target checks remain open. Apple Shortcuts remains experimental and can stay disabled for the supported beta scope.",
+  "developmentStatus": "Beta.1 is the first public beta prerelease. Full verification includes the published guest journey on disposable data. The application uses the same database schema and backup contract as alpha.9. The organizer has confirmed manual Copy, share and Mark Sent in their tested scope. Apple Shortcuts remains experimental and disabled by default.",
   "completedMilestones": [
+    {
+      "title": "Disposable published guest journey in full verification, including RSVP replies and retry, organizer corrections and competing food claims",
+      "scope": "Released"
+    },
     {
       "title": "Consolidated Invites dashboard with clickable invitation-status and Food filters, selection and manual sending actions",
       "scope": "Released"

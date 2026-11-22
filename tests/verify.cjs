@@ -11,4 +11,4 @@ assert.equal(data.project,'RSVP Manager');assert.equal(data.modules.length,14);a
 assert.equal(data.sourceURL,'https://github.com/Paetur/RSVP-Manager');
 for(const file of paths.filter(p=>p.endsWith('.html'))){const text=fs.readFileSync(path.join(site,file),'utf8');assert.ok(text.includes('name="viewport"'));assert.ok(!/\b(?:src|href)="http:\/\//.test(text),file+' must not use HTTP assets/links');for(const script of text.matchAll(/<script>([\s\S]*?)<\/script>/g))new vm.Script(script[1]);}
 const result=cp.spawnSync(process.execPath,['verify.cjs'],{cwd:path.join(root,'projects/iphone'),encoding:'utf8'});assert.equal(result.status,0,result.stderr);process.stdout.write(result.stdout);
-console.log('PASS public site: three project links, exact artifact allowlist, working module data, HTTPS links, valid scripts and unchanged iPhone filters.');
+console.log('PASS public site: three project links, exact artifact allowlist, working module data, HTTPS links, valid scripts and iPhone filters.');

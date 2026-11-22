@@ -2,9 +2,9 @@
   "project": "RSVP Manager",
   "updatedAt": "2026-11-22",
   "assessmentDate": "2026-11-21",
-  "release": "0.9.0-beta.4",
+  "release": "0.9.0-beta.5",
   "sourceURL": "https://github.com/Paetur/RSVP-Manager",
-  "releaseURL": "https://github.com/Paetur/RSVP-Manager/releases/tag/v0.9.0-beta.4",
+  "releaseURL": "https://github.com/Paetur/RSVP-Manager/releases/tag/v0.9.0-beta.5",
   "maturity": 88.22,
   "readiness": 71.25,
   "modules": [
@@ -68,12 +68,17 @@
   "next": [
     "Extend device, accessibility and sharing checks beyond the workflows already verified",
     "Complete the remaining live and device checks for experimental Shortcuts",
-    "Review final event content and document the retention and deletion policy",
+    "Review final event content",
+    "Clarify retention of deleted drafts and delivery history in backups",
     "Document and rehearse deployment recovery for supported installations",
     "Continue interface and translation refinements"
   ],
-  "developmentStatus": "Beta.4 shares immutable invitation template revisions and picture data. Partial Backup reads selected data and Full Backup stores shared pictures once. Invites adds group and attendance filters, saved Rows by screen width, and separate draft and invitation actions. The project has 51 completed milestones (49 released and two operator-confirmed), seven active tasks and 11 approved guides. Apple Shortcuts remains experimental and disabled by default.",
+  "developmentStatus": "Beta.5 gives Database separate Backup, Restore and Wipe tabs. Restore detects the backup type and shows compatible choices. Restart planning from a Partial backup after downloading a Full safety backup. Partial backups can include wording, templates, pictures and drafts separately, with issued-code reservations off by default. The tabbed Overview groups Information and Invitation controls. Saved album pictures can reuse shared snapshots. The project has 52 completed milestones (50 released and two operator-confirmed), seven active tasks and 11 approved guides. Apple Shortcuts remains experimental and disabled by default.",
   "completedMilestones": [
+    {
+      "title": "Tabbed Database and Overview, planning restart with safety backup recovery, and shared picture storage.",
+      "scope": "Released"
+    },
     {
       "title": "Shared invitation snapshots and verified Full and Partial backup and restore.",
       "scope": "Released"
@@ -119,7 +124,7 @@
       "scope": "Verified locally"
     },
     {
-      "title": "Hosted beta.4 deployment verified with existing records, private photos and configuration preserved.",
+      "title": "Hosted beta.5 deployment verified with existing records, private photos and configuration preserved.",
       "scope": "Deployed"
     }
   ]

@@ -1,10 +1,10 @@
 {
   "project": "RSVP Manager",
-  "updatedAt": "2026-11-21",
+  "updatedAt": "2026-11-22",
   "assessmentDate": "2026-11-21",
-  "release": "0.9.0-beta.3",
+  "release": "0.9.0-beta.4",
   "sourceURL": "https://github.com/Paetur/RSVP-Manager",
-  "releaseURL": "https://github.com/Paetur/RSVP-Manager/releases/tag/v0.9.0-beta.3",
+  "releaseURL": "https://github.com/Paetur/RSVP-Manager/releases/tag/v0.9.0-beta.4",
   "maturity": 88.22,
   "readiness": 71.25,
   "modules": [
@@ -72,8 +72,16 @@
     "Document and rehearse deployment recovery for supported installations",
     "Continue interface and translation refinements"
   ],
-  "developmentStatus": "Beta.3 puts Generate Drafts first and adds Mark ready and Make draft for selected households. Current invitation opens above RSVP with a separate delivery history. The database update preserves the saved details when returning a Ready invitation to Draft and retains the existing backup format. The project has 49 completed milestones (47 released and two operator-confirmed), seven active tasks and 11 approved guides. Apple Shortcuts remains experimental and disabled by default.",
+  "developmentStatus": "Beta.4 shares immutable invitation template revisions and picture data. Partial Backup reads selected data and Full Backup stores shared pictures once. Invites adds group and attendance filters, saved Rows by screen width, and separate draft and invitation actions. The project has 51 completed milestones (49 released and two operator-confirmed), seven active tasks and 11 approved guides. Apple Shortcuts remains experimental and disabled by default.",
   "completedMilestones": [
+    {
+      "title": "Shared invitation snapshots and verified Full and Partial backup and restore.",
+      "scope": "Released"
+    },
+    {
+      "title": "Invites group and attendance filters, responsive Rows, and revised draft and delivery workflow.",
+      "scope": "Released"
+    },
     {
       "title": "Reversible invitation readiness, a single Invitation copy button and a separate Current invitation panel above RSVP.",
       "scope": "Released"
@@ -111,7 +119,7 @@
       "scope": "Verified locally"
     },
     {
-      "title": "Hosted beta.3 deployment verified with existing records, private photos and configuration preserved.",
+      "title": "Hosted beta.4 deployment verified with existing records, private photos and configuration preserved.",
       "scope": "Deployed"
     }
   ]

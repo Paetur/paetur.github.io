@@ -2,9 +2,9 @@
   "project": "RSVP Manager",
   "updatedAt": "2026-11-22",
   "assessmentDate": "2026-11-21",
-  "release": "0.9.0-beta.5",
+  "release": "0.9.0-beta.6",
   "sourceURL": "https://github.com/Paetur/RSVP-Manager",
-  "releaseURL": "https://github.com/Paetur/RSVP-Manager/releases/tag/v0.9.0-beta.5",
+  "releaseURL": "https://github.com/Paetur/RSVP-Manager/releases/tag/v0.9.0-beta.6",
   "maturity": 88.22,
   "readiness": 71.25,
   "modules": [
@@ -73,8 +73,12 @@
     "Document and rehearse deployment recovery for supported installations",
     "Continue interface and translation refinements"
   ],
-  "developmentStatus": "Beta.5 gives Database separate Backup, Restore and Wipe tabs. Restore detects the backup type and shows compatible choices. Restart planning from a Partial backup after downloading a Full safety backup. Partial backups can include wording, templates, pictures and drafts separately, with issued-code reservations off by default. The tabbed Overview groups Information and Invitation controls. Saved album pictures can reuse shared snapshots. The project has 52 completed milestones (50 released and two operator-confirmed), seven active tasks and 11 approved guides. Apple Shortcuts remains experimental and disabled by default.",
+  "developmentStatus": "Beta.6 shows Invites batch progress and results beneath the action buttons. The Text button copies just the invitation message and RSVP link. Venues and Sessions have separate keyboard-accessible tabs that preserve an unsaved edit when switching. The project has 53 completed milestones (51 released and two operator-confirmed), seven active tasks and 11 approved guides. Apple Shortcuts remains experimental and disabled by default.",
   "completedMilestones": [
+    {
+      "title": "Invites progress and Text copying, separate Venues and Sessions tabs, and refreshed documentation screenshots.",
+      "scope": "Released"
+    },
     {
       "title": "Tabbed Database and Overview, planning restart with safety backup recovery, and shared picture storage.",
       "scope": "Released"
@@ -124,7 +128,7 @@
       "scope": "Verified locally"
     },
     {
-      "title": "Hosted beta.5 deployment verified with existing records, private photos and configuration preserved.",
+      "title": "Hosted beta.6 deployment verified with existing records, private photos and configuration preserved.",
       "scope": "Deployed"
     }
   ]

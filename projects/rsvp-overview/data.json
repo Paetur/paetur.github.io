@@ -1,20 +1,20 @@
 {
   "project": "RSVP Manager",
-  "updatedAt": "2026-11-22",
-  "assessmentDate": "2026-11-21",
+  "updatedAt": "2026-11-23",
+  "assessmentDate": "2026-11-23",
   "release": "0.9.0-beta.6",
   "sourceURL": "https://github.com/Paetur/RSVP-Manager",
   "releaseURL": "https://github.com/Paetur/RSVP-Manager/releases/tag/v0.9.0-beta.6",
-  "maturity": 88.22,
-  "readiness": 71.25,
+  "maturity": 92.07,
+  "readiness": 84.05,
   "modules": [
     {
       "name": "Guest invitation & RSVP",
-      "progress": 85
+      "progress": 92
     },
     {
       "name": "Invitation customization",
-      "progress": 90
+      "progress": 93
     },
     {
       "name": "Households, guests & groups",
@@ -22,7 +22,7 @@
     },
     {
       "name": "Venues & sessions",
-      "progress": 90
+      "progress": 92
     },
     {
       "name": "Food, groups & recipes",
@@ -30,7 +30,7 @@
     },
     {
       "name": "Invites & delivery tracking",
-      "progress": 87
+      "progress": 92
     },
     {
       "name": "Other tasks/items",
@@ -38,31 +38,31 @@
     },
     {
       "name": "Languages & wording",
-      "progress": 88
+      "progress": 89
     },
     {
       "name": "Administrator access & authentication",
-      "progress": 80
+      "progress": 89
     },
     {
       "name": "Database, API & data safeguards",
-      "progress": 95
+      "progress": 97
     },
     {
       "name": "Backup & recovery",
-      "progress": 92
+      "progress": 97
     },
     {
       "name": "Hosting & operations",
-      "progress": 86
+      "progress": 91
     },
     {
       "name": "Testing & CI",
-      "progress": 83
+      "progress": 91
     },
     {
       "name": "Documentation & maintainability",
-      "progress": 85
+      "progress": 89
     }
   ],
   "next": [
@@ -73,7 +73,7 @@
     "Document and rehearse deployment recovery for supported installations",
     "Continue interface and translation refinements"
   ],
-  "developmentStatus": "Beta.6 shows Invites batch progress and results beneath the action buttons. The Text button copies just the invitation message and RSVP link. Venues and Sessions have separate keyboard-accessible tabs that preserve an unsaved edit when switching. The project has 53 completed milestones (51 released and two operator-confirmed), seven active tasks and 11 approved guides. Apple Shortcuts remains experimental and disabled by default.",
+  "developmentStatus": "Beta.6 shows Invites batch progress and results beneath the action buttons. The Text button copies just the invitation message and RSVP link. Venues and Sessions have separate keyboard-accessible tabs that preserve an unsaved edit when switching. The project has 53 completed milestones (51 released and two operator-confirmed), seven active tasks and 11 approved guides. Apple Shortcuts remains experimental and disabled by default. The reassessment includes the published guest journey in CI, organizer-confirmed sharing and accessibility in the tested workflows, real administrator invitation and recovery email, and verified backup and recovery.",
   "completedMilestones": [
     {
       "title": "Invites progress and Text copying, separate Venues and Sessions tabs, and refreshed documentation screenshots.",

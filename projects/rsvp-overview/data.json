@@ -2,15 +2,15 @@
   "project": "RSVP Manager",
   "updatedAt": "2026-11-23",
   "assessmentDate": "2026-11-23",
-  "release": "0.9.0-beta.6",
+  "release": "0.9.0-beta.7",
   "sourceURL": "https://github.com/Paetur/RSVP-Manager",
-  "releaseURL": "https://github.com/Paetur/RSVP-Manager/releases/tag/v0.9.0-beta.6",
-  "maturity": 92.07,
-  "readiness": 84.05,
+  "releaseURL": "https://github.com/Paetur/RSVP-Manager/releases/tag/v0.9.0-beta.7",
+  "maturity": 93.08,
+  "readiness": 84.95,
   "modules": [
     {
       "name": "Guest invitation & RSVP",
-      "progress": 92
+      "progress": 95
     },
     {
       "name": "Invitation customization",
@@ -22,15 +22,15 @@
     },
     {
       "name": "Venues & sessions",
-      "progress": 92
+      "progress": 93
     },
     {
       "name": "Food, groups & recipes",
-      "progress": 89
+      "progress": 91
     },
     {
       "name": "Invites & delivery tracking",
-      "progress": 92
+      "progress": 94
     },
     {
       "name": "Other tasks/items",
@@ -38,7 +38,7 @@
     },
     {
       "name": "Languages & wording",
-      "progress": 89
+      "progress": 91
     },
     {
       "name": "Administrator access & authentication",
@@ -46,7 +46,7 @@
     },
     {
       "name": "Database, API & data safeguards",
-      "progress": 97
+      "progress": 98
     },
     {
       "name": "Backup & recovery",
@@ -58,23 +58,40 @@
     },
     {
       "name": "Testing & CI",
-      "progress": 91
+      "progress": 92
     },
     {
       "name": "Documentation & maintainability",
-      "progress": 89
+      "progress": 90
     }
   ],
   "next": [
     "Extend device, accessibility and sharing checks beyond the workflows already verified",
     "Complete the remaining live and device checks for experimental Shortcuts",
-    "Review final event content",
-    "Clarify retention of deleted drafts and delivery history in backups",
+    "Define how recovery and backups retain deleted drafts and delivery history",
     "Document and rehearse deployment recovery for supported installations",
-    "Continue interface and translation refinements"
+    "Review final event content, contacts and guest-facing wording",
+    "Audit dynamic translation keys and remaining callers",
+    "Refine delivery and response views and secondary filters on phones"
   ],
-  "developmentStatus": "Beta.6 shows Invites batch progress and results beneath the action buttons. The Text button copies just the invitation message and RSVP link. Venues and Sessions have separate keyboard-accessible tabs that preserve an unsaved edit when switching. The project has 53 completed milestones (51 released and two operator-confirmed), seven active tasks and 11 approved guides. Apple Shortcuts remains experimental and disabled by default. The reassessment includes the published guest journey in CI, organizer-confirmed sharing and accessibility in the tested workflows, real administrator invitation and recovery email, and verified backup and recovery.",
+  "developmentStatus": "Beta.7 saves RSVP and food interest together when both are due. Invites shows qualifying visits and the latest visit time. Languages and Translations have separate tabs, and venue food and session household assignment open in dialogs. The project has 57 completed milestones (55 released and two operator-confirmed), seven active tasks and 11 approved guides. Apple Shortcuts remains experimental and disabled by default.",
   "completedMilestones": [
+    {
+      "title": "Qualifying invitation visits, a compact Invites heading and separate Languages and Translations tabs.",
+      "scope": "Released"
+    },
+    {
+      "title": "Guest response navigation validates each answer, with separate review controls and a narrow-screen toolbar.",
+      "scope": "Released"
+    },
+    {
+      "title": "One reviewed submission saves RSVP, food interest and the guest comment together when both answers are due.",
+      "scope": "Released"
+    },
+    {
+      "title": "Household-language invitation links and dialogs for managing venue food and session household assignments.",
+      "scope": "Released"
+    },
     {
       "title": "Invites progress and Text copying, separate Venues and Sessions tabs, and refreshed documentation screenshots.",
       "scope": "Released"
@@ -128,7 +145,7 @@
       "scope": "Verified locally"
     },
     {
-      "title": "Hosted beta.6 deployment verified with existing records, private photos and configuration preserved.",
+      "title": "Hosted beta.7 deployment verified with existing records, private photos and configuration preserved.",
       "scope": "Deployed"
     }
   ]

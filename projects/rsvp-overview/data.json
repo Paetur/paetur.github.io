@@ -6,7 +6,7 @@
   "sourceURL": "https://github.com/Paetur/RSVP-Manager",
   "releaseURL": "https://github.com/Paetur/RSVP-Manager/releases/tag/v0.9.0-beta.8",
   "maturity": 93.91,
-  "readiness": 85.35,
+  "readiness": 85.6,
   "modules": [
     {
       "name": "Guest invitation & RSVP",
@@ -74,7 +74,7 @@
     "Audit dynamic translation keys and remaining callers",
     "Refine delivery and response views and secondary filters on phones"
   ],
-  "developmentStatus": "Beta.8 updates Overview counts after guest activity and protects overlapping administrator edits. Invites has compact View and Search controls and background Mark sent with retry. Returning guests can choose food from their original link, and administrators can review grouped food access from Food or the session household dialog. Interface preferences and date formats are easier to review and edit. The project has 62 completed milestones (60 released and two operator-confirmed), seven active tasks and 11 approved guides. Apple Shortcuts remains experimental and disabled by default. The hosted installation remains on beta.7.",
+  "developmentStatus": "Beta.8 updates Overview counts after guest activity and protects overlapping administrator edits. Invites has compact View and Search controls and background Mark sent with retry. Returning guests can choose food from their original link, and administrators can review grouped food access from Food or the session household dialog. Interface preferences and date formats are easier to review and edit. The project has 62 completed milestones (60 released and two operator-confirmed), seven active tasks and 11 approved guides. Apple Shortcuts remains experimental and disabled by default.",
   "completedMilestones": [
     {
       "title": "Live Overview counts for invitation visits, RSVP and food interest while filters and edits stay open.",
@@ -165,7 +165,7 @@
       "scope": "Verified locally"
     },
     {
-      "title": "Hosted beta.7 deployment verified with existing records, private photos and configuration preserved.",
+      "title": "Hosted beta.8 deployment verified with existing records, private photos and configuration preserved.",
       "scope": "Deployed"
     }
   ]

@@ -1,36 +1,36 @@
 {
   "project": "RSVP Manager",
-  "updatedAt": "2026-11-24",
-  "assessmentDate": "2026-11-24",
-  "release": "0.9.0-beta.8",
+  "updatedAt": "2026-11-25",
+  "assessmentDate": "2026-11-25",
+  "release": "0.9.0",
   "sourceURL": "https://github.com/Paetur/RSVP-Manager",
-  "releaseURL": "https://github.com/Paetur/RSVP-Manager/releases/tag/v0.9.0-beta.8",
-  "maturity": 93.91,
+  "releaseURL": "https://github.com/Paetur/RSVP-Manager/releases/tag/v0.9.0",
+  "maturity": 94.54,
   "readiness": 85.6,
   "modules": [
     {
       "name": "Guest invitation & RSVP",
-      "progress": 95
+      "progress": 96
     },
     {
       "name": "Invitation customization",
-      "progress": 93
+      "progress": 95
     },
     {
       "name": "Households, guests & groups",
-      "progress": 96
+      "progress": 97
     },
     {
       "name": "Venues & sessions",
-      "progress": 94
+      "progress": 95
     },
     {
       "name": "Food, groups & recipes",
-      "progress": 94
+      "progress": 95
     },
     {
       "name": "Invites & delivery tracking",
-      "progress": 96
+      "progress": 97
     },
     {
       "name": "Other tasks/items",
@@ -38,7 +38,7 @@
     },
     {
       "name": "Languages & wording",
-      "progress": 91
+      "progress": 92
     },
     {
       "name": "Administrator access & authentication",
@@ -62,20 +62,39 @@
     },
     {
       "name": "Documentation & maintainability",
-      "progress": 91
+      "progress": 92
     }
   ],
   "next": [
-    "Extend device, accessibility and sharing checks beyond the workflows already verified",
-    "Complete the remaining live and device checks for experimental Shortcuts",
-    "Define how recovery and backups retain deleted drafts and delivery history",
-    "Document and rehearse deployment recovery for supported installations",
-    "Review final event content, contacts and guest-facing wording",
+    "Extend device, sign-in and sharing checks, including maps and recipe printing",
+    "Complete more live and device checks for experimental Shortcuts",
+    "Improve keyboard navigation across administrator pages and language tabs",
+    "Fit Settings tabs on narrow screens",
+    "Improve single-row invitation layouts on phones",
+    "Refine delivery and response views and secondary filters on phones",
     "Audit dynamic translation keys and remaining callers",
-    "Refine delivery and response views and secondary filters on phones"
+    "Define how backup and restore retain deleted drafts and delivery history",
+    "Document and rehearse deployment recovery",
+    "Finish reviewing invitation wording, schedules and food options"
   ],
-  "developmentStatus": "Beta.8 updates Overview counts after guest activity and protects overlapping administrator edits. Invites has compact View and Search controls and background Mark sent with retry. Returning guests can choose food from their original link, and administrators can review grouped food access from Food or the session household dialog. Interface preferences and date formats are easier to review and edit. The project has 62 completed milestones (60 released and two operator-confirmed), seven active tasks and 11 approved guides. Apple Shortcuts remains experimental and disabled by default.",
+  "developmentStatus": "RSVP Manager 0.9.0 adds localized titles and salutations, clearer Invites filters and grouping, and more control over Overview layout and scheduling. The hosted installation runs 0.9.0-beta.8. The project tracks 66 completed milestones (64 released and two operator-confirmed), 10 active priorities and 11 approved guides. Apple Shortcuts is experimental and off by default.",
   "completedMilestones": [
+    {
+      "title": "Localized invitation titles, guest nicknames and reusable contact salutations.",
+      "scope": "Released"
+    },
+    {
+      "title": "Active Invites filters with Clear filters, food confirmation errors beside the action, and higher-contrast controls.",
+      "scope": "Released"
+    },
+    {
+      "title": "Alphabetic, relational and service grouping in Invites, with visit and RSVP summaries and household preview actions.",
+      "scope": "Released"
+    },
+    {
+      "title": "Separate Interface settings, editable Overview tab names and card order, and clearer timezone-aware scheduling.",
+      "scope": "Released"
+    },
     {
       "title": "Live Overview counts for invitation visits, RSVP and food interest while filters and edits stay open.",
       "scope": "Released"

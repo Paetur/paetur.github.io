@@ -1,12 +1,12 @@
 {
   "project": "RSVP Manager",
-  "updatedAt": "2026-11-25",
-  "assessmentDate": "2026-11-25",
-  "release": "0.9.0",
+  "updatedAt": "2026-11-26",
+  "assessmentDate": "2026-11-26",
+  "release": "0.9.1",
   "sourceURL": "https://github.com/Paetur/RSVP-Manager",
-  "releaseURL": "https://github.com/Paetur/RSVP-Manager/releases/tag/v0.9.0",
-  "maturity": 94.54,
-  "readiness": 85.6,
+  "releaseURL": "https://github.com/Paetur/RSVP-Manager/releases/tag/v0.9.1",
+  "maturity": 94.74,
+  "readiness": 85.85,
   "modules": [
     {
       "name": "Guest invitation & RSVP",
@@ -30,7 +30,7 @@
     },
     {
       "name": "Invites & delivery tracking",
-      "progress": 97
+      "progress": 98
     },
     {
       "name": "Other tasks/items",
@@ -54,11 +54,11 @@
     },
     {
       "name": "Hosting & operations",
-      "progress": 91
+      "progress": 92
     },
     {
       "name": "Testing & CI",
-      "progress": 93
+      "progress": 94
     },
     {
       "name": "Documentation & maintainability",
@@ -67,18 +67,25 @@
   ],
   "next": [
     "Extend device, sign-in and sharing checks, including maps and recipe printing",
-    "Complete more live and device checks for experimental Shortcuts",
+    "Complete live-message and device checks for experimental Shortcuts",
     "Improve keyboard navigation across administrator pages and language tabs",
     "Fit Settings tabs on narrow screens",
-    "Improve single-row invitation layouts on phones",
     "Refine delivery and response views and secondary filters on phones",
     "Audit dynamic translation keys and remaining callers",
     "Define how backup and restore retain deleted drafts and delivery history",
     "Document and rehearse deployment recovery",
-    "Finish reviewing invitation wording, schedules and food options"
+    "Approve final schedules, wording, contacts, assignments and menu"
   ],
-  "developmentStatus": "RSVP Manager 0.9.0 adds localized titles and salutations, clearer Invites filters and grouping, and more control over Overview layout and scheduling. The hosted installation runs 0.9.0-beta.8. The project tracks 66 completed milestones (64 released and two operator-confirmed), 10 active priorities and 11 approved guides. Apple Shortcuts is experimental and off by default.",
+  "developmentStatus": "RSVP Manager 0.9.1 adds separate Phone, Tablet and Desktop Invites layouts, a live preview and resettable account defaults, and date, actor, category and action filters for Logs. The hosted installation runs 0.9.1. The project tracks 68 completed milestones, nine active priorities and 11 approved guides. Apple Shortcuts is experimental and off by default.",
   "completedMilestones": [
+    {
+      "title": "Separate Invites screen profiles, a live preview, resettable account defaults and right-aligned selection.",
+      "scope": "Released"
+    },
+    {
+      "title": "Compact Logs with date, actor, category and action filters and separate household and guest RSVP entries.",
+      "scope": "Released"
+    },
     {
       "title": "Localized invitation titles, guest nicknames and reusable contact salutations.",
       "scope": "Released"
@@ -184,7 +191,11 @@
       "scope": "Verified locally"
     },
     {
-      "title": "Hosted beta.8 deployment verified with existing records, private photos and configuration preserved.",
+      "title": "Hosted 0.9.0 deployment verified with existing records, private photos and configuration preserved.",
+      "scope": "Deployed"
+    },
+    {
+      "title": "Hosted 0.9.1 deployment verified with existing data, private photos and configuration preserved.",
       "scope": "Deployed"
     }
   ]

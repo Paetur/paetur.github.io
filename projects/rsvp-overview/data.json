@@ -6,7 +6,7 @@
   "sourceURL": "https://github.com/Paetur/RSVP-Manager",
   "releaseURL": "https://github.com/Paetur/RSVP-Manager/releases/tag/v0.9.1",
   "maturity": 94.74,
-  "readiness": 85.85,
+  "readiness": 89.18,
   "modules": [
     {
       "name": "Guest invitation & RSVP",
@@ -73,10 +73,9 @@
     "Refine delivery and response views and secondary filters on phones",
     "Audit dynamic translation keys and remaining callers",
     "Define how backup and restore retain deleted drafts and delivery history",
-    "Document and rehearse deployment recovery",
-    "Approve final schedules, wording, contacts, assignments and menu"
+    "Document and rehearse deployment recovery"
   ],
-  "developmentStatus": "RSVP Manager 0.9.1 adds separate Phone, Tablet and Desktop Invites layouts, a live preview and resettable account defaults, and date, actor, category and action filters for Logs. The hosted installation runs 0.9.1. The project tracks 68 completed milestones, nine active priorities and 11 approved guides. Apple Shortcuts is experimental and off by default.",
+  "developmentStatus": "RSVP Manager 0.9.1 adds separate Phone, Tablet and Desktop Invites layouts, a live preview and resettable account defaults, and date, actor, category and action filters for Logs. The hosted installation runs 0.9.1. The project tracks 68 completed milestones, eight active development priorities and 11 approved guides. Apple Shortcuts is experimental and off by default.",
   "completedMilestones": [
     {
       "title": "Separate Invites screen profiles, a live preview, resettable account defaults and right-aligned selection.",

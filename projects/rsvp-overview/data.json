@@ -1,16 +1,16 @@
 {
   "project": "RSVP Manager",
-  "updatedAt": "2026-11-26",
-  "assessmentDate": "2026-11-26",
-  "release": "0.9.1",
+  "updatedAt": "2026-11-27",
+  "assessmentDate": "2026-11-27",
+  "release": "0.10.0",
   "sourceURL": "https://github.com/Paetur/RSVP-Manager",
-  "releaseURL": "https://github.com/Paetur/RSVP-Manager/releases/tag/v0.9.1",
-  "maturity": 94.74,
-  "readiness": 89.18,
+  "releaseURL": "https://github.com/Paetur/RSVP-Manager/releases/tag/v0.10.0",
+  "maturity": 95.24,
+  "readiness": 89.76,
   "modules": [
     {
       "name": "Guest invitation & RSVP",
-      "progress": 96
+      "progress": 98
     },
     {
       "name": "Invitation customization",
@@ -18,7 +18,7 @@
     },
     {
       "name": "Households, guests & groups",
-      "progress": 97
+      "progress": 98
     },
     {
       "name": "Venues & sessions",
@@ -26,7 +26,7 @@
     },
     {
       "name": "Food, groups & recipes",
-      "progress": 95
+      "progress": 96
     },
     {
       "name": "Invites & delivery tracking",
@@ -54,11 +54,11 @@
     },
     {
       "name": "Hosting & operations",
-      "progress": 92
+      "progress": 93
     },
     {
       "name": "Testing & CI",
-      "progress": 94
+      "progress": 95
     },
     {
       "name": "Documentation & maintainability",
@@ -75,8 +75,20 @@
     "Define how backup and restore retain deleted drafts and delivery history",
     "Document and rehearse deployment recovery"
   ],
-  "developmentStatus": "RSVP Manager 0.9.1 adds separate Phone, Tablet and Desktop Invites layouts, a live preview and resettable account defaults, and date, actor, category and action filters for Logs. The hosted installation runs 0.9.1. The project tracks 68 completed milestones, eight active development priorities and 11 approved guides. Apple Shortcuts is experimental and off by default.",
+  "developmentStatus": "RSVP Manager 0.10.0 lets authorized organizers correct submitted replies, add guests and edit guest details. It also adds scrollable Overview columns and separate Phone and Wide settings for event messages. The hosted 0.10.0 rollout passed data preservation and backup checks. The project tracks 72 completed milestones, eight active development priorities and 11 approved guides. Apple Shortcuts is experimental and off by default.",
   "completedMilestones": [
+    {
+      "title": "Organizer corrections for submitted RSVPs, including attendance, food interest, guest additions and guest details.",
+      "scope": "Released"
+    },
+    {
+      "title": "Scrollable Overview columns, a separate Invites toolbar and starting layouts by screen size.",
+      "scope": "Released"
+    },
+    {
+      "title": "Direct Event messages settings with separate Phone and Wide previews.",
+      "scope": "Released"
+    },
     {
       "title": "Separate Invites screen profiles, a live preview, resettable account defaults and right-aligned selection.",
       "scope": "Released"
@@ -195,6 +207,10 @@
     },
     {
       "title": "Hosted 0.9.1 deployment verified with existing data, private photos and configuration preserved.",
+      "scope": "Deployed"
+    },
+    {
+      "title": "Hosted 0.10.0 deployment verified with existing data, permissions, configuration and backup compatibility preserved.",
       "scope": "Deployed"
     }
   ]
